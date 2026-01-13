@@ -132,6 +132,7 @@
     <ClCompile Include="LanVariable.cpp" />
     <ClCompile Include="MemoryBooker.cpp" />
     <ClCompile Include="Mylange.cpp" />
+    <ClCompile Include="MylangeFileInterface.cpp" />
     <ClCompile Include="MylangeInterpreter.cpp" />
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>
@@ -140,6 +141,7 @@
     <ClInclude Include="LanType.h" />
     <ClInclude Include="LanVariable.h" />
     <ClInclude Include="MemoryBooker.h" />
+    <ClInclude Include="MylangeFileInterface.h" />
     <ClInclude Include="MylangeInterpreter.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>

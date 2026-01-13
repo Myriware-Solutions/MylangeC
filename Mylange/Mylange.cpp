@@ -1,15 +1,17 @@
 // IMPORTS //
 #include <iostream>
 #include "CommandLineInterface.h"
+#include "MylangeFileInterface.h"
 
 // CODE //
 int main(int argc, char* argv[])
 {
-    std::cout << "Hello World!\n";
-    for (int i = 0; i < argc; ++i) {
-        std::cout << "arg " << i << ": " << argv[i] << "\n";
+    if (argc == 2) {
+		MylangeFileInterface::ReadFile(argv[1]);
     }
-	CommandLineInterface::RunCLI();
+    else {
+        CommandLineInterface::RunCLI();
+    }
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
