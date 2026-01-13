@@ -1,11 +1,15 @@
-// Mylange.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
+// IMPORTS //
 #include <iostream>
+#include "CommandLineInterface.h"
 
-int main()
+// CODE //
+int main(int argc, char* argv[])
 {
     std::cout << "Hello World!\n";
+    for (int i = 0; i < argc; ++i) {
+        std::cout << "arg " << i << ": " << argv[i] << "\n";
+    }
+	CommandLineInterface::RunCLI();
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
