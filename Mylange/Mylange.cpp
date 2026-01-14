@@ -7,7 +7,7 @@
 int main(int argc, char* argv[])
 {
     if (argc == 2) {
-		MylangeFileInterface::ReadFile(argv[1]);
+		FileInterface::InterpretFile(argv[1]);
     }
     else {
         CommandLineInterface::RunCLI();

@@ -6,6 +6,7 @@
 #include "CommandLineInterface.h"
 #include "MylangeInterpreter.h"
 #include "Utils.h"
+#include <exception>
 
 // CODE //
 

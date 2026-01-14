@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="Mylange/Mylange.vcxproj" />
+  <Project Path="Mylange/Mylange.vcxproj" Id="6382bc7a-e51f-447c-9113-089f7ecff377" />
 </Solution>

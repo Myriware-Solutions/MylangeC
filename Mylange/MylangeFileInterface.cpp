@@ -1,38 +1,44 @@
 #include <iostream>
 #include <string>
-#include <fstream>
+#include <regex>
+#include <vector>
 
 #include "MylangeFileInterface.h"
-
-std::string read_file_into_string(const std::string& filename) {
-    // Open the file. Using the constructor handles the open call.
-    std::ifstream ifs(filename);
-
-    // Check if the file opened successfully
-    if (!ifs.is_open()) {
-        std::cerr << "Failed to open file: " << filename << std::endl;
-        return ""; // Or throw an exception
-    }
-
-    // Use iterators to read the entire stream into the string
-    std::string content(std::istreambuf_iterator<char>(ifs),
-        std::istreambuf_iterator<char>());
-
-    // The ifstream destructor automatically closes the file when it goes out of scope.
-    return content;
-}
+#include "Utils.h"
+#include "MylangeInterpreter.h"
 
 
+using namespace std;
 
 
-int MylangeFileInterface::ReadFile(const std::string& filePath)
+regex single_line_comment_pattern(R"(\/\/.*)", std::regex_constants::ECMAScript);
+regex multi_line_comment_pattern(R"(\/\[[\s\S]*?\]\/)", std::regex_constants::ECMAScript);
+regex newline_whitespace_pattern(R"(\s*\n\s*)", std::regex_constants::ECMAScript);
+
+int FileInterface::InterpretFile(const string& filePath)
 {
     std::cout << "Running Mylange script: " << filePath << std::endl;
 
-    std::ifstream file(filePath);
-    std::ostringstream content_stream;
-    content_stream << file.rdbuf(); // Read the entire buffer into the stream
-    std::string entireFileContent = content_stream.str();
+	string fileContent = Utils::ReadFileContents(filePath);
 
+    
+	//std::cout << "File Content:\n" << fileContent << std::endl;
+    // Remove all comments
+	fileContent = std::regex_replace(fileContent, single_line_comment_pattern, "");
+	fileContent = std::regex_replace(fileContent, multi_line_comment_pattern, "");
+	fileContent = std::regex_replace(fileContent, newline_whitespace_pattern, "");
+
+	//cout << "Content without comments:\n" << fileContent << std::endl;
+
+	// Pass in block runner
+
+	try {
+		MylangeInterpreter mi = MylangeInterpreter();
+		mi.InterpretBlock("global", fileContent);
+	}
+	catch (const std::exception& e) {
+		std::cerr << "Error during interpretation: " << e.what() << std::endl;
+		return 1;
+	}
     return 0;
 }

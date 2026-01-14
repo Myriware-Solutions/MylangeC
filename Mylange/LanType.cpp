@@ -6,6 +6,7 @@
 #include "LanType.h"
 #include "LanVariable.h"
 #include "Utils.h"
+#include <stdexcept>
 
 using namespace std;
 
