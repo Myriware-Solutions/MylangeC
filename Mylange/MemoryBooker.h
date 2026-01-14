@@ -32,5 +32,17 @@ public:
 	//example: "global:x" or "global.0x001A2B3C:myArray"
 	unordered_map<string, LanVariable> Variables;
 	unordered_map<string, unique_ptr<LanFunction>> Functions;
+
+private:
+	bool GetLiteralVariable(
+		const string& scopeId,
+		const string& name,
+		LanVariable& var);
+
+	LanFunction* GetLiteralFunction(
+		const string& scopeId,
+		const string& name,
+		const vector<LanType>& paramTypes);
+
 };
 

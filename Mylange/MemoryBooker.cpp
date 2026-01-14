@@ -9,6 +9,7 @@
 #include <vector>
 #include "LanFunction.h"
 #include "LanType.h"
+#include "Utils.h"
 
 MemoryBooker::MemoryBooker()
 {
@@ -32,19 +33,20 @@ void MemoryBooker::RemoveVariable(const string& scopeId, const string& name)
 
 bool MemoryBooker::GetVariable(const string& scopeId, const string& name, LanVariable& var)
 {
-	string fullId = scopeId + ":" + name;
-	CommandLineInterface::DebugPrint("Checking Variable " + fullId);
-	if (this->Variables.find(fullId) != this->Variables.end())
+	auto scopeParts = Utils::TopLevelSplit(scopeId, '.');
+	for (int i = scopeParts.size() - 1; i >= 0; --i)
 	{
-		CommandLineInterface::DebugPrint("Variable " + fullId + " exists with value " + this->Variables[fullId].ToString());
-		var = this->Variables[fullId];
-		return true;
+		string currentScopeId = "";
+		for (int j = 0; j <= i; ++j)
+		{
+			currentScopeId += (j == 0 ? "" : ".") + scopeParts[j];
+		}
+		if (this->GetLiteralVariable(currentScopeId, name, var))
+		{
+			return true;
+		}
 	}
-	else
-	{
-		CommandLineInterface::DebugPrint("Variable " + fullId + " does not exist.");
-		return false;
-	}
+	return false;
 };
 
 void MemoryBooker::BookFunction(const string& scopeId, unique_ptr<LanFunction> function)
@@ -59,18 +61,20 @@ LanFunction* MemoryBooker::GetFunction(
 	const string& name,
 	const vector<LanType>& paramTypes)
 {
-	const string fullId = scopeId + ":" + LanFunction::GetId(name, paramTypes);
-	CommandLineInterface::DebugPrint("Checking Function " + fullId);
-
-	auto it = Functions.find(fullId);
-	if (it == Functions.end())
+	auto scopeParts = Utils::TopLevelSplit(scopeId, '.');
+	for (int i = scopeParts.size() - 1; i >= 0; --i)
 	{
-		CommandLineInterface::DebugPrint("Function " + fullId + " does not exist.");
-		return nullptr;
+		string currentScopeId = "";
+		for (int j = 0; j <= i; ++j)
+		{
+			currentScopeId += (j == 0 ? "" : ".") + scopeParts[j];
+		}
+		if (LanFunction* func = this->GetLiteralFunction(currentScopeId, name, paramTypes))
+		{
+			return func;
+		}
 	}
-
-	CommandLineInterface::DebugPrint("Function " + fullId + " exists.");
-	return it->second.get();  // non-owning pointer
+	return nullptr;
 }
 
 void MemoryBooker::ClearScope(const string& scopeId)
@@ -88,6 +92,40 @@ void MemoryBooker::ClearScope(const string& scopeId)
 			++it;
 		}
 	}
+}
+
+bool MemoryBooker::GetLiteralVariable(const string& scopeId, const string& name, LanVariable& var)
+{
+	string fullId = scopeId + ":" + name;
+	//CommandLineInterface::DebugPrint("Checking Variable " + fullId);
+	if (this->Variables.find(fullId) != this->Variables.end())
+	{
+		//CommandLineInterface::DebugPrint("Variable " + fullId + " exists with value " + this->Variables[fullId].ToString());
+		var = this->Variables[fullId];
+		return true;
+	}
+	else
+	{
+		//CommandLineInterface::DebugPrint("Variable " + fullId + " does not exist.");
+		return false;
+	}
+}
+
+LanFunction* MemoryBooker::GetLiteralFunction(const string& scopeId, 
+	const string& name, const vector<LanType>& paramTypes)
+{
+	const string fullId = scopeId + ":" + LanFunction::GetId(name, paramTypes);
+	CommandLineInterface::DebugPrint("Checking Function " + fullId);
+
+	auto it = Functions.find(fullId);
+	if (it == Functions.end())
+	{
+		CommandLineInterface::DebugPrint("Function " + fullId + " does not exist.");
+		return nullptr;
+	}
+
+	CommandLineInterface::DebugPrint("Function " + fullId + " exists.");
+	return it->second.get();  // non-owning pointer
 }
 
 
