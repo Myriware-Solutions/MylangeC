@@ -4,7 +4,7 @@
 
 class FileInterface
 {
-	public:
-		static int InterpretFile(const std::string& filePath);
+public:
+	static int InterpretFile(const std::string& filePath);
 };
 

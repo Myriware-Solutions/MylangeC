@@ -7,9 +7,7 @@
 #include "Utils.h"
 #include "MylangeInterpreter.h"
 
-
 using namespace std;
-
 
 regex single_line_comment_pattern(R"(\/\/.*)", std::regex_constants::ECMAScript);
 regex multi_line_comment_pattern(R"(\/\[[\s\S]*?\]\/)", std::regex_constants::ECMAScript);
@@ -22,13 +20,13 @@ int FileInterface::InterpretFile(const string& filePath)
 	string fileContent = Utils::ReadFileContents(filePath);
 
     
-	//std::cout << "File Content:\n" << fileContent << std::endl;
+	// std::cout << "File Content:\n" << fileContent << std::endl;
     // Remove all comments
 	fileContent = std::regex_replace(fileContent, single_line_comment_pattern, "");
 	fileContent = std::regex_replace(fileContent, multi_line_comment_pattern, "");
 	fileContent = std::regex_replace(fileContent, newline_whitespace_pattern, "");
 
-	//cout << "Content without comments:\n" << fileContent << std::endl;
+	// cout << "Content without comments:\n" << fileContent << std::endl;
 
 	// Pass in block runner
 
@@ -36,8 +34,8 @@ int FileInterface::InterpretFile(const string& filePath)
 		MylangeInterpreter mi = MylangeInterpreter();
 		mi.InterpretBlock("global", fileContent);
 	}
-	catch (const std::exception& e) {
-		std::cerr << "Error during interpretation: " << e.what() << std::endl;
+	catch (const exception& e) {
+		cerr << "Error during interpretation: " << e.what() << endl << "Would you like to throw error? [y/n] > ";
 		return 1;
 	}
     return 0;

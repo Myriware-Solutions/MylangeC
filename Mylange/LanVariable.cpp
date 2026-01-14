@@ -15,7 +15,18 @@ LanVariable::LanVariable(LanType type, LanValue value)
 	this->Value = value;
 };
 
-LanVariable LanVariable::RandomTypeConversion(const string& value)
+bool LanVariable::RandomTypeConversion(const string& value, LanVariable* var)
+{
+	optional<LanVariable> test = LanVariable::RandomTypeConversion(value);
+	if (test.has_value())
+	{
+		*var = test.value();
+		return true;
+	}
+	return false;
+}
+
+optional<LanVariable> LanVariable::RandomTypeConversion(const string& value)
 {
 	CommandLineInterface::DebugPrint("Attempting to convert value: " + value);
 	string trimmedValue = Utils::TrimString(value);
@@ -89,8 +100,5 @@ LanVariable LanVariable::RandomTypeConversion(const string& value)
 	// casting
 
 	// unknown
-	else
-	{
-		throw runtime_error("Unable to determine type for value: " + value);
-	}
+	else return nullopt;
 };

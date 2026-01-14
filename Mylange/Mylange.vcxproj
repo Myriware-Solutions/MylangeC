@@ -128,6 +128,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CommandLineInterface.cpp" />
+    <ClCompile Include="IncludableFunctions.cpp" />
     <ClCompile Include="LanFunction.cpp" />
     <ClCompile Include="LanType.cpp" />
     <ClCompile Include="LanVariable.cpp" />
@@ -139,6 +140,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommandLineInterface.h" />
+    <ClInclude Include="IncludableFunctions.h" />
     <ClInclude Include="LanFunction.h" />
     <ClInclude Include="LanType.h" />
     <ClInclude Include="LanVariable.h" />

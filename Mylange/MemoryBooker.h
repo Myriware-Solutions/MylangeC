@@ -12,10 +12,15 @@ class MemoryBooker
 {
 public:
 	MemoryBooker();
+	// Variables
 	void BookVariable(const string& scopeId, const string& name, LanVariable variable);
 	void RemoveVariable(const string& scopeId, const string& name);
+	bool GetVariable(const string& scopeId, const string& name, LanVariable& var);
+	// Functions
 	void BookFunction(const string& scopeId, LanFunction function);
+	bool GetFunction(const string& scopeId, const string& name, vector<LanType> paramTypes, LanFunction& func);
 
+	// Clears
 	void ClearScope(const string& scopeId);
 
 	//represents the scope and name, maps to the variable

@@ -28,7 +28,8 @@ public:
 			"Unknown";
 	}
 
-	static LanVariable RandomTypeConversion(const string& value);
+	static bool RandomTypeConversion(const string& value, LanVariable* var);
+	static optional<LanVariable> RandomTypeConversion(const string& value);
 
 
 	LanType Type;

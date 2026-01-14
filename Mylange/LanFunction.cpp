@@ -7,17 +7,11 @@
 #include "MylangeInterpreter.h"
 
 
-string LanFunction::GetId() {
-	string name = this->Name + "(";
-	bool first = true;
-	for (auto& [paramName, paramType] : Parameters) {
-		name += ((first) ? "" : ",") + paramType.ToString();
-		if (first) first = false;
-	}
-	return name + ")";
+string LanFunction::GetId() const {
+	return LanFunction::GetId(this->Name, this->Parameters);
 };
 
-LanVariable LanFunction::Execute(const string& scopeId, MylangeInterpreter& mi, const vector<LanVariable>& args)
+optional<LanVariable> LanFunction::Execute(const string& scopeId, MylangeInterpreter& mi, const vector<LanVariable>& args)
 {
 	string working_scope = scopeId + "." + this->GetId() + "@run";
 
