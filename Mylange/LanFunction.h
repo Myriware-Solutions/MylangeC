@@ -13,10 +13,13 @@ using namespace std;
 class LanFunction
 {
 public:
+	virtual unique_ptr<LanFunction> Clone() const = 0;
+	virtual ~LanFunction() = default;
 	LanFunction() {};
 	LanFunction(const LanType& returnType, const std::string& name,
 		const map<string, LanType>& parameters, const std::string& logic)
 		: ReturnType(returnType), Name(name), Parameters(parameters), Logic(logic) {
+		//cout << "Created function: " << this->GetId() << endl;
 	};
 
 	string GetId() const;
@@ -38,7 +41,8 @@ public:
 		return id;
 	}
 
-	virtual optional<LanVariable> Execute(const string& scopeId, MylangeInterpreter& mi, const vector<LanVariable>& args);
+	virtual optional<LanVariable> Execute(const string& scopeId, MylangeInterpreter& mi, 
+		const vector<LanVariable>& args) = 0;
 
 	LanType ReturnType;
 	string Name;
@@ -46,3 +50,23 @@ public:
 	string Logic;
 };
 
+class ScriptFunction : public LanFunction
+{
+public:
+	ScriptFunction(
+		const LanType& returnType,
+		const std::string& name,
+		const std::map<std::string, LanType>& parameters,
+		const std::string& logic)
+		: LanFunction(returnType, name, parameters, logic) {
+	}
+
+	optional<LanVariable> Execute(
+		const string& scopeId,
+		MylangeInterpreter& mi,
+		const vector<LanVariable>& args) override;
+
+	std::unique_ptr<LanFunction> Clone() const override {
+		return std::make_unique<ScriptFunction>(*this);
+	}
+};

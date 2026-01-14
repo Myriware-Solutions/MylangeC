@@ -33,9 +33,6 @@
     <ClCompile Include="LanVariable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Utils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="MylangeFileInterface.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

@@ -136,7 +136,6 @@
     <ClCompile Include="Mylange.cpp" />
     <ClCompile Include="MylangeFileInterface.cpp" />
     <ClCompile Include="MylangeInterpreter.cpp" />
-    <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommandLineInterface.h" />

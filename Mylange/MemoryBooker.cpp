@@ -3,6 +3,12 @@
 #include "MemoryBooker.h"
 #include "CommandLineInterface.h"
 #include "LanVariable.h"
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+#include "LanFunction.h"
+#include "LanType.h"
 
 MemoryBooker::MemoryBooker()
 {
@@ -13,7 +19,8 @@ void MemoryBooker::BookVariable(const string& scopeId, const string& name, LanVa
 {
 	CommandLineInterface::DebugPrint("Booking Variable " + scopeId + ":" + name + " with " + variable.ToString());
 	string fullId = scopeId + ":" + name;
-	this->Variables[fullId] = variable;
+	//this->Variables[fullId] = variable;
+	this->Variables.emplace(fullId, variable);
 }
 
 void MemoryBooker::RemoveVariable(const string& scopeId, const string& name)
@@ -40,28 +47,30 @@ bool MemoryBooker::GetVariable(const string& scopeId, const string& name, LanVar
 	}
 };
 
-void MemoryBooker::BookFunction(const string& scopeId, LanFunction function)
+void MemoryBooker::BookFunction(const string& scopeId, unique_ptr<LanFunction> function)
 {
-	string fullId = scopeId + ":" + function.GetId();
+	string fullId = scopeId + ":" + (function)->GetId();
 	CommandLineInterface::DebugPrint("Booking Function " + fullId);
-	this->Functions[fullId] = function;
+	this->Functions.emplace(fullId, std::move(function));
 }
 
-bool MemoryBooker::GetFunction(const string& scopeId, const string& name, vector<LanType> paramTypes, LanFunction& func)
+LanFunction* MemoryBooker::GetFunction(
+	const string& scopeId,
+	const string& name,
+	const vector<LanType>& paramTypes)
 {
-	string fullId = scopeId + ":" + LanFunction::GetId(name, paramTypes);
+	const string fullId = scopeId + ":" + LanFunction::GetId(name, paramTypes);
 	CommandLineInterface::DebugPrint("Checking Function " + fullId);
-	if (this->Functions.find(fullId) != this->Functions.end())
-	{
-		CommandLineInterface::DebugPrint("Function " + fullId + " exists.");
-		func = this->Functions[fullId];
-		return true;
-	}
-	else
+
+	auto it = Functions.find(fullId);
+	if (it == Functions.end())
 	{
 		CommandLineInterface::DebugPrint("Function " + fullId + " does not exist.");
-		return false;
+		return nullptr;
 	}
+
+	CommandLineInterface::DebugPrint("Function " + fullId + " exists.");
+	return it->second.get();  // non-owning pointer
 }
 
 void MemoryBooker::ClearScope(const string& scopeId)

@@ -20,11 +20,12 @@
 
 using namespace std;
 
-regex functionPartsPattern(R"(^(\w+)\s*\((.*)\))", std::regex_constants::ECMAScript);
+const regex functionPartsPattern(R"(^(\w+)\s*\((.*)\))", std::regex_constants::ECMAScript);
+const regex functionCallStack(R"(^(?:\w+\(.*\))+)", std::regex_constants::ECMAScript);
 
 struct Rule {
     regex pattern;
-    function<optional<LanVariable>(const smatch&, MylangeInterpreter&, const string&)> action;
+    function <optional<LanVariable>(const smatch&, MylangeInterpreter&, const string&) > action;
 };
 
 vector<Rule> rules = {
@@ -33,11 +34,11 @@ vector<Rule> rules = {
         regex(R"(^#include\s*<(\w+)>)"),
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
 			CommandLineInterface::DebugPrint("Including module: " + m[1].str());
-			LanFunction func;
+            unique_ptr<LanFunction> func;
 			if (IncludableFunctions::GetIncludableFunction(m[1], func))
             {
-                CommandLineInterface::DebugPrint("Included module: " + m[1].str());
-				mi.MemBook.BookFunction(scopeId, func);
+                CommandLineInterface::DebugPrint("Included module: " + m[1].str() + " : " + (func)->GetId());
+				mi.MemBook.BookFunction(scopeId, std::move(func) );
             }
             else throw runtime_error("Module not found: " + m[1].str());
             return nullopt;
@@ -48,12 +49,16 @@ vector<Rule> rules = {
         regex(R"(^\s*([a-zA-Z<>,|\s]+) +(\w+) *=> *(.*))"),
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
 			LanType expectedType = LanType::FromString(m[1]);
-            auto lv = LanVariable::RandomTypeConversion(m[3]);
-            if (!lv.has_value())
-				throw runtime_error("Failed to parse variable value.");
+            //auto lv = LanVariable::RandomTypeConversion(m[3]);
+			auto lv = mi.ParseParameter(scopeId, m[3]);
+            if (!lv.has_value()) 
+                throw runtime_error("Failed to parse variable value.");
+			CommandLineInterface::DebugPrint("Setting variable " + m[2].str() + " of type " + expectedType.ToString() + "/" + lv.value().Type.ToString() + " to value " + lv.value().ToString());
             if (lv.value().Type == expectedType)
 			    mi.MemBook.BookVariable(scopeId, m[2], lv.value());
-			else throw runtime_error("Type mismatch in variable assignment.");
+			else throw runtime_error("Type mismatch in variable assignment. Expected " 
+                + expectedType.ToString() + ", got " + lv.value().Type.ToString() 
+                + " (with " + lv.value().ToString() + ")");
             return nullopt;
         }
     },
@@ -92,14 +97,16 @@ vector<Rule> rules = {
                 parameter_map[parts[1]] = LanType::FromString(parts[0]);
             }
             const LanType return_type = LanType::FromString(m[1]);
-            LanFunction function = LanFunction(return_type, m[2].str(), parameter_map, m[4].str());
-            mi.MemBook.BookFunction(scopeId, function);
+            //unique_ptr<LanFunction> function = make_unique<LanFunction>(return_type, m[2].str(), parameter_map, m[4].str());
+            unique_ptr<LanFunction> function =
+                make_unique<ScriptFunction>(return_type, m[2].str(), parameter_map, m[4].str());
+            mi.MemBook.BookFunction(scopeId, move(function));
             return nullopt;
         }
     },
     // Functional Execution
     {
-        regex(R"(^(?:\w+\(.*\))+)"),
+        functionCallStack,
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
 			mi.RunFunctionStack(scopeId, m[0].str());
             return nullopt;
@@ -191,7 +198,7 @@ optional<LanVariable> MylangeInterpreter::InterpretBlock(const string& scopeId, 
     //std::cout << "Result:\n" << condensed_block << "\n\n";
     //std::cout << "Map contents:\n";
     for (const auto& [k, v] : this->BlockMap) {
-        std::cout << k << " -> [" << v << "]\n";
+        CommandLineInterface::DebugPrint(k + " -> [" + v + "]\n");
     }
 
     // Split into lines
@@ -200,7 +207,7 @@ optional<LanVariable> MylangeInterpreter::InterpretBlock(const string& scopeId, 
     for (int i = 0; i < lines.size(); ++i) {
         string line = Utils::TrimString(lines[i]);
         if (line.empty()) continue;
-		cout << "Running line " << (i + 1) << ": " << line << endl;
+		CommandLineInterface::DebugPrint("[" + scopeId + "] Interpreting line: " + line);
         auto res = this->Interpret(scopeId, line);
         if (res) {
             return res;
@@ -209,15 +216,21 @@ optional<LanVariable> MylangeInterpreter::InterpretBlock(const string& scopeId, 
     return nullopt;
 }
 
-LanVariable MylangeInterpreter::ParseParameter(const string& scopeId, const string& paramStr)
+optional<LanVariable> MylangeInterpreter::ParseParameter(const string& scopeId, const string& rawParamStr)
 {
+	string paramStr = Utils::TrimString(rawParamStr);
 	CommandLineInterface::DebugPrint("Parsing parameter: " + paramStr);
 	LanVariable result;
+    smatch match;
     // Possible variable reference
     if (this->MemBook.GetVariable(scopeId, paramStr, result))
     {
         return result;
 	}
+	// Possible function call
+    else if (regex_search(paramStr, match, functionCallStack)) {
+		return this->RunFunctionStack(scopeId, paramStr).value_or(LanVariable());
+    }
     // Failsafe Random Type Conversion
 	else if (LanVariable::RandomTypeConversion(paramStr, &result))
     {
@@ -239,17 +252,21 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId
             string func_name = func_match[1];
             vector<string> arg_strs = Utils::TopLevelSplit(func_match[2], ',');
             vector<LanVariable> args;
-            for (const auto& arg_str : arg_strs)
-                args.push_back(this->ParseParameter(scopeId, Utils::TrimString(arg_str)));
+            for (const auto& arg_str : arg_strs) {
+                auto arg = this->ParseParameter(scopeId, Utils::TrimString(arg_str));
+                if (arg.has_value()) {
+                    args.push_back(arg.value());
+                }
+                else {
+                    throw runtime_error("Failed to parse function argument: " + arg_str);
+				}
+            }
             vector<LanType> arg_types;
             for (const auto& arg : args) arg_types.push_back(arg.Type);
-            LanFunction func;
-            if (
-                this->MemBook.GetFunction(scopeId, func_name, arg_types, func) ||
-				IncludableFunctions::GetIncludableFunction(func_name, func)
-            )
+            if (LanFunction* func = this->MemBook.GetFunction(scopeId, func_name, arg_types))
             {
-                func.Execute(scopeId, *this, args);
+                CommandLineInterface::DebugPrint("Function " + func_name + " exists and is running...");
+                last_result = (func)->Execute(scopeId, *this, args);
             }
             else throw runtime_error("Function not found: " + func_name);
         }
@@ -257,12 +274,6 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId
     }
     return last_result;
 }
-
-optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId, const string& name, const vector<LanVariable> parameters)
-{
-	throw runtime_error("Not implemented");
-}
-;
 
 CodeBlock::CodeBlock(const string& myScopeId)
 {

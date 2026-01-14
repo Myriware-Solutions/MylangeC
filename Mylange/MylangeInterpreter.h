@@ -17,9 +17,8 @@ public:
 	MylangeInterpreter();
 	optional<LanVariable> Interpret(const string& scopeId, const string& code);
 	optional<LanVariable> InterpretBlock(const string& scopeId, const string& block);
-	LanVariable ParseParameter(const string& scopeId, const string& paramStr);
+	optional<LanVariable> ParseParameter(const string& scopeId, const string& rawParamStr);
 	optional<LanVariable> RunFunctionStack(const string& scopeId, const string& functionStackStr);
-	optional<LanVariable> RunFunctionStack(const string& scopeId, const string& name, const vector<LanVariable> parameters);
 	MemoryBooker MemBook;
 	unordered_map<string, string> BlockMap;
 	size_t BlockCounter;

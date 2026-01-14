@@ -35,7 +35,7 @@ int FileInterface::InterpretFile(const string& filePath)
 		mi.InterpretBlock("global", fileContent);
 	}
 	catch (const exception& e) {
-		cerr << "Error during interpretation: " << e.what() << endl << "Would you like to throw error? [y/n] > ";
+		cerr << "Error during interpretation: " << e.what() << endl;
 		return 1;
 	}
     return 0;

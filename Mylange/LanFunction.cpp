@@ -1,6 +1,7 @@
 #include <stdexcept>
 #include <vector>
 #include <string>
+#include <iostream>
 
 #include "LanVariable.h"
 #include "LanFunction.h"
@@ -11,8 +12,9 @@ string LanFunction::GetId() const {
 	return LanFunction::GetId(this->Name, this->Parameters);
 };
 
-optional<LanVariable> LanFunction::Execute(const string& scopeId, MylangeInterpreter& mi, const vector<LanVariable>& args)
+optional<LanVariable> ScriptFunction::Execute(const string& scopeId, MylangeInterpreter& mi, const vector<LanVariable>& args)
 {
+	//cout << "Function is working: " << this->Name << endl;
 	string working_scope = scopeId + "." + this->GetId() + "@run";
 
 	if (this->Parameters.size() != args.size())

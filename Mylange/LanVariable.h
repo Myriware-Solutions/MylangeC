@@ -20,12 +20,20 @@ public:
 
 	string ToString() const
 	{
-		return this->Value.index() == 0 ? (get<bool>(this->Value) ? "true" : "false") :
-			   this->Value.index() == 1 ? to_string(get<int>(this->Value)) :
-			   this->Value.index() == 2 ? string(1, get<char>(this->Value)) :
-			   this->Value.index() == 3 ? get<string>(this->Value) :
-			   this->Value.index() == 4 ? "[Array]" :
-			"Unknown";
+		switch (this->Type.BaseType) {
+			case LanType::BaseTypes::TypeNil:
+				return "nil";
+			case LanType::BaseTypes::TypeBool:
+				return get<bool>(this->Value) ? "true" : "false";
+			case LanType::BaseTypes::TypeInt:
+				return to_string(get<int>(this->Value));
+			case LanType::BaseTypes::TypeChar:
+				return string(1, get<char>(this->Value));
+			case LanType::BaseTypes::TypeString:
+				return get<string>(this->Value);
+			default:
+				return "<unrepresentable value>";
+		}
 	}
 
 	static bool RandomTypeConversion(const string& value, LanVariable* var);

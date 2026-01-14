@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <iostream>
 
 #include "LanType.h"
 #include "LanVariable.h"
@@ -10,7 +11,8 @@
 
 using namespace std;
 
-const unordered_map<LanType::BaseTypes, vector<string>> LanType::BaseTypeMap = {
+const std::unordered_map<LanType::BaseTypes, std::vector<std::string>,
+	std::hash<std::underlying_type_t<LanType::BaseTypes>>> LanType::BaseTypeMap = {
 	{ LanType::BaseTypes::TypeNil, {"nil"}},
 	{ LanType::BaseTypes::TypeBool, {"bool", "boolean"}},
 	{ LanType::BaseTypes::TypeInt, {"int", "integer"}},
@@ -60,7 +62,19 @@ LanType::LanType(BaseTypes baseType, LanType* archetype)
 
 string LanType::ToString() const
 {
-	return LanType::BaseTypeMap.at(this->BaseType)[0];
+	BaseTypes bt = this->BaseType;
+	//std::cout << "BASETYPE=" << bt;
+
+	try {
+		auto it = LanType::BaseTypeMap.find(bt);
+		if (it != LanType::BaseTypeMap.end() && !it->second.empty()) {
+			return it->second.front();
+		}
+	}
+	catch (const std::exception& e) {
+		return "Unknown/";
+	}
+	return "Unknown/";
 }
 ;
 
