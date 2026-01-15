@@ -14,7 +14,13 @@
 #include "IncludableFunctions.h"
 #include "LanType.h"
 #include "LanFunction.h"
+#include "LanArithmetic.h"
 #include "Utils.h"
+#include "LanPackages.h"
+#include <memory>
+#include <stdexcept>
+#include <utility>
+#include "LanVariable.h"
 
 
 using namespace std;
@@ -33,13 +39,20 @@ vector<Rule> rules = {
         regex(R"(^#include\s*<(\w+)>)"),
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
 			CommandLineInterface::DebugPrint("Including module: " + m[1].str());
-            unique_ptr<LanFunction> func;
-			if (IncludableFunctions::GetIncludableFunction(m[1], func))
-            {
-                CommandLineInterface::DebugPrint("Included module: " + m[1].str() + " : " + (func)->GetId());
-				mi.MemBook.BookFunction(scopeId, std::move(func) );
+
+            unique_ptr<vector<string>> package_functions;
+            if (LanPackages::HasPackage(m[1].str(), package_functions)) {
+                for (auto& func_name : *package_functions) {
+                    unique_ptr<LanFunction> func;
+                    if (IncludableFunctions::GetIncludableFunction(func_name, func))
+                    {
+                        CommandLineInterface::DebugPrint("Included module: " + func_name + " : " + (func)->GetId());
+                        mi.MemBook.BookFunction(scopeId, std::move(func));
+                    }
+                    else throw runtime_error("Package Function not found: " + func_name);
+                }
             }
-            else throw runtime_error("Module not found: " + m[1].str());
+            else throw runtime_error("Package not found: " + m[1].str());
             return nullopt;
         }
     },
@@ -235,6 +248,11 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& scopeId, 
     {
         return result;
     }
+    // Arithmetic Statement
+    else if (LanArithmetic::IsValidLogicString(paramStr)) {
+        CommandLineInterface::DebugPrint("Found Arithmetic Statement: " + paramStr);
+        return LanArithmetic::BuildAST(paramStr)->Evaluate(*this, scopeId);
+    }
 
     return LanVariable();
 }
@@ -262,12 +280,40 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId
             }
             vector<LanType> arg_types;
             for (const auto& arg : args) arg_types.push_back(arg.Type);
+            // Type Literal approch first.
             if (LanFunction* func = this->MemBook.GetFunction(scopeId, func_name, arg_types))
             {
                 CommandLineInterface::DebugPrint("Function " + func_name + " exists and is running...");
                 last_result = (func)->Execute(scopeId, *this, args);
             }
-            else throw runtime_error("Function not found: " + func_name);
+            // Then, try to see if there is an overload with the "any" type in unmatched positions.
+            else {
+                vector<LanFunction*> overloads = this->MemBook.GetFunctionOverloads(scopeId, func_name);
+				CommandLineInterface::DebugPrint("Function " + func_name + " has " + to_string(overloads.size()) + " overloads.");
+                bool found = false;
+                for (auto& overload : overloads) {
+                    const auto& param_map = overload->Parameters;
+                    if (param_map.size() != args.size()) continue;
+                    bool match = true;
+                    auto param_it = param_map.begin();
+                    for (size_t i = 0; i < args.size(); ++i, ++param_it) {
+                        if (!(args[i].Type == param_it->second ||
+                            param_it->second.BaseType == LanType::BaseTypes::TypeAny)) {
+                            match = false;
+                            break;
+                        }
+                    }
+                    if (match) {
+                        CommandLineInterface::DebugPrint("Function " + func_name + " overload exists and is running...");
+                        last_result = overload->Execute(scopeId, *this, args);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    string err = "Function not found: " + func_name + " with parameter types: ";
+				}
+			}
         }
         else throw runtime_error("Invalid function call syntax: " + func_call);
     }

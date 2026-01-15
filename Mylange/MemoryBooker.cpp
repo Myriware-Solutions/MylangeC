@@ -56,6 +56,40 @@ void MemoryBooker::BookFunction(const string& scopeId, unique_ptr<LanFunction> f
 	this->Functions.emplace(fullId, std::move(function));
 }
 
+vector<LanFunction*> MemoryBooker::GetFunctionOverloads(
+	const string& scopeId,
+	const string& name)
+{
+	vector<LanFunction*> overloads;
+	auto scopeParts = Utils::TopLevelSplit(scopeId, '.');
+	for (int i = scopeParts.size() - 1; i >= 0; --i)
+	{
+		string currentScopeId = "";
+		for (int j = 0; j <= i; ++j)
+		{
+			currentScopeId += (j == 0 ? "" : ".") + scopeParts[j];
+		}
+		// Check all functions in this scope
+		for (const auto& [fullId, funcPtr] : this->Functions)
+		{
+			// fullId format: scopeId:functionName(paramTypes)
+			size_t colonPos = fullId.find(':');
+			if (colonPos == string::npos) continue;
+			string funcScopeId = fullId.substr(0, colonPos);
+			string funcIdPart = fullId.substr(colonPos + 1);
+			// Extract function name
+			size_t parenPos = funcIdPart.find('(');
+			if (parenPos == string::npos) continue;
+			string funcName = funcIdPart.substr(0, parenPos);
+			if (funcScopeId == currentScopeId && funcName == name)
+			{
+				overloads.push_back(funcPtr.get());
+			}
+		}
+	}
+	return overloads;
+}
+
 LanFunction* MemoryBooker::GetFunction(
 	const string& scopeId,
 	const string& name,

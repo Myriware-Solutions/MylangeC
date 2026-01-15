@@ -22,6 +22,7 @@ public:
 	MemoryBooker MemBook;
 	unordered_map<string, string> BlockMap;
 	size_t BlockCounter;
+	bool DebugMode = false;
 };
 
 class CodeBlock

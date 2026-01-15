@@ -28,8 +28,28 @@ unordered_map<string, unique_ptr<LanFunction>> IncludableFunctions::Functions;
 
 static bool InitIncludableFunctions()
 {
+//
+// default PACKAGE
+//
     IncludableFunctions::Functions.emplace(
-        "print",
+        "to_string(any)",
+        std::make_unique<BuiltinFunction>(
+            LanType(LanType::BaseTypes::TypeNil),
+            "to_string",
+            map<string, LanType>{{ "any_in", LanType(LanType::BaseTypes::TypeAny) }},
+            [](const string& scopeId, MylangeInterpreter& mi, const vector<LanVariable>& args) {
+                LanVariable var = args[0];
+				return LanVariable(LanType::BaseTypes::TypeString, var.ToString());
+            }
+        )
+    );
+
+//
+// io PACKAGE
+//
+
+    IncludableFunctions::Functions.emplace(
+        "print(str)",
         std::make_unique<BuiltinFunction>(
             LanType(LanType::BaseTypes::TypeNil),
             "print",
@@ -45,7 +65,7 @@ static bool InitIncludableFunctions()
     );
 
     IncludableFunctions::Functions.emplace(
-        "input",
+        "input(str)",
         std::make_unique<BuiltinFunction>(
             LanType(LanType::BaseTypes::TypeNil),
             "input",
@@ -62,6 +82,8 @@ static bool InitIncludableFunctions()
             }
         )
     );
+
+
 
     return true;
 }

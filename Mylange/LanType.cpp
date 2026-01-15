@@ -8,6 +8,7 @@
 #include "LanVariable.h"
 #include "Utils.h"
 #include <stdexcept>
+#include "CommandLineInterface.h"
 
 using namespace std;
 
@@ -71,7 +72,8 @@ string LanType::ToString() const
 			return it->second.front();
 		}
 	}
-	catch (const std::exception& e) {
+	catch (const exception& e) {
+		CommandLineInterface::DebugPrint("Error in ToString: " + std::string(e.what()));
 		return "Unknown/";
 	}
 	return "Unknown/";

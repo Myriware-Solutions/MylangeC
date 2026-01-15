@@ -5,6 +5,6 @@
 class FileInterface
 {
 public:
-	static int InterpretFile(const std::string& filePath);
+	static int InterpretFile(const std::string& filePath, const bool debugMode);
 };
 

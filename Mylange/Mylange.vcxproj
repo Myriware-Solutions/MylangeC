@@ -129,7 +129,9 @@
   <ItemGroup>
     <ClCompile Include="CommandLineInterface.cpp" />
     <ClCompile Include="IncludableFunctions.cpp" />
+    <ClCompile Include="LanArithmetic.cpp" />
     <ClCompile Include="LanFunction.cpp" />
+    <ClCompile Include="LanPackages.cpp" />
     <ClCompile Include="LanType.cpp" />
     <ClCompile Include="LanVariable.cpp" />
     <ClCompile Include="MemoryBooker.cpp" />
@@ -140,7 +142,9 @@
   <ItemGroup>
     <ClInclude Include="CommandLineInterface.h" />
     <ClInclude Include="IncludableFunctions.h" />
+    <ClInclude Include="LanArithmetic.h" />
     <ClInclude Include="LanFunction.h" />
+    <ClInclude Include="LanPackages.h" />
     <ClInclude Include="LanType.h" />
     <ClInclude Include="LanVariable.h" />
     <ClInclude Include="MemoryBooker.h" />

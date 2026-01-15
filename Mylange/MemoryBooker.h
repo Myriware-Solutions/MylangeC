@@ -20,6 +20,10 @@ public:
 	void BookFunction(const string& scopeId, unique_ptr<LanFunction> function);
 	/*bool GetFunction(const string& scopeId, const string& name, 
 		vector<LanType> paramTypes, unique_ptr<LanFunction>& func);*/
+	vector<LanFunction*> GetFunctionOverloads(
+		const string& scopeId,
+		const string& name);
+
 	LanFunction* GetFunction(
 		const string& scopeId,
 		const string& name,

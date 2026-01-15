@@ -13,7 +13,7 @@ regex single_line_comment_pattern(R"(\/\/.*)", std::regex_constants::ECMAScript)
 regex multi_line_comment_pattern(R"(\/\[[\s\S]*?\]\/)", std::regex_constants::ECMAScript);
 regex newline_whitespace_pattern(R"(\s*\n\s*)", std::regex_constants::ECMAScript);
 
-int FileInterface::InterpretFile(const string& filePath)
+int FileInterface::InterpretFile(const string& filePath, const bool debugMode)
 {
     std::cout << "Running Mylange script: " << filePath << std::endl;
 
@@ -32,6 +32,9 @@ int FileInterface::InterpretFile(const string& filePath)
 
 	try {
 		MylangeInterpreter mi = MylangeInterpreter();
+		if (debugMode) {
+			mi.DebugMode = true;
+		}
 		mi.InterpretBlock("global", fileContent);
 	}
 	catch (const exception& e) {

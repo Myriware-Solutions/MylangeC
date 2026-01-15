@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <optional>
 #include <variant>
+#include <functional>
+#include <type_traits>
 
 using namespace std;
 
@@ -23,15 +25,12 @@ public:
 		TypeSet=7,
 		TypeCasting=8,
 		TypeUnion=9,
-		TypeUnknown=10
+		TypeAny=10,
+		TypeUnknown=11
 	};
 
-	//static const unordered_map<LanType::BaseTypes, vector<string>> BaseTypeMap;
-
-	static const std::unordered_map<BaseTypes, std::vector<std::string>,
-		std::hash<std::underlying_type_t<BaseTypes>>> BaseTypeMap;
-
-
+	static const unordered_map<BaseTypes, vector<string>,
+		hash<underlying_type_t<BaseTypes>>> BaseTypeMap;
 	static const regex Reg;
 
 	LanType();

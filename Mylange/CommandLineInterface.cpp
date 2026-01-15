@@ -35,7 +35,7 @@ void CommandLineInterface::RunCLI() {
 
 		try
 		{
-			mi.Interpret("global", input_line);
+			mi.InterpretBlock("global", input_line);
 		}
 		catch (const exception& e) {
 			cout << "[ERROR] " << e.what() << endl;
@@ -47,5 +47,10 @@ void CommandLineInterface::RunCLI() {
 
 void CommandLineInterface::DebugPrint(const std::string& message)
 {
-	cout << "[DEBUG] " << message << endl;
+	try {
+		cout << "[DEBUG] " << message << endl;
+	}
+	catch (const exception& e) {
+		cout << "[OUTERR] error outputting";
+	};
 };
