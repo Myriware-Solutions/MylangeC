@@ -40,6 +40,19 @@ public:
         return result;
     }
 
+    static vector<string> SplitString(const string& s, const string& delimiter) {
+        vector<string> result;
+        size_t pos = 0;
+        size_t delim_len = delimiter.length();
+        size_t start = 0;
+        while ((pos = s.find(delimiter, start)) != string::npos) {
+            result.push_back(s.substr(start, pos - start));
+            start = pos + delim_len;
+        }
+        result.push_back(s.substr(start)); // last token
+        return result;
+	}
+
     static string ReadFileContents(const string& path) {
         ifstream file(path, ios::binary);
         if (!file)

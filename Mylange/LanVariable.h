@@ -153,6 +153,83 @@ public:
 		}
 	}
 
+	LanVariable operator!=(const LanVariable& other) const
+	{
+		LanVariable eqResult = (*this) == other;
+		return LanVariable(
+			LanType(LanType::BaseTypes::TypeBool),
+			LanValue{ !get<bool>(eqResult.Value) }
+		);
+	}
+
+	LanVariable operator<(const LanVariable& other) const
+	{
+		if (this->Type.BaseType == LanType::BaseTypes::TypeInt &&
+			other.Type.BaseType == LanType::BaseTypes::TypeInt)
+		{
+			return LanVariable(
+				LanType(LanType::BaseTypes::TypeBool),
+				LanValue{ get<int>(this->Value) < get<int>(other.Value) }
+			);
+		}
+		else
+		{
+			throw runtime_error("Unsupported types for less-than comparison: "
+				+ this->Type.ToString() + " < " + other.Type.ToString());
+		}
+	}
+
+	LanVariable operator<=(const LanVariable& other) const
+	{
+		if (this->Type.BaseType == LanType::BaseTypes::TypeInt &&
+			other.Type.BaseType == LanType::BaseTypes::TypeInt)
+		{
+			return LanVariable(
+				LanType(LanType::BaseTypes::TypeBool),
+				LanValue{ get<int>(this->Value) <= get<int>(other.Value) }
+			);
+		}
+		else
+		{
+			throw runtime_error("Unsupported types for less-than-or-equal comparison: "
+				+ this->Type.ToString() + " <= " + other.Type.ToString());
+		}
+	}
+
+	LanVariable operator>(const LanVariable& other) const
+	{
+		if (this->Type.BaseType == LanType::BaseTypes::TypeInt &&
+			other.Type.BaseType == LanType::BaseTypes::TypeInt)
+		{
+			return LanVariable(
+				LanType(LanType::BaseTypes::TypeBool),
+				LanValue{ get<int>(this->Value) > get<int>(other.Value) }
+			);
+		}
+		else
+		{
+			throw runtime_error("Unsupported types for greater-than comparison: "
+				+ this->Type.ToString() + " > " + other.Type.ToString());
+		}
+	}
+
+	LanVariable operator>=(const LanVariable& other) const
+	{
+		if (this->Type.BaseType == LanType::BaseTypes::TypeInt &&
+			other.Type.BaseType == LanType::BaseTypes::TypeInt)
+		{
+			return LanVariable(
+				LanType(LanType::BaseTypes::TypeBool),
+				LanValue{ get<int>(this->Value) >= get<int>(other.Value) }
+			);
+		}
+		else
+		{
+			throw runtime_error("Unsupported types for greater-than-or-equal comparison: "
+				+ this->Type.ToString() + " >= " + other.Type.ToString());
+		}
+	}
+
 	static bool RandomTypeConversion(const string& value, LanVariable* var);
 	static optional<LanVariable> RandomTypeConversion(const string& value);
 

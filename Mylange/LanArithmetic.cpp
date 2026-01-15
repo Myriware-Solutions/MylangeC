@@ -87,7 +87,10 @@ LanVariable LanArithmetic::ApplyOperator(
             return LanVariable(LanType(LanType::BaseTypes::TypeString), result);
         }
     }
-    //if (op == "<") return lhs < rhs;
+    if (op == "<") return lhs < rhs;
+	if (op == ">") return lhs > rhs;
+	if (op == "<=") return lhs <= rhs;
+	if (op == ">=") return lhs >= rhs;
 
     throw std::runtime_error("Unknown operator: " + op);
 }

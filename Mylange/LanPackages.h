@@ -12,8 +12,8 @@ class LanPackages
 {
 public:
 	inline static const unordered_map<string, vector<string>> Packages = {
-		{"default", {"to_string(any)"}},
-		{"io", {"print(str)", "input(str)"}}
+		{"standard", {"to_string(any)", "to_int(str)"}},
+		{"io", {"print(any)", "input(str)"}}
 	};
 
 	static bool HasPackage(const string& name, unique_ptr<vector<string>>& out) {

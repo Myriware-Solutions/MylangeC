@@ -29,7 +29,7 @@ unordered_map<string, unique_ptr<LanFunction>> IncludableFunctions::Functions;
 static bool InitIncludableFunctions()
 {
 //
-// default PACKAGE
+// standard PACKAGE
 //
     IncludableFunctions::Functions.emplace(
         "to_string(any)",
@@ -39,7 +39,22 @@ static bool InitIncludableFunctions()
             map<string, LanType>{{ "any_in", LanType(LanType::BaseTypes::TypeAny) }},
             [](const string& scopeId, MylangeInterpreter& mi, const vector<LanVariable>& args) {
                 LanVariable var = args[0];
-				return LanVariable(LanType::BaseTypes::TypeString, var.ToString());
+				return LanVariable(LanType(LanType::BaseTypes::TypeString), var.ToString());
+            }
+        )
+    );
+
+    IncludableFunctions::Functions.emplace(
+        "to_int(str)",
+        std::make_unique<BuiltinFunction>(
+            LanType(LanType::BaseTypes::TypeNil),
+            "to_int",
+            map<string, LanType>{{ "int_in", LanType(LanType::BaseTypes::TypeString) }},
+            [](const string& scopeId, MylangeInterpreter& mi, const vector<LanVariable>& args) {
+                LanVariable var = args[0];
+				return LanVariable(
+                    LanType(LanType::BaseTypes::TypeInt),
+                    std::stoi(var.ToString()));
             }
         )
     );
@@ -49,11 +64,11 @@ static bool InitIncludableFunctions()
 //
 
     IncludableFunctions::Functions.emplace(
-        "print(str)",
+        "print(any)",
         std::make_unique<BuiltinFunction>(
             LanType(LanType::BaseTypes::TypeNil),
             "print",
-            map<string, LanType>{{ "printString", LanType(LanType::BaseTypes::TypeString) }},
+            map<string, LanType>{{ "printString", LanType(LanType::BaseTypes::TypeAny) }},
             [](const string& scopeId, MylangeInterpreter& mi, const vector<LanVariable>& args) {
                 for (const auto& arg : args) {
                     std::cout << arg.ToString() << " ";

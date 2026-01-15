@@ -27,6 +27,7 @@ using namespace std;
 
 const regex functionPartsPattern(R"(^(\w+)\s*\((.*)\))", std::regex_constants::ECMAScript);
 const regex functionCallStack(R"(^(?:\w+\(.*\))+)", std::regex_constants::ECMAScript);
+const regex ifElseThenPattern(R"(^if\s*\((.*?)\)\s*then\s*(.*))", std::regex_constants::ECMAScript);
 
 struct Rule {
     regex pattern;
@@ -34,7 +35,16 @@ struct Rule {
 };
 
 vector<Rule> rules = {
-    //
+    // Return
+    {
+        regex(R"(return\s+(.*))"),
+        [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
+            auto it = mi.ParseParameter(scopeId, m[1].str());
+            if (it.has_value()) return it.value();
+            throw runtime_error("Trying to return nothing");
+        }
+    },
+    // Include
     {
         regex(R"(^#include\s*<(\w+)>)"),
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
@@ -122,6 +132,29 @@ vector<Rule> rules = {
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
 			mi.RunFunctionStack(scopeId, m[0].str());
             return nullopt;
+        }
+    },
+    // If/Else/Then Block
+    {
+        ifElseThenPattern,
+        [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
+			auto parts = Utils::SplitString(m[2], "else");
+			for (auto& part : parts) {
+                part = Utils::TrimString(part);
+                smatch match;
+                if (regex_match(part, match, ifElseThenPattern))
+                {
+					auto conditionEval = mi.ParseParameter(scopeId, m[1].str());
+                    if (conditionEval.has_value() && conditionEval->Type.BaseType == LanType::BaseTypes::TypeBool
+                        && get<bool>(conditionEval->Value))
+                    {
+						return mi.InterpretBlock(scopeId, match[2].str());
+                    }
+                }
+                else {
+					return mi.InterpretBlock(scopeId, part);
+                }
+            }
         }
     }
 };
