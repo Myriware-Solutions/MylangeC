@@ -1,5 +1,4 @@
 // IMPORTS //
-#include <iostream>
 #include <vector>
 #include <string>
 #include <regex>
@@ -25,8 +24,9 @@
 
 using namespace std;
 
-const regex functionPartsPattern(R"(^(\w+)\s*\((.*)\))", std::regex_constants::ECMAScript);
-const regex functionCallStack(R"(^(?:\w+\(.*\))+)", std::regex_constants::ECMAScript);
+const regex functionPartsPattern(R"(^([\w.]+)\s*\((.*)\))", std::regex_constants::ECMAScript);
+const regex functionCallStack(R"(^(?:\w+\.)+(?:\w+\(.*\))+)", std::regex_constants::ECMAScript);
+const regex functionDotExtention(R"((\)\.))", std::regex_constants::ECMAScript);
 const regex ifElseThenPattern(R"(^if\s*\((.*?)\)\s*then\s*(.*))", std::regex_constants::ECMAScript);
 
 struct Rule {
@@ -48,21 +48,23 @@ vector<Rule> rules = {
     {
         regex(R"(^#include\s*<(\w+)>)"),
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
-			CommandLineInterface::DebugPrint("Including module: " + m[1].str());
+			string package_name = m[1].str();
+			CommandLineInterface::DebugPrint("Including package: " + package_name);
 
             unique_ptr<vector<string>> package_functions;
-            if (LanPackages::HasPackage(m[1].str(), package_functions)) {
+            if (LanPackages::HasPackage(package_name, package_functions)) {
                 for (auto& func_name : *package_functions) {
                     unique_ptr<LanFunction> func;
                     if (IncludableFunctions::GetIncludableFunction(func_name, func))
                     {
-                        CommandLineInterface::DebugPrint("Included module: " + func_name + " : " + (func)->GetId());
-                        mi.MemBook.BookFunction(scopeId, std::move(func));
+                        CommandLineInterface::DebugPrint("Included package function: " + func_name + " : " + (func)->GetId());
+						string func_scope_id = scopeId + ".pkg." + package_name;
+                        mi.MemBook.BookFunction(func_scope_id, std::move(func));
                     }
                     else throw runtime_error("Package Function not found: " + func_name);
                 }
             }
-            else throw runtime_error("Package not found: " + m[1].str());
+            else throw runtime_error("Package not found: " + package_name);
             return nullopt;
         }
     },
@@ -290,24 +292,68 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& scopeId, 
     return LanVariable();
 }
 
+std::vector<std::string> splitDotParenAware(const std::string& input)
+{
+    std::vector<std::string> parts;
+    std::string current;
+
+    int parenDepth = 0;
+
+    for (size_t i = 0; i < input.size(); ++i)
+    {
+        char c = input[i];
+
+        if (c == '(')
+        {
+            ++parenDepth;
+            current += c;
+        }
+        else if (c == ')')
+        {
+            --parenDepth;
+            current += c;
+        }
+        else if (c == '.' && parenDepth == 0)
+        {
+            // Split point: dot at top level
+            parts.push_back(current);
+            current.clear();
+        }
+        else
+        {
+            current += c;
+        }
+    }
+
+    if (!current.empty())
+        parts.push_back(current);
+
+    return parts;
+}
+
+
 optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId, const string& functionStackStr)
 {
     CommandLineInterface::DebugPrint("Executing function call(s): " + functionStackStr);
-    auto function_calls = Utils::TopLevelSplit(functionStackStr, '.');
+	auto function_calls = Utils::resplit(functionStackStr, functionDotExtention);
     optional<LanVariable> last_result = nullopt;
+
+
+
     for (const auto& func_call : function_calls) {
         smatch func_match;
         if (regex_search(func_call, func_match, functionPartsPattern)) {
             // find function
             string func_name = func_match[1];
-            vector<string> arg_strs = Utils::TopLevelSplit(func_match[2], ',');
+            vector<string> arg_strs = splitDotParenAware(func_match[2]);
             vector<LanVariable> args;
             for (const auto& arg_str : arg_strs) {
                 auto arg = this->ParseParameter(scopeId, Utils::TrimString(arg_str));
                 if (arg.has_value()) {
                     args.push_back(arg.value());
                 }
-                else {
+                else
+                {
                     throw runtime_error("Failed to parse function argument: " + arg_str);
 				}
             }

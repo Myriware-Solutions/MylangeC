@@ -53,6 +53,22 @@ public:
         return result;
 	}
 
+    /**
+     * Splits a string into a vector of strings using a regular expression as a delimiter.
+     *
+     * @param s The input string.
+     * @param sep_regex The regular expression for the delimiter.
+     * @return A vector containing the split substrings.
+     */
+    static std::vector<std::string> resplit(const std::string& s, const std::regex& sep_regex) {
+        // The -1 parameter tells the iterator to return the unmatched parts (the tokens)
+        std::sregex_token_iterator iter(s.begin(), s.end(), sep_regex, -1);
+        std::sregex_token_iterator end; // Default constructed iterator signifies the end of the sequence
+
+        // Construct a vector from the iterator range
+        return { iter, end };
+    }
+
     static string ReadFileContents(const string& path) {
         ifstream file(path, ios::binary);
         if (!file)
