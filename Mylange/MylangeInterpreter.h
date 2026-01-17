@@ -18,8 +18,9 @@ public:
 	optional<LanVariable> Interpret(const string& scopeId, const string& code);
 	optional<LanVariable> InterpretBlock(const string& scopeId, const string& block);
 	optional<LanVariable> ParseParameter(const string& scopeId, const string& rawParamStr);
-	optional<LanVariable> RunFunctionStack(const string& scopeId, const string& functionStackStr);
+	optional<LanVariable> RunFunctionStack(const string& scopeIdRaw, const string& functionStackStr);
 	MemoryBooker MemBook;
+	vector<string> ImportedPackages;
 	unordered_map<string, string> BlockMap;
 	size_t BlockCounter;
 	bool DebugMode = false;
