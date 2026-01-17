@@ -28,6 +28,7 @@ const regex functionPartsPattern(R"(^([\w.]+)\s*\((.*)\))", std::regex_constants
 const regex functionCallStack(R"(^(?:\w+\.?)+(?:\w+\(.*\))+)", std::regex_constants::ECMAScript);
 const regex functionDotExtention(R"((\)\.))", std::regex_constants::ECMAScript);
 const regex ifElseThenPattern(R"(^if\s*\((.*?)\)\s*then\s*(.*))", std::regex_constants::ECMAScript);
+const regex paramStringPattern(R"((?:(const)\s+)?([\w<|,>]+)\s+(\w+))", std::regex_constants::ECMAScript);
 
 struct Rule {
     regex pattern;
@@ -58,7 +59,7 @@ vector<Rule> rules = {
                     unique_ptr<LanFunction> func;
                     if (IncludableFunctions::GetIncludableFunction(func_name, func))
                     {
-                        CommandLineInterface::DebugPrint("Included package function: " + func_name + " : " + (func)->GetId());
+                        CommandLineInterface::DebugPrint("Included package function: " + func_name + " : " + (func)->GetId(), 1);
 						//string func_scope_id = scopeId + "." + package_name;
                         mi.MemBook.BookFunction(package_name, std::move(func));
                     }
@@ -264,16 +265,20 @@ optional<LanVariable> MylangeInterpreter::InterpretBlock(const string& scopeId, 
     return nullopt;
 }
 
+const regex wordCharsOnly(R"(^\w+$)", std::regex_constants::ECMAScript);
+
 optional<LanVariable> MylangeInterpreter::ParseParameter(const string& scopeId, const string& rawParamStr)
 {
 	string paramStr = Utils::TrimString(rawParamStr);
 	CommandLineInterface::DebugPrint("Parsing parameter: " + paramStr);
 	LanVariable result;
     smatch match;
-    // Possible variable reference
-    if (this->MemBook.GetVariable(scopeId, paramStr, result))
+    // Possible variable reference (soley word chars)
+    if (regex_match(paramStr, match, wordCharsOnly))
     {
-        return result;
+		if (this->MemBook.GetVariable(scopeId, paramStr, result))
+            return result;
+        else throw runtime_error("Variable not found: " + paramStr);
 	}
 	// Possible function call
     else if (regex_search(paramStr, match, functionCallStack)) {
@@ -356,7 +361,7 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId
     CommandLineInterface::DebugPrint("Executing function call(s): " + functionStackStr);
     auto function_calls = splitDotParenAware(functionStackStr);
 	for (auto& fc : function_calls) {
-        CommandLineInterface::DebugPrint("    Function call part: " + fc);
+        CommandLineInterface::DebugPrint("Function call part: " + fc, 1);
     }
     optional<LanVariable> last_result = LanVariable();
     string prefix = "";

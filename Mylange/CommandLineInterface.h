@@ -3,6 +3,6 @@ class CommandLineInterface
 {
 public:
 	static void RunCLI();
-	static void DebugPrint(const std::string& message);
+	static void DebugPrint(const std::string& message, const int& indent = 0);
 };
 

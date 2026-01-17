@@ -23,7 +23,8 @@ const std::unordered_map<LanType::BaseTypes, std::vector<std::string>,
 	{ LanType::BaseTypes::TypeArray, {"arr", "array"}},
 	{ LanType::BaseTypes::TypeSet, {"set"}},
 	{ LanType::BaseTypes::TypeCasting, {"casting"}},
-	{ LanType::BaseTypes::TypeUnknown, {"unknown"}}
+	{ LanType::BaseTypes::TypeUnknown, {"unknown"}},
+	{LanType::BaseTypes::TypeAny, {"any"}}
 };
 
 optional<LanType::BaseTypes> LanType::GetBaseTypeFromString(const string& typeString)
