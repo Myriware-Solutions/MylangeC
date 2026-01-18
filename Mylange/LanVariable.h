@@ -49,6 +49,34 @@ public:
 		}
 	}
 
+	static bool IsCompatable(LanType& type, LanVariable var) {
+		// The types exactly match
+		if (type == var.Type) return true;
+		// Any, or any<allowedTypes...>
+		else if ((LanTypeEnum::TypeAny & type.BaseType) == LanTypeEnum::TypeAny) {
+			// Truly any value
+			if (popcount(static_cast<uint32_t>(type.BaseType)) == 1) return true;
+			// Check to see if allowed
+			if (type.ContainsArchetype(var.Type)) return true;
+			return false;
+		}
+		// Arrays
+		else if ((LanTypeEnum::TypeArray & type.BaseType & var.Type.BaseType) == LanTypeEnum::TypeArray) {
+			for (auto& element : get<vector<LanVariable>>(var.Value)) {
+				if (!type.ContainsArchetype(element.Type)) throw runtime_error("Element type not allowed: " + element.Type.ToString() + " in " + type.ToString());
+			}
+			return true;
+		}
+		// Sets
+
+		// Else
+		return false;
+	}
+
+	bool IsCompatable(LanType& type) {
+		return LanVariable::IsCompatable(type, *this);
+	}
+
 	LanVariable operator+(const LanVariable& other) const
 	{
 		if (this->Type.BaseType == LanTypeEnum::TypeInt &&

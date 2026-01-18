@@ -81,14 +81,9 @@ vector<Rule> rules = {
             if (!lv.has_value()) 
                 throw runtime_error("Failed to parse variable value.");
 			CommandLineInterface::DebugPrint("Setting variable " + m[2].str() + " of type " + expectedType.ToString() + "/" + lv.value().Type.ToString() + " to value " + lv.value().ToString());
-            if (lv.value().Type == expectedType)
+            if (lv.value().IsCompatable(expectedType))
 			    mi.MemBook.BookVariable(scopeId, m[2], lv.value());
-            else if ((LanTypeEnum::TypeArray & expectedType.BaseType & lv.value().Type.BaseType) == LanTypeEnum::TypeArray) {
-                for (auto& element : get<vector<LanVariable>>(lv.value().Value)) {
-                    if (!expectedType.ContainsArchetype(element.Type)) throw runtime_error("Element type not allowed: " + element.Type.ToString() + " in " + expectedType.ToString());
-                }
-                mi.MemBook.BookVariable(scopeId, m[2], lv.value());
-            } else throw runtime_error("Type mismatch in variable assignment. Expected " 
+            else throw runtime_error("Type mismatch in variable assignment. Expected " 
                 + expectedType.ToString() + ", got " + lv.value().Type.ToString() 
                 + " (with " + lv.value().ToString() + ")");
             return nullopt;

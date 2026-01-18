@@ -7,8 +7,8 @@
 #include <variant>
 #include <functional>
 #include <type_traits>
-#include <variant>
 #include <bitset>
+#include <bit>
 
 #include "Utils.h"
 #include "CommandLineInterface.h"
@@ -149,6 +149,14 @@ public:
 		if (type.IsArrayType()) {
 			string result = "array<";
 			result += ToString(type.BaseType & ~LanTypeEnum::TypeArray);
+			if (type.Archetype) {
+				result += "_adv";
+			}
+			return result + ">";
+		}
+		else if ((type.BaseType & LanTypeEnum::TypeAny) == LanTypeEnum::TypeAny) {
+			string result = "any<";
+			result += ToString(type.BaseType & ~LanTypeEnum::TypeAny);
 			if (type.Archetype) {
 				result += "_adv";
 			}
