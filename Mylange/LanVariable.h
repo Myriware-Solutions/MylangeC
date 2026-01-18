@@ -22,16 +22,28 @@ public:
 	string ToString() const
 	{
 		switch (this->Type.BaseType) {
-			case LanType::BaseTypes::TypeNil:
+			case LanTypeEnum::TypeNil:
 				return "nil";
-			case LanType::BaseTypes::TypeBool:
+			case LanTypeEnum::TypeBool:
 				return get<bool>(this->Value) ? "true" : "false";
-			case LanType::BaseTypes::TypeInt:
+			case LanTypeEnum::TypeInt:
 				return to_string(get<int>(this->Value));
-			case LanType::BaseTypes::TypeChar:
+			case LanTypeEnum::TypeChar:
 				return string(1, get<char>(this->Value));
-			case LanType::BaseTypes::TypeString:
+			case LanTypeEnum::TypeString:
 				return get<string>(this->Value);
+			case LanTypeEnum::TypeArray:
+			{
+				string result = "[";
+				const auto& arr = get<vector<LanVariable>>(this->Value);
+				for (size_t i = 0; i < arr.size(); ++i) {
+					result += arr[i].ToString();
+					if (i < arr.size() - 1)
+						result += ", ";
+				}
+				result += "]";
+				return result;
+			}
 			default:
 				return "<unrepresentable value>";
 		}
@@ -39,19 +51,19 @@ public:
 
 	LanVariable operator+(const LanVariable& other) const
 	{
-		if (this->Type.BaseType == LanType::BaseTypes::TypeInt &&
-			other.Type.BaseType == LanType::BaseTypes::TypeInt)
+		if (this->Type.BaseType == LanTypeEnum::TypeInt &&
+			other.Type.BaseType == LanTypeEnum::TypeInt)
 		{
 			return LanVariable(
-				LanType(LanType::BaseTypes::TypeInt),
+				LanType(LanTypeEnum::TypeInt),
 				LanValue{ get<int>(this->Value) + get<int>(other.Value) }
 			);
 		}
-		else if (this->Type.BaseType == LanType::BaseTypes::TypeString &&
-			other.Type.BaseType == LanType::BaseTypes::TypeString)
+		else if (this->Type.BaseType == LanTypeEnum::TypeString &&
+			other.Type.BaseType == LanTypeEnum::TypeString)
 		{
 			return LanVariable(
-				LanType(LanType::BaseTypes::TypeString),
+				LanType(LanTypeEnum::TypeString),
 				LanValue{ get<string>(this->Value) + get<string>(other.Value) }
 			);
 		}
@@ -64,11 +76,11 @@ public:
 
 	LanVariable operator-(const LanVariable& other) const
 	{
-		if (this->Type.BaseType == LanType::BaseTypes::TypeInt &&
-			other.Type.BaseType == LanType::BaseTypes::TypeInt)
+		if (this->Type.BaseType == LanTypeEnum::TypeInt &&
+			other.Type.BaseType == LanTypeEnum::TypeInt)
 		{
 			return LanVariable(
-				LanType(LanType::BaseTypes::TypeInt),
+				LanType(LanTypeEnum::TypeInt),
 				LanValue{ get<int>(this->Value) - get<int>(other.Value) }
 			);
 		}
@@ -81,11 +93,11 @@ public:
 
 	LanVariable operator*(const LanVariable& other) const
 	{
-		if (this->Type.BaseType == LanType::BaseTypes::TypeInt &&
-			other.Type.BaseType == LanType::BaseTypes::TypeInt)
+		if (this->Type.BaseType == LanTypeEnum::TypeInt &&
+			other.Type.BaseType == LanTypeEnum::TypeInt)
 		{
 			return LanVariable(
-				LanType(LanType::BaseTypes::TypeInt),
+				LanType(LanTypeEnum::TypeInt),
 				LanValue{ get<int>(this->Value) * get<int>(other.Value) }
 			);
 		}
@@ -98,15 +110,15 @@ public:
 
 	LanVariable operator/(const LanVariable& other) const
 	{
-		if (this->Type.BaseType == LanType::BaseTypes::TypeInt &&
-			other.Type.BaseType == LanType::BaseTypes::TypeInt)
+		if (this->Type.BaseType == LanTypeEnum::TypeInt &&
+			other.Type.BaseType == LanTypeEnum::TypeInt)
 		{
 			if (get<int>(other.Value) == 0)
 			{
 				throw runtime_error("Division by zero.");
 			}
 			return LanVariable(
-				LanType(LanType::BaseTypes::TypeInt),
+				LanType(LanTypeEnum::TypeInt),
 				LanValue{ get<int>(this->Value) / get<int>(other.Value) }
 			);
 		}
@@ -122,29 +134,29 @@ public:
 		if (this->Type.BaseType != other.Type.BaseType)
 		{
 			return LanVariable(
-				LanType(LanType::BaseTypes::TypeBool),
+				LanType(LanTypeEnum::TypeBool),
 				LanValue{ false }
 			);
 		}
 		switch (this->Type.BaseType) {
-			case LanType::BaseTypes::TypeBool:
+			case LanTypeEnum::TypeBool:
 				return LanVariable(
-					LanType(LanType::BaseTypes::TypeBool),
+					LanType(LanTypeEnum::TypeBool),
 					LanValue{ get<bool>(this->Value) == get<bool>(other.Value) }
 				);
-			case LanType::BaseTypes::TypeInt:
+			case LanTypeEnum::TypeInt:
 				return LanVariable(
-					LanType(LanType::BaseTypes::TypeBool),
+					LanType(LanTypeEnum::TypeBool),
 					LanValue{ get<int>(this->Value) == get<int>(other.Value) }
 				);
-			case LanType::BaseTypes::TypeChar:
+			case LanTypeEnum::TypeChar:
 				return LanVariable(
-					LanType(LanType::BaseTypes::TypeBool),
+					LanType(LanTypeEnum::TypeBool),
 					LanValue{ get<char>(this->Value) == get<char>(other.Value) }
 				);
-			case LanType::BaseTypes::TypeString:
+			case LanTypeEnum::TypeString:
 				return LanVariable(
-					LanType(LanType::BaseTypes::TypeBool),
+					LanType(LanTypeEnum::TypeBool),
 					LanValue{ get<string>(this->Value) == get<string>(other.Value) }
 				);
 			default:
@@ -157,18 +169,18 @@ public:
 	{
 		LanVariable eqResult = (*this) == other;
 		return LanVariable(
-			LanType(LanType::BaseTypes::TypeBool),
+			LanType(LanTypeEnum::TypeBool),
 			LanValue{ !get<bool>(eqResult.Value) }
 		);
 	}
 
 	LanVariable operator<(const LanVariable& other) const
 	{
-		if (this->Type.BaseType == LanType::BaseTypes::TypeInt &&
-			other.Type.BaseType == LanType::BaseTypes::TypeInt)
+		if (this->Type.BaseType == LanTypeEnum::TypeInt &&
+			other.Type.BaseType == LanTypeEnum::TypeInt)
 		{
 			return LanVariable(
-				LanType(LanType::BaseTypes::TypeBool),
+				LanType(LanTypeEnum::TypeBool),
 				LanValue{ get<int>(this->Value) < get<int>(other.Value) }
 			);
 		}
@@ -181,11 +193,11 @@ public:
 
 	LanVariable operator<=(const LanVariable& other) const
 	{
-		if (this->Type.BaseType == LanType::BaseTypes::TypeInt &&
-			other.Type.BaseType == LanType::BaseTypes::TypeInt)
+		if (this->Type.BaseType == LanTypeEnum::TypeInt &&
+			other.Type.BaseType == LanTypeEnum::TypeInt)
 		{
 			return LanVariable(
-				LanType(LanType::BaseTypes::TypeBool),
+				LanType(LanTypeEnum::TypeBool),
 				LanValue{ get<int>(this->Value) <= get<int>(other.Value) }
 			);
 		}
@@ -198,11 +210,11 @@ public:
 
 	LanVariable operator>(const LanVariable& other) const
 	{
-		if (this->Type.BaseType == LanType::BaseTypes::TypeInt &&
-			other.Type.BaseType == LanType::BaseTypes::TypeInt)
+		if (this->Type.BaseType == LanTypeEnum::TypeInt &&
+			other.Type.BaseType == LanTypeEnum::TypeInt)
 		{
 			return LanVariable(
-				LanType(LanType::BaseTypes::TypeBool),
+				LanType(LanTypeEnum::TypeBool),
 				LanValue{ get<int>(this->Value) > get<int>(other.Value) }
 			);
 		}
@@ -215,11 +227,11 @@ public:
 
 	LanVariable operator>=(const LanVariable& other) const
 	{
-		if (this->Type.BaseType == LanType::BaseTypes::TypeInt &&
-			other.Type.BaseType == LanType::BaseTypes::TypeInt)
+		if (this->Type.BaseType == LanTypeEnum::TypeInt &&
+			other.Type.BaseType == LanTypeEnum::TypeInt)
 		{
 			return LanVariable(
-				LanType(LanType::BaseTypes::TypeBool),
+				LanType(LanTypeEnum::TypeBool),
 				LanValue{ get<int>(this->Value) >= get<int>(other.Value) }
 			);
 		}
@@ -229,10 +241,6 @@ public:
 				+ this->Type.ToString() + " >= " + other.Type.ToString());
 		}
 	}
-
-	static bool RandomTypeConversion(const string& value, LanVariable* var);
-	static optional<LanVariable> RandomTypeConversion(const string& value);
-
 
 	LanType Type;
 	LanValue Value;

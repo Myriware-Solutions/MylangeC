@@ -131,8 +131,6 @@
     <ClCompile Include="IncludableFunctions.cpp" />
     <ClCompile Include="LanArithmetic.cpp" />
     <ClCompile Include="LanFunction.cpp" />
-    <ClCompile Include="LanPackages.cpp" />
-    <ClCompile Include="LanType.cpp" />
     <ClCompile Include="LanVariable.cpp" />
     <ClCompile Include="MemoryBooker.cpp" />
     <ClCompile Include="Mylange.cpp" />

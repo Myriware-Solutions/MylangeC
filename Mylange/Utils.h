@@ -87,17 +87,31 @@ public:
         return oss.str();
     }
 
+    static std::vector<int> SplitFlags(int flags)
+    {
+        std::vector<int> result;
+
+        for (int bit = 1; bit != 0; bit <<= 1)
+        {
+            if ((flags & bit) == bit)
+                result.push_back(bit);
+        }
+
+        return result;
+    }
+
+    inline static const std::vector<std::pair<char, char>>& BracketPairs = {
+        {'(', ')'}, {'[', ']'}, {'{', '}'}, {'<', '>'}
+    };
+
     static std::vector<std::string> TopLevelSplit(
         const std::string& input,
-        char delimiter,
-        const std::vector<std::pair<char, char>>& brackets = {
-            {'(', ')'}, {'[', ']'}, {'{', '}'}, {'<', '>'}
-        }
+        char delimiter
     ) {
         std::vector<std::string> result;
         std::unordered_map<char, int> depth;
 
-        for (auto& b : brackets) {
+        for (auto& b : BracketPairs) {
             depth[b.first] = 0;  // track open brackets
         }
 
@@ -105,7 +119,7 @@ public:
 
         for (char c : input) {
             // check opens
-            for (auto& b : brackets) {
+            for (auto& b : BracketPairs) {
                 if (c == b.first) {
                     depth[b.first]++;
                     current.push_back(c);
@@ -114,7 +128,7 @@ public:
             }
 
             // check closes
-            for (auto& b : brackets) {
+            for (auto& b : BracketPairs) {
                 if (c == b.second) {
                     depth[b.first]--;
                     current.push_back(c);
@@ -125,7 +139,7 @@ public:
             // check delimiter at top-level
             {
                 bool topLevel = true;
-                for (auto& b : brackets) {
+                for (auto& b : BracketPairs) {
                     if (depth[b.first] > 0) {
                         topLevel = false;
                         break;
@@ -150,6 +164,98 @@ public:
             result.push_back(current);
 
         return result;
+    }
+
+    std::vector<std::string> TopLevelSplit(
+        const std::string& input,
+        const std::string& delimiter,
+        bool requireWordBoundary = false
+    )
+    {
+        std::vector<std::string> parts;
+        std::string current;
+
+        // Track nesting depth per bracket type
+        std::unordered_map<char, char> openToClose;
+        std::unordered_map<char, char> closeToOpen;
+        std::unordered_map<char, int> depth;
+
+        for (auto& p : BracketPairs)
+        {
+            openToClose[p.first] = p.second;
+            closeToOpen[p.second] = p.first;
+            depth[p.first] = 0;
+        }
+
+        auto isWordChar = [](char c)
+            {
+                return std::isalnum(static_cast<unsigned char>(c)) || c == '_';
+            };
+
+        auto atWordBoundary = [&](size_t pos)
+            {
+                bool left = (pos == 0) ||
+                    !isWordChar(input[pos - 1]);
+                bool right = (pos + delimiter.size() >= input.size()) ||
+                    !isWordChar(input[pos + delimiter.size()]);
+                return left && right;
+            };
+
+        for (size_t i = 0; i < input.size();)
+        {
+            char c = input[i];
+
+            // Opening bracket
+            if (openToClose.count(c))
+            {
+                ++depth[c];
+                current += c;
+                ++i;
+                continue;
+            }
+
+            // Closing bracket
+            if (closeToOpen.count(c))
+            {
+                char open = closeToOpen[c];
+                --depth[open];
+                current += c;
+                ++i;
+                continue;
+            }
+
+            // Check if we are at top level for ALL brackets
+            bool atTopLevel = true;
+            for (auto& d : depth)
+            {
+                if (d.second > 0)
+                {
+                    atTopLevel = false;
+                    break;
+                }
+            }
+
+            // Attempt delimiter match
+            if (atTopLevel &&
+                !delimiter.empty() &&
+                input.compare(i, delimiter.size(), delimiter) == 0 &&
+                (!requireWordBoundary || atWordBoundary(i)))
+            {
+                parts.push_back(current);
+                current.clear();
+                i += delimiter.size();
+                continue;
+            }
+
+            // Normal character
+            current += c;
+            ++i;
+        }
+
+        if (!current.empty())
+            parts.push_back(current);
+
+        return parts;
     }
 };
 

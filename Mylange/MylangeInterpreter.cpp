@@ -74,7 +74,8 @@ vector<Rule> rules = {
     {
         regex(R"(^\s*([a-zA-Z<>,|\s]+) +(\w+) *=> *(.*))"),
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
-			LanType expectedType = LanType::FromString(m[1]);
+			LanType expectedType = LanType::FromString(Utils::TrimString(m[1]));
+            CommandLineInterface::DebugPrint("EXP TYPE:" + to_string(static_cast<uint32_t>(expectedType.BaseType)));
             //auto lv = LanVariable::RandomTypeConversion(m[3]);
 			auto lv = mi.ParseParameter(scopeId, m[3]);
             if (!lv.has_value()) 
@@ -82,7 +83,12 @@ vector<Rule> rules = {
 			CommandLineInterface::DebugPrint("Setting variable " + m[2].str() + " of type " + expectedType.ToString() + "/" + lv.value().Type.ToString() + " to value " + lv.value().ToString());
             if (lv.value().Type == expectedType)
 			    mi.MemBook.BookVariable(scopeId, m[2], lv.value());
-			else throw runtime_error("Type mismatch in variable assignment. Expected " 
+            else if ((LanTypeEnum::TypeArray & expectedType.BaseType & lv.value().Type.BaseType) == LanTypeEnum::TypeArray) {
+                for (auto& element : get<vector<LanVariable>>(lv.value().Value)) {
+                    if (!expectedType.ContainsArchetype(element.Type)) throw runtime_error("Element type not allowed: " + element.Type.ToString() + " in " + expectedType.ToString());
+                }
+                mi.MemBook.BookVariable(scopeId, m[2], lv.value());
+            } else throw runtime_error("Type mismatch in variable assignment. Expected " 
                 + expectedType.ToString() + ", got " + lv.value().Type.ToString() 
                 + " (with " + lv.value().ToString() + ")");
             return nullopt;
@@ -149,7 +155,7 @@ vector<Rule> rules = {
                 if (regex_match(part, match, ifElseThenPattern))
                 {
 					auto conditionEval = mi.ParseParameter(scopeId, m[1].str());
-                    if (conditionEval.has_value() && conditionEval->Type.BaseType == LanType::BaseTypes::TypeBool
+                    if (conditionEval.has_value() && ((conditionEval->Type.BaseType & LanTypeEnum::TypeBool)==LanTypeEnum::TypeBool)
                         && get<bool>(conditionEval->Value))
                     {
 						return mi.InterpretBlock(scopeId, match[2].str());
@@ -159,6 +165,16 @@ vector<Rule> rules = {
 					return mi.InterpretBlock(scopeId, part);
                 }
             }
+        }
+    },
+    // For loop
+    {
+        regex(R"(for\s*\((.*)\)\s*do\s*(.*))"),
+        [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
+			CommandLineInterface::DebugPrint("Interpreting for loop: " + m[0].str());
+
+
+            return nullopt;
         }
     }
 };
@@ -265,7 +281,7 @@ optional<LanVariable> MylangeInterpreter::InterpretBlock(const string& scopeId, 
     return nullopt;
 }
 
-const regex wordCharsOnly(R"(^\w+$)", std::regex_constants::ECMAScript);
+const regex wordCharsOnly(R"(^[a-zA-Z]\w+$)", std::regex_constants::ECMAScript);
 
 optional<LanVariable> MylangeInterpreter::ParseParameter(const string& scopeId, const string& rawParamStr)
 {
@@ -285,7 +301,7 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& scopeId, 
 		return this->RunFunctionStack(scopeId, paramStr).value_or(LanVariable());
     }
     // Failsafe Random Type Conversion
-	else if (LanVariable::RandomTypeConversion(paramStr, &result))
+	else if (this->RandomTypeConversion(scopeId, paramStr, &result))
     {
         return result;
     }
@@ -297,6 +313,109 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& scopeId, 
 
     return LanVariable();
 }
+
+bool MylangeInterpreter::RandomTypeConversion(const string& scopeId, const string& value, LanVariable* var)
+{
+    optional<LanVariable> test = this->RandomTypeConversion(scopeId, value);
+    if (test.has_value())
+    {
+        *var = test.value();
+        return true;
+    }
+    return false;
+}
+
+optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& scopeId, const string& value)
+{
+    CommandLineInterface::DebugPrint("Attempting to convert value: " + value);
+    string trimmedValue = Utils::TrimString(value);
+
+    // nil
+    if (trimmedValue == "nil")
+    {
+        CommandLineInterface::DebugPrint("Found nil");
+        return LanVariable(
+            LanType(LanTypeEnum::TypeNil),
+            LanVariable::LanValue{});
+    }
+    // bool
+    else if (trimmedValue == "true" || trimmedValue == "false")
+    {
+        CommandLineInterface::DebugPrint("Found bool");
+        return LanVariable(
+            LanType(LanTypeEnum::TypeBool),
+            LanVariable::LanValue{ trimmedValue == "true" }
+        );
+    }
+    // int
+    else if (regex_match(trimmedValue, regex(R"(^-?\d+$)")))
+    {
+        CommandLineInterface::DebugPrint("Found int");
+        return LanVariable(
+            LanType(LanTypeEnum::TypeInt),
+            LanVariable::LanValue{ stoi(trimmedValue) }
+        );
+    }
+    //float
+    else if (regex_match(trimmedValue, regex(R"(^-?\d+\.\d+$)")))
+    {
+        CommandLineInterface::DebugPrint("Found float");
+        // Placeholder implementation
+        return LanVariable(
+            LanType(LanTypeEnum::TypeUnknown),
+            LanVariable::LanValue{ }
+        );
+    }
+    // char
+    else if (regex_match(trimmedValue, regex(R"(^'.'$)")))
+    {
+        CommandLineInterface::DebugPrint("Found char");
+        return LanVariable(
+            LanType(LanTypeEnum::TypeChar),
+            LanVariable::LanValue{ trimmedValue[1] }
+        );
+    }
+    // string
+    else if (regex_match(trimmedValue, regex(R"(^".*"$)")))
+    {
+        CommandLineInterface::DebugPrint("Found str");
+        return LanVariable(
+            LanType(LanTypeEnum::TypeString),
+            LanVariable::LanValue{ trimmedValue.substr(1, trimmedValue.length() - 2) }
+        );
+    }
+    // array
+    else if (regex_match(trimmedValue, regex(R"(^\[(.*)\]$)")))
+    {
+        CommandLineInterface::DebugPrint("Found arr: " + trimmedValue);
+        vector<string> elementStrings = Utils::TopLevelSplit(
+            trimmedValue.substr(1, trimmedValue.length() - 2), ','
+        );
+        vector<LanVariable> elements;
+        for (auto& elemStr : elementStrings) {
+            string trimmedElemStr = Utils::TrimString(elemStr);
+            CommandLineInterface::DebugPrint("Array element string: " + trimmedElemStr, 1);
+            optional<LanVariable> elemVar = this->ParseParameter(scopeId, trimmedElemStr);
+            if (elemVar.has_value()) {
+                elements.push_back(elemVar.value());
+            }
+            else {
+                throw runtime_error("Failed to parse array element: " + trimmedElemStr);
+            }
+        }
+        // Placeholder implementation
+        return LanVariable(
+            LanType(LanTypeEnum::TypeArray),
+            elements
+        );
+    }
+    // set
+
+    // casting
+
+    // unknown
+    else return nullopt;
+};
 
 std::vector<std::string> splitDotParenAware(const std::string& input)
 {
@@ -394,7 +513,7 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId
                     auto param_it = param_map.begin();
                     for (size_t i = 0; i < params.size(); ++i, ++param_it) {
                         if (!(params[i].Type == param_it->second ||
-                            param_it->second.BaseType == LanType::BaseTypes::TypeAny)) {
+                            param_it->second.BaseType == LanTypeEnum::TypeAny)) {
                             match = false;
                             break;
                         }

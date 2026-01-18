@@ -34,12 +34,12 @@ static bool InitIncludableFunctions()
     IncludableFunctions::Functions.emplace(
         "to_string(any)",
         std::make_unique<BuiltinFunction>(
-            LanType(LanType::BaseTypes::TypeNil),
+            LanType(LanTypeEnum::TypeNil),
             "to_string",
-            map<string, LanType>{{ "any_in", LanType(LanType::BaseTypes::TypeAny) }},
+            map<string, LanType>{{ "any_in", LanType(LanTypeEnum::TypeAny) }},
             [](const string& scopeId, MylangeInterpreter& mi, const vector<LanVariable>& args) {
                 LanVariable var = args[0];
-				return LanVariable(LanType(LanType::BaseTypes::TypeString), var.ToString());
+				return LanVariable(LanType(LanTypeEnum::TypeString), var.ToString());
             }
         )
     );
@@ -47,13 +47,13 @@ static bool InitIncludableFunctions()
     IncludableFunctions::Functions.emplace(
         "to_int(str)",
         std::make_unique<BuiltinFunction>(
-            LanType(LanType::BaseTypes::TypeNil),
+            LanType(LanTypeEnum::TypeNil),
             "to_int",
-            map<string, LanType>{{ "int_in", LanType(LanType::BaseTypes::TypeString) }},
+            map<string, LanType>{{ "int_in", LanType(LanTypeEnum::TypeString) }},
             [](const string& scopeId, MylangeInterpreter& mi, const vector<LanVariable>& args) {
                 LanVariable var = args[0];
 				return LanVariable(
-                    LanType(LanType::BaseTypes::TypeInt),
+                    LanType(LanTypeEnum::TypeInt),
                     std::stoi(var.ToString()));
             }
         )
@@ -66,9 +66,9 @@ static bool InitIncludableFunctions()
     IncludableFunctions::Functions.emplace(
         "print(any)",
         std::make_unique<BuiltinFunction>(
-            LanType(LanType::BaseTypes::TypeNil),
+            LanType(LanTypeEnum::TypeNil),
             "print",
-            map<string, LanType>{{ "printString", LanType(LanType::BaseTypes::TypeAny) }},
+            map<string, LanType>{{ "printString", LanType(LanTypeEnum::TypeAny) }},
             [](const string& scopeId, MylangeInterpreter& mi, const vector<LanVariable>& args) {
                 for (const auto& arg : args) {
                     std::cout << arg.ToString() << " ";
@@ -82,16 +82,16 @@ static bool InitIncludableFunctions()
     IncludableFunctions::Functions.emplace(
         "input(str)",
         std::make_unique<BuiltinFunction>(
-            LanType(LanType::BaseTypes::TypeNil),
+            LanType(LanTypeEnum::TypeNil),
             "input",
-            map<string, LanType>{{ "prompt", LanType(LanType::BaseTypes::TypeString) }},
+            map<string, LanType>{{ "prompt", LanType(LanTypeEnum::TypeString) }},
             [](const string& scopeId, MylangeInterpreter& mi, const vector<LanVariable>& args) {
 				string caron = args.size() > 0 ? args[0].ToString() : "";
                 std::cout << caron;
                 string userInput;
                 std::getline(std::cin, userInput);
                 return LanVariable(
-                    LanType(LanType::BaseTypes::TypeString),
+                    LanType(LanTypeEnum::TypeString),
                     userInput
 				);
             }

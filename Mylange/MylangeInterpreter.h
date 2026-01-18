@@ -18,6 +18,8 @@ public:
 	optional<LanVariable> Interpret(const string& scopeId, const string& code);
 	optional<LanVariable> InterpretBlock(const string& scopeId, const string& block);
 	optional<LanVariable> ParseParameter(const string& scopeId, const string& rawParamStr);
+	bool RandomTypeConversion(const string& scopeId, const string& value, LanVariable* var);
+	optional<LanVariable> RandomTypeConversion(const string& scopeId, const string& value);
 	optional<LanVariable> RunFunctionStack(const string& scopeIdRaw, const string& functionStackStr);
 	MemoryBooker MemBook;
 	vector<string> ImportedPackages;

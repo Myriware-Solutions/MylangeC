@@ -27,9 +27,6 @@
     <ClCompile Include="MemoryBooker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="LanType.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="LanVariable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -43,9 +40,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="LanArithmetic.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="LanPackages.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

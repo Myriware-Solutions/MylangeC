@@ -78,13 +78,13 @@ LanVariable LanArithmetic::ApplyOperator(
     if (op == "/") return lhs / rhs;
     if (op == "==") return lhs == rhs;
     if (op == "..") {
-        if (lhs.Type == LanType::BaseTypes::TypeString && rhs.Type == LanType::BaseTypes::TypeString) {
-            return LanVariable(LanType(LanType::BaseTypes::TypeString), get<string>(lhs.Value) + get<string>(rhs.Value));
+        if (lhs.Type == LanTypeEnum::TypeString && rhs.Type == LanTypeEnum::TypeString) {
+            return LanVariable(LanType(LanTypeEnum::TypeString), get<string>(lhs.Value) + get<string>(rhs.Value));
         }
-        if (lhs.Type == LanType::BaseTypes::TypeString && rhs.Type == LanType::BaseTypes::TypeInt) {
+        if (lhs.Type == LanTypeEnum::TypeString && rhs.Type == LanTypeEnum::TypeInt) {
             string result = "";
             for (int i = 0; i < get<int>(rhs.Value); i++) result += get<string>(lhs.Value);
-            return LanVariable(LanType(LanType::BaseTypes::TypeString), result);
+            return LanVariable(LanType(LanTypeEnum::TypeString), result);
         }
     }
     if (op == "<") return lhs < rhs;
