@@ -32,7 +32,7 @@ void MemoryBooker::RemoveVariable(const string& scopeId, const string& name)
 	this->Variables.erase(fullId);
 }
 
-bool MemoryBooker::GetVariable(const string& scopeId, const string& name, unique_ptr<LanVariable> var)
+bool MemoryBooker::GetVariable(const string& scopeId, const string& name, unique_ptr<LanVariable>& var)
 {
 	auto scopeParts = Utils::TopLevelSplit(scopeId, '.');
 	for (int i = scopeParts.size() - 1; i >= 0; --i)
@@ -42,7 +42,7 @@ bool MemoryBooker::GetVariable(const string& scopeId, const string& name, unique
 		{
 			currentScopeId += (j == 0 ? "" : ".") + scopeParts[j];
 		}
-		if (this->GetLiteralVariable(currentScopeId, name, move(var)))
+		if (this->GetLiteralVariable(currentScopeId, name, var))
 		{
 			return true;
 		}
@@ -109,8 +109,8 @@ LanFunction* MemoryBooker::GetFunction(
 			return func;
 		}
 	}
-	throw runtime_error("Return null.");
-	//return nullopt;
+	//throw runtime_error("Return null.");
+	return nullptr;
 }
 
 void MemoryBooker::ClearScope(const string& scopeId)
@@ -130,14 +130,15 @@ void MemoryBooker::ClearScope(const string& scopeId)
 	}
 }
 
-bool MemoryBooker::GetLiteralVariable(const string& scopeId, const string& name, unique_ptr<LanVariable> var)
+bool MemoryBooker::GetLiteralVariable(const string& scopeId, const string& name, unique_ptr<LanVariable>& var)
 {
 	string fullId = scopeId + ":" + name;
 	//CommandLineInterface::DebugPrint("Checking Variable " + fullId);
 	if (this->Variables.find(fullId) != this->Variables.end())
 	{
 		//CommandLineInterface::DebugPrint("Variable " + fullId + " exists with value " + this->Variables[fullId].ToString());
-		*var = move(this->Variables[fullId]);
+		//*var = move(this->Variables[fullId]);
+		var = make_unique<LanVariable>(this->Variables[fullId].Type, move(this->Variables[fullId].Value));
 		return true;
 	}
 	else
@@ -157,8 +158,8 @@ LanFunction* MemoryBooker::GetLiteralFunction(const string& scopeId,
 	if (it == Functions.end())
 	{
 		CommandLineInterface::DebugPrint("Function " + fullId + " does not exist.");
-		throw runtime_error("Return null.");
-		//return nullptr;
+		//throw runtime_error("Return null.");
+		return nullptr;
 	}
 
 	CommandLineInterface::DebugPrint("Function " + fullId + " exists.");

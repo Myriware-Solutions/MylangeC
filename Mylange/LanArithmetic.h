@@ -106,8 +106,8 @@ public:
     {
         std::string s = Utils::TrimString(expr);
         if (s.empty())
-            throw runtime_error("Empty parse.");
-            //return nullptr;
+            //throw runtime_error("Empty parse.");
+            return nullptr;
 
         // Strip outer parentheses
         while (IsWrappedByParens(s)) {

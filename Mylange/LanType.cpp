@@ -16,7 +16,7 @@ string LanType::ToStringFromBits(LanTypeEnum bits)
 {
 	string result = "";
 	for (auto& y : Utils::SplitFlags(static_cast<uint32_t>(bits))) {
-		CommandLineInterface::DebugPrint("Processing base type flag: " + to_string(y), 2);
+		//CommandLineInterface::DebugPrint("Processing base type flag: " + to_string(y), 2);
 		if (!result.empty()) result += "|";
 		result += BaseTypeToString(static_cast<LanTypeEnum>(y));
 	}
@@ -45,7 +45,7 @@ string LanType::ToString(const LanType& type)
 		return "set";
 	}
 	else {
-		CommandLineInterface::DebugPrint("Converting base type to string: " + to_string(static_cast<uint32_t>(type.BaseType)), 1);
+		//CommandLineInterface::DebugPrint("Converting base type to string: " + to_string(static_cast<uint32_t>(type.BaseType)), 1);
 		return ToStringFromBits(type.BaseType);
 	}
 }
@@ -81,9 +81,8 @@ bool LanType::operator==(const LanType& other) const
 
 LanType LanType::FromString(const std::string& typeStringRaw)
 {
-	CommandLineInterface::DebugPrint("Parsing type from string: " + typeStringRaw, 1);
+	//CommandLineInterface::DebugPrint("Parsing type from string: " + typeStringRaw, 1);
 	string typeString = Utils::TrimString(typeStringRaw);
-
 	smatch match;
 	regex_match(typeString, match, TypeMatchPattern);
 	string base_type_str = match[1];
@@ -91,7 +90,7 @@ LanType LanType::FromString(const std::string& typeStringRaw)
 	// Get the base type
 	for (auto& pair : BaseTypeMap) {
 		for (auto& alias : pair.second) {
-			CommandLineInterface::DebugPrint("Checking: " + base_type_str + " " + alias, 2);
+			//CommandLineInterface::DebugPrint("Checking: " + base_type_str + " " + alias, 2);
 			if (alias == base_type_str) {
 				base_type = pair.first;
 				break;
@@ -99,11 +98,11 @@ LanType LanType::FromString(const std::string& typeStringRaw)
 		}
 		if (base_type != LanTypeEnum::None) break;
 	}
-	CommandLineInterface::DebugPrint("Base type parsed as: " + to_string(static_cast<uint32_t>(base_type)), 1);
+	//CommandLineInterface::DebugPrint("Base type parsed as: " + to_string(static_cast<uint32_t>(base_type)), 1);
 	if (base_type == LanTypeEnum::None) throw runtime_error("Could not find primitive type: '" + base_type_str + "'");
 	// Get archetype if applicable
 	if (match[2].matched) {
-		CommandLineInterface::DebugPrint("Doing archetype");
+		//CommandLineInterface::DebugPrint("Doing archetype");
 		vector<variant<LanTypeEnum, LanType>> archetype_vector;
 		bool advanced = false;
 		vector<string> archetype_strs = Utils::TopLevelSplit(match[2], '|');

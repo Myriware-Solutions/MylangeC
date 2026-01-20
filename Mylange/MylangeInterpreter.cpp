@@ -289,8 +289,11 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::ParseParameter(const strin
     // Possible variable reference (soley word chars)
     if (regex_match(paramStr, match, wordCharsOnly))
     {
-        if (this->MemBook.GetVariable(scopeId, paramStr, move(result)))
+        CommandLineInterface::DebugPrint("Possible variable found: " + paramStr, 1);
+        if (this->MemBook.GetVariable(scopeId, paramStr, result)) {
+            CommandLineInterface::DebugPrint("Found variable: " + paramStr, 1);
             return move(result);
+        }
         else throw runtime_error("Variable not found: " + paramStr);
 	}
 	// Possible function call
@@ -534,7 +537,7 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::RunFunctionStack(const str
 			}
         }
 		// Check first to see if it's a variable reference to get the value
-        else if (this->MemBook.GetVariable(scopeId, func_call, move(last_result.value())))
+        else if (this->MemBook.GetVariable(scopeId, func_call, last_result.value()))
         {
 			CommandLineInterface::DebugPrint("Variable reference found in function stack: " + func_call);
 		}
