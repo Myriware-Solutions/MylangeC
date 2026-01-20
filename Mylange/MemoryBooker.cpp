@@ -10,18 +10,19 @@
 #include "LanFunction.h"
 #include "LanType.h"
 #include "Utils.h"
+#include "LanIterableEngine.h"
 
 MemoryBooker::MemoryBooker()
 {
 	CommandLineInterface::DebugPrint("MemoryBooker initialized.");
 }
 
-void MemoryBooker::BookVariable(const string& scopeId, const string& name, LanVariable variable)
+void MemoryBooker::BookVariable(const string& scopeId, const string& name, const unique_ptr<LanVariable> variable)
 {
-	CommandLineInterface::DebugPrint("Booking Variable " + scopeId + ":" + name + " with " + variable.ToString());
+	CommandLineInterface::DebugPrint("Booking Variable " + scopeId + ":" + name + " with " + variable->ToString());
 	string fullId = scopeId + ":" + name;
 	//this->Variables[fullId] = variable;
-	this->Variables.emplace(fullId, variable);
+	this->Variables.emplace(fullId, move(*variable));
 }
 
 void MemoryBooker::RemoveVariable(const string& scopeId, const string& name)
@@ -31,7 +32,7 @@ void MemoryBooker::RemoveVariable(const string& scopeId, const string& name)
 	this->Variables.erase(fullId);
 }
 
-bool MemoryBooker::GetVariable(const string& scopeId, const string& name, LanVariable& var)
+bool MemoryBooker::GetVariable(const string& scopeId, const string& name, unique_ptr<LanVariable> var)
 {
 	auto scopeParts = Utils::TopLevelSplit(scopeId, '.');
 	for (int i = scopeParts.size() - 1; i >= 0; --i)
@@ -41,7 +42,7 @@ bool MemoryBooker::GetVariable(const string& scopeId, const string& name, LanVar
 		{
 			currentScopeId += (j == 0 ? "" : ".") + scopeParts[j];
 		}
-		if (this->GetLiteralVariable(currentScopeId, name, var))
+		if (this->GetLiteralVariable(currentScopeId, name, move(var)))
 		{
 			return true;
 		}
@@ -108,7 +109,8 @@ LanFunction* MemoryBooker::GetFunction(
 			return func;
 		}
 	}
-	return nullptr;
+	throw runtime_error("Return null.");
+	//return nullopt;
 }
 
 void MemoryBooker::ClearScope(const string& scopeId)
@@ -128,14 +130,14 @@ void MemoryBooker::ClearScope(const string& scopeId)
 	}
 }
 
-bool MemoryBooker::GetLiteralVariable(const string& scopeId, const string& name, LanVariable& var)
+bool MemoryBooker::GetLiteralVariable(const string& scopeId, const string& name, unique_ptr<LanVariable> var)
 {
 	string fullId = scopeId + ":" + name;
 	//CommandLineInterface::DebugPrint("Checking Variable " + fullId);
 	if (this->Variables.find(fullId) != this->Variables.end())
 	{
 		//CommandLineInterface::DebugPrint("Variable " + fullId + " exists with value " + this->Variables[fullId].ToString());
-		var = this->Variables[fullId];
+		*var = move(this->Variables[fullId]);
 		return true;
 	}
 	else
@@ -155,7 +157,8 @@ LanFunction* MemoryBooker::GetLiteralFunction(const string& scopeId,
 	if (it == Functions.end())
 	{
 		CommandLineInterface::DebugPrint("Function " + fullId + " does not exist.");
-		return nullptr;
+		throw runtime_error("Return null.");
+		//return nullptr;
 	}
 
 	CommandLineInterface::DebugPrint("Function " + fullId + " exists.");

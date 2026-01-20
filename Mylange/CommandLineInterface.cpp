@@ -6,6 +6,9 @@
 #include "CommandLineInterface.h"
 #include "MylangeInterpreter.h"
 #include "Utils.h"
+#include "LanIterableEngine.h"
+
+
 #include <exception>
 
 // CODE //

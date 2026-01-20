@@ -33,7 +33,7 @@ public:
 
     struct ExprNode {
         virtual ~ExprNode() = default;
-        virtual LanVariable Evaluate(MylangeInterpreter& mi,
+        virtual unique_ptr<LanVariable> Evaluate(MylangeInterpreter& mi,
             const std::string& scopeId) = 0;
     };
 
@@ -44,7 +44,7 @@ public:
             : text(std::move(t)) {
         }
 
-        LanVariable Evaluate(MylangeInterpreter& mi,
+        unique_ptr<LanVariable> Evaluate(MylangeInterpreter& mi,
             const std::string& scopeId) override
         {
             // This is where YOU define meaning:
@@ -53,7 +53,7 @@ public:
             // - function call?
 
             auto it = mi.ParseParameter(scopeId, text);
-			if (it.has_value()) return it.value();
+			if (it.has_value()) return move(it.value());
 			else throw std::runtime_error("Error in Arithmetics, unable to evaluate value: " + text);
         }
     };
@@ -69,22 +69,22 @@ public:
             : op(std::move(o)), left(std::move(l)), right(std::move(r)) {
         }
 
-        LanVariable Evaluate(MylangeInterpreter& mi,
+        unique_ptr<LanVariable> Evaluate(MylangeInterpreter& mi,
             const std::string& scopeId) override
         {
             // 1️⃣ Recursively evaluate children
-            LanVariable lhs = left->Evaluate(mi, scopeId);
-            LanVariable rhs = right->Evaluate(mi, scopeId);
+            unique_ptr<LanVariable> lhs = left->Evaluate(mi, scopeId);
+            unique_ptr<LanVariable> rhs = right->Evaluate(mi, scopeId);
 
             // 2️⃣ Apply operator logic
-            return ApplyOperator(op, lhs, rhs);
+            return ApplyOperator(op, move(lhs), move(rhs));
         }
     };
 
-    static LanVariable ApplyOperator(
+    static unique_ptr<LanVariable> ApplyOperator(
         const std::string& op,
-        const LanVariable& lhs,
-		const LanVariable& rhs);
+        const unique_ptr<LanVariable> lhs,
+		const unique_ptr<LanVariable> rhs);
 
     static bool IsWrappedByParens(const std::string& s) {
         if (s.size() < 2 || s.front() != '(' || s.back() != ')')
@@ -106,7 +106,8 @@ public:
     {
         std::string s = Utils::TrimString(expr);
         if (s.empty())
-            return nullptr;
+            throw runtime_error("Empty parse.");
+            //return nullptr;
 
         // Strip outer parentheses
         while (IsWrappedByParens(s)) {

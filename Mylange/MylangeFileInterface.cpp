@@ -6,6 +6,7 @@
 #include "MylangeFileInterface.h"
 #include "Utils.h"
 #include "MylangeInterpreter.h"
+#include "LanIterableEngine.h"
 
 using namespace std;
 
@@ -35,8 +36,8 @@ int FileInterface::InterpretFile(const string& filePath, const bool debugMode)
 		if (debugMode) {
 			mi.DebugMode = true;
 		}
-		auto result = mi.InterpretBlock("global", fileContent).value_or(LanVariable());
-		cout << "Program exited with value: (" + result.Type.ToString() + ") " + result.ToString();
+		auto result = mi.InterpretBlock("global", fileContent).value_or(make_unique<LanVariable>());
+		cout << "Program exited with value: (" + result->Type.ToString() + ") " + result->ToString();
 	}
 	catch (const exception& e) {
 		cerr << "Error during interpretation: " << e.what() << endl;

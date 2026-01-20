@@ -13,9 +13,9 @@ class MemoryBooker
 public:
 	MemoryBooker();
 	// Variables
-	void BookVariable(const string& scopeId, const string& name, LanVariable variable);
+	void BookVariable(const string& scopeId, const string& name, const unique_ptr<LanVariable> variable);
 	void RemoveVariable(const string& scopeId, const string& name);
-	bool GetVariable(const string& scopeId, const string& name, LanVariable& var);
+	bool GetVariable(const string& scopeId, const string& name, unique_ptr<LanVariable> var);
 	// Functions
 	void BookFunction(const string& scopeId, unique_ptr<LanFunction> function);
 	/*bool GetFunction(const string& scopeId, const string& name, 
@@ -41,7 +41,7 @@ private:
 	bool GetLiteralVariable(
 		const string& scopeId,
 		const string& name,
-		LanVariable& var);
+		unique_ptr<LanVariable> var);
 
 	LanFunction* GetLiteralFunction(
 		const string& scopeId,

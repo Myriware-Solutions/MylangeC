@@ -2,17 +2,20 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <optional>
 
 #include "LanVariable.h"
 #include "LanFunction.h"
 #include "MylangeInterpreter.h"
+#include "LanIterableEngine.h"
 
 
 string LanFunction::GetId() const {
 	return LanFunction::GetId(this->Name, this->Parameters);
 };
 
-optional<LanVariable> ScriptFunction::Execute(const string& scopeId, MylangeInterpreter& mi, const vector<LanVariable>& args)
+optional<unique_ptr<LanVariable>> ScriptFunction::Execute(const string& scopeId, MylangeInterpreter& mi,
+	const vector<unique_ptr<LanVariable>>& args)
 {
 	//cout << "Function is working: " << this->Name << endl;
 	string working_scope = scopeId + "." + this->GetId() + "@run";
@@ -24,16 +27,18 @@ optional<LanVariable> ScriptFunction::Execute(const string& scopeId, MylangeInte
 			+ to_string(args.size()) + ".");
 	}
 
-	for (auto& [paramName, paramType] : this->Parameters)
+	size_t idx = 0;
+	for (const auto& [paramName, paramType] : this->Parameters)
 	{
-		size_t index = &paramName - &this->Parameters.begin()->first;
-		mi.MemBook.BookVariable(working_scope, paramName, args[index]);
+		// Transfer ownership of the argument to the scope
+		mi.MemBook.BookVariable(working_scope, paramName, std::move(const_cast<vector<unique_ptr<LanVariable>>&>(args)[idx]));
+		++idx;
 	}
 
 	auto res = mi.InterpretBlock(working_scope, this->Logic);
 
 	mi.MemBook.ClearScope(working_scope);
 
-	if (res.has_value()) return res.value();
-	else return LanVariable();
+	if (res.has_value()) return make_optional(std::move(res.value()));
+	else return make_unique<LanVariable>();
 }

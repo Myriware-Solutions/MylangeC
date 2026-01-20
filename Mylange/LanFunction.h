@@ -41,8 +41,8 @@ public:
 		return id;
 	}
 
-	virtual optional<LanVariable> Execute(const string& scopeId, MylangeInterpreter& mi, 
-		const vector<LanVariable>& args) = 0;
+	virtual optional<unique_ptr<LanVariable>> Execute(const string& scopeId, MylangeInterpreter& mi, 
+		const vector<unique_ptr<LanVariable>>& args) = 0;
 
 	LanType ReturnType;
 	string Name;
@@ -61,10 +61,10 @@ public:
 		: LanFunction(returnType, name, parameters, logic) {
 	}
 
-	optional<LanVariable> Execute(
+	optional<unique_ptr<LanVariable>> Execute(
 		const string& scopeId,
 		MylangeInterpreter& mi,
-		const vector<LanVariable>& args) override;
+		const vector<unique_ptr<LanVariable>>& args) override;
 
 	std::unique_ptr<LanFunction> Clone() const override {
 		return std::make_unique<ScriptFunction>(*this);

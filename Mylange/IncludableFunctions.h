@@ -20,7 +20,8 @@ class BuiltinFunction : public LanFunction
 {
 public:
 
-    using CoreBuiltingLogic = function<optional<LanVariable>(const string& scopeId, MylangeInterpreter& mi, const vector<LanVariable>& args)>;
+    using CoreBuiltingLogic = function<optional<unique_ptr<LanVariable>>
+        (const string& scopeId, MylangeInterpreter& mi, const vector<unique_ptr<LanVariable>>& args) > ;
 
     unique_ptr<LanFunction> Clone() const override {
         return std::make_unique<BuiltinFunction>(*this);
@@ -32,13 +33,33 @@ public:
         : LanFunction(returnType, name, parameters, ""), CoreLogic(coreLogic)
     { }
 
-    optional<LanVariable> Execute(const string& scopeId, MylangeInterpreter& mi,
-        const vector<LanVariable>& args) override {
-		CommandLineInterface::DebugPrint("Executing builtin function: " + this->Name);
+    std::optional<std::unique_ptr<LanVariable>> Execute(
+        const std::string& scopeId,
+        MylangeInterpreter& mi,
+        const std::vector<std::unique_ptr<LanVariable>>& args
+    ) override
+    {
+        CommandLineInterface::DebugPrint(
+            "Executing builtin function: " + this->Name
+        );
+
         auto result = this->CoreLogic(scopeId, mi, args);
-		CommandLineInterface::DebugPrint("Builtin function executed: " + result.value_or(LanVariable()).ToString());
+
+        if (result)
+        {
+            CommandLineInterface::DebugPrint(
+                "Builtin function executed: " + result.value()->ToString()
+            );
+        }
+        else
+        {
+            CommandLineInterface::DebugPrint(
+                "Builtin function executed: <no result>"
+            );
+        }
+
         return result;
-    };
+    }
 
     CoreBuiltingLogic CoreLogic;
 };

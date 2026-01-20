@@ -20,6 +20,7 @@
 #include <stdexcept>
 #include <utility>
 #include "LanVariable.h"
+#include "LanIterableEngine.h"
 
 
 using namespace std;
@@ -32,7 +33,7 @@ const regex paramStringPattern(R"((?:(const)\s+)?([\w<|,>]+)\s+(\w+))", std::reg
 
 struct Rule {
     regex pattern;
-    function <optional<LanVariable>(const smatch&, MylangeInterpreter&, const string&) > action;
+    function <optional <unique_ptr< LanVariable >> (const smatch&, MylangeInterpreter&, const string&) > action;
 };
 
 vector<Rule> rules = {
@@ -41,7 +42,7 @@ vector<Rule> rules = {
         regex(R"(return\s+(.*))"),
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
             auto it = mi.ParseParameter(scopeId, m[1].str());
-            if (it.has_value()) return it.value();
+            if (it.has_value()) return move(it.value());
             throw runtime_error("Trying to return nothing");
         }
     },
@@ -80,12 +81,12 @@ vector<Rule> rules = {
 			auto lv = mi.ParseParameter(scopeId, m[3]);
             if (!lv.has_value()) 
                 throw runtime_error("Failed to parse variable value.");
-			CommandLineInterface::DebugPrint("Setting variable " + m[2].str() + " of type " + expectedType.ToString() + "/" + lv.value().Type.ToString() + " to value " + lv.value().ToString());
-            if (lv.value().IsCompatable(expectedType))
-			    mi.MemBook.BookVariable(scopeId, m[2], lv.value());
+			CommandLineInterface::DebugPrint("Setting variable " + m[2].str() + " of type " + expectedType.ToString() + "/" + lv.value()->Type.ToString() + " to value " + lv.value()->ToString());
+            if (lv.value()->IsCompatable(expectedType))
+                mi.MemBook.BookVariable(scopeId, m[2], move(lv.value()));
             else throw runtime_error("Type mismatch in variable assignment. Expected " 
-                + expectedType.ToString() + ", got " + lv.value().Type.ToString() 
-                + " (with " + lv.value().ToString() + ")");
+                + expectedType.ToString() + ", got " + lv.value()->Type.ToString() 
+                + " (with " + lv.value()->ToString() + ")");
             return nullopt;
         }
     },
@@ -150,8 +151,9 @@ vector<Rule> rules = {
                 if (regex_match(part, match, ifElseThenPattern))
                 {
 					auto conditionEval = mi.ParseParameter(scopeId, m[1].str());
-                    if (conditionEval.has_value() && ((conditionEval->Type.BaseType & LanTypeEnum::TypeBool)==LanTypeEnum::TypeBool)
-                        && get<bool>(conditionEval->Value))
+
+                    if (conditionEval.has_value() && ((conditionEval.value()->Type.BaseType & LanTypeEnum::TypeBool) == LanTypeEnum::TypeBool)
+                        && get<bool>(conditionEval.value()->Value))
                     {
 						return mi.InterpretBlock(scopeId, match[2].str());
                     }
@@ -182,7 +184,7 @@ MylangeInterpreter::MylangeInterpreter()
 
 
 
-optional<LanVariable> MylangeInterpreter::Interpret(const string& scopeId, const string& code)
+optional <unique_ptr< LanVariable >> MylangeInterpreter::Interpret(const string & scopeId, const string & code)
 {
     smatch match;
     for (const auto& rule : rules) {
@@ -247,7 +249,7 @@ static string CondenseBlocks(
     return output;
 }
 
-optional<LanVariable> MylangeInterpreter::InterpretBlock(const string& scopeId, const string& blockString)
+optional<unique_ptr<LanVariable>> MylangeInterpreter::InterpretBlock(const string& scopeId, const string& blockString)
 {
     // Cache stuff
 
@@ -278,49 +280,52 @@ optional<LanVariable> MylangeInterpreter::InterpretBlock(const string& scopeId, 
 
 const regex wordCharsOnly(R"(^[a-zA-Z]\w+$)", std::regex_constants::ECMAScript);
 
-optional<LanVariable> MylangeInterpreter::ParseParameter(const string& scopeId, const string& rawParamStr)
+optional<unique_ptr<LanVariable>> MylangeInterpreter::ParseParameter(const string& scopeId, const string& rawParamStr)
 {
 	string paramStr = Utils::TrimString(rawParamStr);
 	CommandLineInterface::DebugPrint("Parsing parameter: " + paramStr);
-	LanVariable result;
+    unique_ptr<LanVariable> result;
     smatch match;
     // Possible variable reference (soley word chars)
     if (regex_match(paramStr, match, wordCharsOnly))
     {
-		if (this->MemBook.GetVariable(scopeId, paramStr, result))
-            return result;
+        if (this->MemBook.GetVariable(scopeId, paramStr, move(result)))
+            return move(result);
         else throw runtime_error("Variable not found: " + paramStr);
 	}
 	// Possible function call
     else if (regex_search(paramStr, match, functionCallStack)) {
-		return this->RunFunctionStack(scopeId, paramStr).value_or(LanVariable());
+        auto res = this->RunFunctionStack(scopeId, paramStr);
+        if (res) return std::move(res);
+        return make_unique<LanVariable>();
+		//return this->RunFunctionStack(scopeId, paramStr).value_or(make_unique<LanVariable>());
     }
     // Failsafe Random Type Conversion
-	else if (this->RandomTypeConversion(scopeId, paramStr, &result))
+    else if (this->RandomTypeConversion(scopeId, paramStr, result))
     {
         return result;
     }
     // Arithmetic Statement
     else if (LanArithmetic::IsValidLogicString(paramStr)) {
         CommandLineInterface::DebugPrint("Found Arithmetic Statement: " + paramStr);
-        return LanArithmetic::BuildAST(paramStr)->Evaluate(*this, scopeId);
+        return move(LanArithmetic::BuildAST(paramStr)->Evaluate(*this, scopeId));
     }
 
-    return LanVariable();
+    return make_unique<LanVariable>();
 }
 
-bool MylangeInterpreter::RandomTypeConversion(const string& scopeId, const string& value, LanVariable* var)
+bool MylangeInterpreter::RandomTypeConversion(const string& scopeId, const string& value, unique_ptr<LanVariable>& var)
 {
-    optional<LanVariable> test = this->RandomTypeConversion(scopeId, value);
+    optional<unique_ptr<LanVariable>> test = move(this->RandomTypeConversion(scopeId, value));
     if (test.has_value())
     {
-        *var = test.value();
+        var = move(test.value());
         return true;
     }
     return false;
 }
 
-optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& scopeId, const string& value)
+optional<unique_ptr<LanVariable>> MylangeInterpreter::RandomTypeConversion(const string& scopeId, const string& value)
 {
     CommandLineInterface::DebugPrint("Attempting to convert value: " + value);
     string trimmedValue = Utils::TrimString(value);
@@ -329,7 +334,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& sco
     if (trimmedValue == "nil")
     {
         CommandLineInterface::DebugPrint("Found nil");
-        return LanVariable(
+        return make_unique<LanVariable>(
             LanType(LanTypeEnum::TypeNil),
             LanVariable::LanValue{});
     }
@@ -337,7 +342,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& sco
     else if (trimmedValue == "true" || trimmedValue == "false")
     {
         CommandLineInterface::DebugPrint("Found bool");
-        return LanVariable(
+        return make_unique<LanVariable>(
             LanType(LanTypeEnum::TypeBool),
             LanVariable::LanValue{ trimmedValue == "true" }
         );
@@ -346,7 +351,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& sco
     else if (regex_match(trimmedValue, regex(R"(^-?\d+$)")))
     {
         CommandLineInterface::DebugPrint("Found int");
-        return LanVariable(
+        return make_unique<LanVariable>(
             LanType(LanTypeEnum::TypeInt),
             LanVariable::LanValue{ stoi(trimmedValue) }
         );
@@ -356,7 +361,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& sco
     {
         CommandLineInterface::DebugPrint("Found float");
         // Placeholder implementation
-        return LanVariable(
+        return make_unique<LanVariable>(
             LanType(LanTypeEnum::TypeUnknown),
             LanVariable::LanValue{ }
         );
@@ -365,7 +370,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& sco
     else if (regex_match(trimmedValue, regex(R"(^'.'$)")))
     {
         CommandLineInterface::DebugPrint("Found char");
-        return LanVariable(
+        return make_unique<LanVariable>(
             LanType(LanTypeEnum::TypeChar),
             LanVariable::LanValue{ trimmedValue[1] }
         );
@@ -374,7 +379,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& sco
     else if (regex_match(trimmedValue, regex(R"(^".*"$)")))
     {
         CommandLineInterface::DebugPrint("Found str");
-        return LanVariable(
+        return make_unique<LanVariable>(
             LanType(LanTypeEnum::TypeString),
             LanVariable::LanValue{ trimmedValue.substr(1, trimmedValue.length() - 2) }
         );
@@ -386,22 +391,24 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& sco
         vector<string> elementStrings = Utils::TopLevelSplit(
             trimmedValue.substr(1, trimmedValue.length() - 2), ','
         );
-        vector<LanVariable> elements;
+        vector<unique_ptr<LanVariable>> elements;
         for (auto& elemStr : elementStrings) {
             string trimmedElemStr = Utils::TrimString(elemStr);
             CommandLineInterface::DebugPrint("Array element string: " + trimmedElemStr, 1);
-            optional<LanVariable> elemVar = this->ParseParameter(scopeId, trimmedElemStr);
+            optional <unique_ptr<LanVariable>> elemVar = this->ParseParameter(scopeId, trimmedElemStr);
             if (elemVar.has_value()) {
-                elements.push_back(elemVar.value());
+                //ISSUE
+                elements.push_back(move(elemVar.value()));
+                //elements.push_back(LanVariable(elemVar.value()->Type, move(elemVar.value()->Value)));
             }
             else {
                 throw runtime_error("Failed to parse array element: " + trimmedElemStr);
             }
         }
         // Placeholder implementation
-        return LanVariable(
+        return make_unique<LanVariable>(
             LanType(LanTypeEnum::TypeArray),
-            elements
+            LanVariable::LanValue{ move(elements) }
         );
     }
     // set
@@ -453,31 +460,32 @@ std::vector<std::string> splitDotParenAware(const std::string& input)
 
 
 static void MakeParameters(MylangeInterpreter& mi, const string& scopeId, string paramString,
-    vector<LanVariable>& paramsOut, vector<LanType>& paramTypesOut)
+    vector<unique_ptr<LanVariable>>& paramsOut, vector<LanType>& paramTypesOut)
 {
     vector<string> param_strs = Utils::TopLevelSplit(paramString, ',');
     for (const auto& param_str : param_strs) {
         auto param = mi.ParseParameter(scopeId, Utils::TrimString(param_str));
         if (param.has_value()) {
-            paramsOut.push_back(param.value());
+            auto& p = param.value();
+            paramsOut.push_back(move(p));
         }
         else
         {
             throw runtime_error("Failed to parse function argument: " + param_str);
         }
     }
-    for (const auto& param : paramsOut) paramTypesOut.push_back(param.Type);
+    for (const auto& param : paramsOut) paramTypesOut.push_back(param->Type);
 }
 
 
-optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId, const string& functionStackStr)
+optional<unique_ptr<LanVariable>> MylangeInterpreter::RunFunctionStack(const string& scopeId, const string& functionStackStr)
 {
     CommandLineInterface::DebugPrint("Executing function call(s): " + functionStackStr);
     auto function_calls = splitDotParenAware(functionStackStr);
 	for (auto& fc : function_calls) {
         CommandLineInterface::DebugPrint("Function call part: " + fc, 1);
     }
-    optional<LanVariable> last_result = LanVariable();
+    optional<unique_ptr<LanVariable>> last_result = make_unique<LanVariable>();
     string prefix = "";
 
     for (const auto& func_call : function_calls) {
@@ -487,14 +495,14 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId
         if (regex_search(func_call, func_match, functionPartsPattern)) {
             // find function
             string func_name = func_match[1];
-            vector<LanVariable> params;
+            vector<unique_ptr<LanVariable>> params;
             vector<LanType> param_types;
 			MakeParameters(*this, scopeId, func_match[2], params, param_types);
             // Type Literal approch first.
             if (LanFunction* func = this->MemBook.GetFunction(function_location_scope_id, func_name, param_types))
             {
                 CommandLineInterface::DebugPrint("Function " + func_name + " exists and is running...");
-                last_result = (func)->Execute(scopeId, *this, params);
+                last_result = move((func)->Execute(scopeId, *this, params));
             }
             // Then, try to see if there is an overload with the "any" type in unmatched positions.
             else {
@@ -507,7 +515,7 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId
                     bool match = true;
                     auto param_it = param_map.begin();
                     for (size_t i = 0; i < params.size(); ++i, ++param_it) {
-                        if (!(params[i].Type == param_it->second ||
+                        if (!(params[i]->Type == param_it->second ||
                             param_it->second.BaseType == LanTypeEnum::TypeAny)) {
                             match = false;
                             break;
@@ -515,7 +523,7 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId
                     }
                     if (match) {
                         CommandLineInterface::DebugPrint("Function " + func_name + " overload exists and is running...");
-                        last_result = overload->Execute(scopeId, *this, params);
+                        last_result = move(overload->Execute(scopeId, *this, params));
                         found = true;
                         break;
                     }
@@ -526,7 +534,7 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId
 			}
         }
 		// Check first to see if it's a variable reference to get the value
-        else if (this->MemBook.GetVariable(scopeId, func_call, *last_result))
+        else if (this->MemBook.GetVariable(scopeId, func_call, move(last_result.value())))
         {
 			CommandLineInterface::DebugPrint("Variable reference found in function stack: " + func_call);
 		}

@@ -27,9 +27,6 @@
     <ClCompile Include="MemoryBooker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="LanVariable.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="MylangeFileInterface.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -40,6 +37,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="LanArithmetic.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LanVariable.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LanIterableEngine.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LanType.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -75,6 +81,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="LanPackages.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LanIterableEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -15,12 +15,12 @@ class MylangeInterpreter
 {
 public:
 	MylangeInterpreter();
-	optional<LanVariable> Interpret(const string& scopeId, const string& code);
-	optional<LanVariable> InterpretBlock(const string& scopeId, const string& block);
-	optional<LanVariable> ParseParameter(const string& scopeId, const string& rawParamStr);
-	bool RandomTypeConversion(const string& scopeId, const string& value, LanVariable* var);
-	optional<LanVariable> RandomTypeConversion(const string& scopeId, const string& value);
-	optional<LanVariable> RunFunctionStack(const string& scopeIdRaw, const string& functionStackStr);
+	optional<unique_ptr<LanVariable>> Interpret(const string& scopeId, const string& code);
+	optional<unique_ptr<LanVariable>> InterpretBlock(const string& scopeId, const string& block);
+	optional<unique_ptr<LanVariable>> ParseParameter(const string& scopeId, const string& rawParamStr);
+	bool RandomTypeConversion(const string& scopeId, const string& value, unique_ptr<LanVariable>& var);
+	optional<unique_ptr<LanVariable>> RandomTypeConversion(const string& scopeId, const string& value);
+	optional<unique_ptr<LanVariable>> RunFunctionStack(const string& scopeIdRaw, const string& functionStackStr);
 	MemoryBooker MemBook;
 	vector<string> ImportedPackages;
 	unordered_map<string, string> BlockMap;
