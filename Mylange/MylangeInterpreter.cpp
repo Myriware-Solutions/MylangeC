@@ -95,7 +95,7 @@ vector<Rule> rules = {
         regex(R"(^do\s+(.*))"),
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
 			CommandLineInterface::DebugPrint("[" + scopeId + "] Interpreting block: " + m[1].str());
-			mi.InterpretBlock(scopeId, m[1]);
+			mi.InterpretBlock(scopeId + ".do", m[1]);
             return nullopt;
         }
 
@@ -155,11 +155,11 @@ vector<Rule> rules = {
                     if (conditionEval.has_value() && ((conditionEval.value()->Type.BaseType & LanTypeEnum::TypeBool) == LanTypeEnum::TypeBool)
                         && get<bool>(conditionEval.value()->Value))
                     {
-						return mi.InterpretBlock(scopeId, match[2].str());
+						return mi.InterpretBlock(scopeId + ".if", match[2].str());
                     }
                 }
                 else {
-					return mi.InterpretBlock(scopeId, part);
+					return mi.InterpretBlock(scopeId + ".if", part);
                 }
             }
         }
@@ -332,7 +332,7 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::RandomTypeConversion(const
 {
     CommandLineInterface::DebugPrint("Attempting to convert value: " + value);
     string trimmedValue = Utils::TrimString(value);
-
+    smatch matchedMatch;
     // nil
     if (trimmedValue == "nil")
     {
@@ -408,7 +408,6 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::RandomTypeConversion(const
                 throw runtime_error("Failed to parse array element: " + trimmedElemStr);
             }
         }
-        // Placeholder implementation
         return make_unique<LanVariable>(
             LanType(LanTypeEnum::TypeArray),
             LanVariable::LanValue{ move(elements) }
@@ -418,6 +417,35 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::RandomTypeConversion(const
 
     // casting
 
+    // Iterable
+    else if (regex_match(trimmedValue, matchedMatch, LanIterableEngine::RegexMatch)) {
+        bool unpacking_type = false;
+        vector<pair<string, LanType>> keys;
+        if (Utils::IsWrappedByParens(Utils::TrimString(matchedMatch[1]), '[', ']')) {
+            unpacking_type = true;
+            string bare_elements = Utils::TrimString(matchedMatch[1]);
+            bare_elements = bare_elements.substr(1, bare_elements.length() - 2);
+            for (auto& bare_ele : Utils::TopLevelSplit(bare_elements, ',')) {
+                smatch key_parts;
+                regex_match(bare_ele, key_parts, paramStringPattern);
+                keys.push_back({key_parts[3].str(), LanType::FromString(key_parts[2].str())});
+            }
+        }
+        else {
+            smatch key_parts;
+            string s = Utils::TrimString(matchedMatch[1]);
+            regex_match(s, key_parts, paramStringPattern);
+            keys.push_back({ key_parts[3].str(), LanType::FromString(key_parts[2].str()) });
+        }
+        auto matrix_value = this->ParseParameter(scopeId, matchedMatch[2].str());
+        if (matrix_value.has_value()) {
+            return make_unique<LanVariable>(
+                LanType(LanTypeEnum::TypeInterable),
+                LanVariable::LanValue{ make_unique<LanIterableEngine>(keys, move(matrix_value.value())) }
+            );
+        }
+        else throw runtime_error("Tryed to obtain a null value for Iterable."); 
+    }
     // unknown
     else return nullopt;
 };

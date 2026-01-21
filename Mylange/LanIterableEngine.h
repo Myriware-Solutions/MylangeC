@@ -17,10 +17,14 @@
 
 class LanIterableEngine {
 public:
-	vector<vector<unique_ptr<LanVariable>>> Values;
-	vector<string> Keys;
 
-	LanIterableEngine(std::vector<std::string> keys, std::unique_ptr < LanVariable > matrixVar);
+	inline static const regex RegexMatch = regex(R"((.*?)\s*\bin\b\s*(.*))");
 
-	vector<unordered_map<string, LanVariable>> GetIterable();
+	vector< variant<vector<unique_ptr<LanVariable>>, unique_ptr<LanVariable>> > Values;
+	std::vector<std::pair<std::string, LanType>> Keys;
+	bool IsUnpackingIter;
+
+	LanIterableEngine(std::vector<std::pair<std::string,LanType>> keys, std::unique_ptr < LanVariable > matrixVar);
+
+	bool GetIterable(vector<unordered_map<string, unique_ptr<LanVariable>>>& vectorOut);
 };

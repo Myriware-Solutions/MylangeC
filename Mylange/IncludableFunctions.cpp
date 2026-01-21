@@ -112,6 +112,25 @@ static bool InitIncludableFunctions()
         )
     );
 
+    IncludableFunctions::Functions.emplace(
+        "CurrentScope",
+        std::make_unique<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "CurrentScope",
+            std::map<std::string, LanType>{ },
+            BuiltinFunction::CoreBuiltingLogic{
+                [](const std::string& scopeId,
+                   MylangeInterpreter& mi,
+                   const std::vector<std::unique_ptr<LanVariable>>& args)
+                   -> std::optional<std::unique_ptr<LanVariable>>
+                {
+                    std::cout << scopeId << endl;
+                    return nullopt;
+                }
+            }
+        )
+    );
+
 // io PACKAGE
 
     IncludableFunctions::Functions.emplace(

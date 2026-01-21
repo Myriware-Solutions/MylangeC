@@ -86,22 +86,6 @@ public:
         const unique_ptr<LanVariable> lhs,
 		const unique_ptr<LanVariable> rhs);
 
-    static bool IsWrappedByParens(const std::string& s) {
-        if (s.size() < 2 || s.front() != '(' || s.back() != ')')
-            return false;
-
-        int depth = 0;
-        for (size_t i = 0; i < s.size(); ++i) {
-            if (s[i] == '(') depth++;
-            else if (s[i] == ')') {
-                depth--;
-                if (depth == 0 && i != s.size() - 1)
-                    return false;
-            }
-        }
-        return depth == 0;
-    };
-
     static unique_ptr<LanArithmetic::ExprNode> BuildAST(const string& expr)
     {
         std::string s = Utils::TrimString(expr);
@@ -110,7 +94,7 @@ public:
             return nullptr;
 
         // Strip outer parentheses
-        while (IsWrappedByParens(s)) {
+        while (Utils::IsWrappedByParens(s, '(', ')')) {
             s = Utils::TrimString(s.substr(1, s.size() - 2));
         }
 

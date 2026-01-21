@@ -146,7 +146,69 @@ public:
                     }
                 }
 
-                if (topLevel && c == delimiter) {
+                if (topLevel && (c == delimiter)) {
+                    result.push_back(current);
+                    current.clear();
+                    goto continue_loop;
+                }
+            }
+
+            // normal character
+            current.push_back(c);
+
+        continue_loop:; // label target
+        }
+
+        // push last part
+        if (!current.empty())
+            result.push_back(current);
+
+        return result;
+    }
+
+    static std::vector<std::string> TopLevelSplit(
+        const std::string& input,
+        vector<char> delimiter
+    ) {
+        std::vector<std::string> result;
+        std::unordered_map<char, int> depth;
+
+        for (auto& b : BracketPairs) {
+            depth[b.first] = 0;  // track open brackets
+        }
+
+        std::string current;
+
+        for (char c : input) {
+            // check opens
+            for (auto& b : BracketPairs) {
+                if (c == b.first) {
+                    depth[b.first]++;
+                    current.push_back(c);
+                    goto continue_loop;
+                }
+            }
+
+            // check closes
+            for (auto& b : BracketPairs) {
+                if (c == b.second) {
+                    depth[b.first]--;
+                    current.push_back(c);
+                    goto continue_loop;
+                }
+            }
+
+            // check delimiter at top-level
+            {
+                bool topLevel = true;
+                for (auto& b : BracketPairs) {
+                    if (depth[b.first] > 0) {
+                        topLevel = false;
+                        break;
+                    }
+                }
+
+                if (topLevel && (find(delimiter.begin(), delimiter.end(), c) != delimiter.end())) {
                     result.push_back(current);
                     current.clear();
                     goto continue_loop;
@@ -257,5 +319,20 @@ public:
 
         return parts;
     }
-};
 
+    static bool IsWrappedByParens(const std::string& s, const char& begin, const char& end) {
+        if (s.size() < 2 || s.front() != begin || s.back() != end)
+            return false;
+
+        int depth = 0;
+        for (size_t i = 0; i < s.size(); ++i) {
+            if (s[i] == begin) depth++;
+            else if (s[i] == end) {
+                depth--;
+                if (depth == 0 && i != s.size() - 1)
+                    return false;
+            }
+        }
+        return depth == 0;
+    };
+};
