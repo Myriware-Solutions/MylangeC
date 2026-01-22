@@ -169,7 +169,36 @@ vector<Rule> rules = {
         regex(R"(for\s*\((.*)\)\s*do\s*(.*))"),
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
 			CommandLineInterface::DebugPrint("Interpreting for loop: " + m[0].str());
-
+            // Get the iter variable to loop over
+            auto iter = mi.ParseParameter(scopeId, m[1].str());
+            string loop_id = scopeId + ".for";
+            if (!iter.has_value()) throw runtime_error("Cannot use undefined value for looping.");
+            auto& ie = get<unique_ptr<LanIterableEngine>>(iter.value()->Value);
+            CommandLineInterface::DebugPrint("This iter has " + to_string(ie->Values.size()) + " value");
+            for (auto& valueVariant : ie->Values) {
+                // Create the parameters as variables inside the loop
+                visit([&](const auto& value) {
+                    using T = decay_t<decltype(value)>;
+                    if constexpr (is_same_v<T, vector<unique_ptr<LanVariable>>>) {
+                        auto& value_vector = get<vector<unique_ptr<LanVariable>>>(valueVariant);
+                        for (int i = 0; i < value_vector.size(); i++) {
+                            auto& value = value_vector[i];
+                            if (!value->IsCompatable(ie->Keys[i].second)) throw runtime_error("Type expected and given mismatch.");
+                            mi.MemBook.BookVariable(loop_id, ie->Keys[i].first, move(value));
+                        }
+                    }
+                    else if constexpr (is_same_v<T, unique_ptr<LanVariable>>) {
+                        auto& value = get<unique_ptr<LanVariable>>(valueVariant);
+                        //CommandLineInterface::DebugPrint("Running loop with '" + ie->Keys[0].first + "' set as: " + value->ToString());
+                        if (!value->IsCompatable(ie->Keys[0].second)) throw runtime_error("Type expected and given mismatch.");
+                        mi.MemBook.BookVariable(loop_id, ie->Keys[0].first, move(value));
+                    };
+                    
+                    }, valueVariant);
+                // Run the logic of the loop.
+                mi.InterpretBlock(loop_id, m[2].str());
+                mi.MemBook.ClearScope(loop_id);
+            }
 
             return nullopt;
         }

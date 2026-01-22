@@ -25,6 +25,4 @@ public:
 	bool IsUnpackingIter;
 
 	LanIterableEngine(std::vector<std::pair<std::string,LanType>> keys, std::unique_ptr < LanVariable > matrixVar);
-
-	bool GetIterable(vector<unordered_map<string, unique_ptr<LanVariable>>>& vectorOut);
 };
