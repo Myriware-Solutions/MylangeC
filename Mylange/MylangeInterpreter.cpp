@@ -155,13 +155,16 @@ vector<Rule> rules = {
                     if (conditionEval.has_value() && ((conditionEval.value()->Type.BaseType & LanTypeEnum::TypeBool) == LanTypeEnum::TypeBool)
                         && get<bool>(conditionEval.value()->Value))
                     {
-						return mi.InterpretBlock(scopeId + ".if", match[2].str());
+						mi.InterpretBlock(scopeId + ".if", match[2].str());
+                        return nullopt;
                     }
                 }
                 else {
-					return mi.InterpretBlock(scopeId + ".if", part);
+					mi.InterpretBlock(scopeId + ".if", part);
+                    return nullopt;
                 }
             }
+            return nullopt;
         }
     },
     // For loop
@@ -200,6 +203,22 @@ vector<Rule> rules = {
                 mi.MemBook.ClearScope(loop_id);
             }
 
+            return nullopt;
+        }
+    },
+    // While loop
+    {
+        regex(R"(^while\s*\((.*)\)\s*do\s*(.*))"),
+        [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
+            while (true) {
+                auto condition_var = mi.ParseParameter(scopeId, m[1].str());
+                if (!condition_var.has_value()) throw runtime_error("Cannot use undefined in while loop.");
+                if (condition_var.value()->Type != LanType(LanTypeEnum::TypeBool))
+                    throw runtime_error("Must use boolean statement in while loop. Got " + condition_var.value()->Type.ToString());
+                if (!get<bool>(condition_var.value()->Value)) break;
+                mi.InterpretBlock(scopeId + ".while", m[2].str());
+                mi.MemBook.ClearScope(scopeId + ".while");
+            }
             return nullopt;
         }
     }
