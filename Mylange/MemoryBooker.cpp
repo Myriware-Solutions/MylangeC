@@ -138,7 +138,8 @@ bool MemoryBooker::GetLiteralVariable(const string& scopeId, const string& name,
 	{
 		//CommandLineInterface::DebugPrint("Variable " + fullId + " exists with value " + this->Variables[fullId].ToString());
 		//*var = move(this->Variables[fullId]);
-		var = make_unique<LanVariable>(this->Variables[fullId].Type, move(this->Variables[fullId].Value));
+		//var = make_unique<LanVariable>(this->Variables[fullId].Type, move(this->Variables[fullId].Value));
+		var = this->Variables[fullId].Clone();
 		return true;
 	}
 	else

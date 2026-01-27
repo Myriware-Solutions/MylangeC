@@ -7,8 +7,6 @@ class LanIterableEngine;
 
 #include "LanType.h"
 
-using namespace std;
-
 class LanVariable
 {
 public:
@@ -17,7 +15,7 @@ public:
 		int,
 		char,
 		string,
-		vector<unique_ptr<LanVariable>> ,
+		std::vector<std::unique_ptr<LanVariable>> ,
 		//unordered_map<string, unique_ptr<LanVariable>>,
 		std::unique_ptr<LanIterableEngine>
 	>;
@@ -37,11 +35,13 @@ public:
 		this->Value = {};
 	};
 
+	std::unique_ptr<LanVariable> Clone() const;
+
 	LanVariable(LanType type, LanValue&& value)
 		: Type(std::move(type)),
 		Value(std::move(value)) { };
 
-	string ToString() const;
+	std::string ToString() const;
 
 	static bool IsCompatable(const LanType& type, const LanVariable& var);
 	
