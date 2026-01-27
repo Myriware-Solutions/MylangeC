@@ -16,7 +16,7 @@ class MylangeInterpreter
 public:
 	MylangeInterpreter();
 	optional<unique_ptr<LanVariable>> Interpret(const string& scopeId, const string& code);
-	optional<unique_ptr<LanVariable>> InterpretBlock(const string& scopeId, const string& block);
+	optional<unique_ptr<LanVariable>> InterpretBlock(const string& scopeId, const string& block, const bool SkipClearing = false);
 	optional<unique_ptr<LanVariable>> ParseParameter(const string& scopeId, const string& rawParamStr);
 	bool RandomTypeConversion(const string& scopeId, const string& value, unique_ptr<LanVariable>& var);
 	optional<unique_ptr<LanVariable>> RandomTypeConversion(const string& scopeId, const string& value);

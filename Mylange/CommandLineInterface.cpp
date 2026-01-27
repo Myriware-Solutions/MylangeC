@@ -38,10 +38,13 @@ void CommandLineInterface::RunCLI() {
 
 		try
 		{
-			mi.InterpretBlock("global", input_line);
+			auto res = mi.InterpretBlock("global", input_line, true);
+			if (res.has_value()) {
+				std::cout << "<< (" << res.value()->Type.ToString() << ")" << res.value()->ToString();
+			}
 		}
 		catch (const exception& e) {
-			cout << "[ERROR] " << e.what() << endl;
+			std::cout << "[ERROR] " << e.what() << endl;
 		}
 		
 

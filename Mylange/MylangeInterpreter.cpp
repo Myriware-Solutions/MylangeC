@@ -212,7 +212,6 @@ vector<Rule> rules = {
                     }, valueVariant);
                 // Run the logic of the loop.
                 mi.InterpretBlock(loop_id, m[2].str());
-                mi.MemBook.ClearScope(loop_id);
             }
 
             return nullopt;
@@ -229,7 +228,6 @@ vector<Rule> rules = {
                     throw runtime_error("Must use boolean statement in while loop. Got " + condition_var.value()->Type.ToString());
                 if (!get<bool>(condition_var.value()->Value)) break;
                 mi.InterpretBlock(scopeId + ".while", m[2].str());
-                mi.MemBook.ClearScope(scopeId + ".while");
             }
             return nullopt;
         }
@@ -309,7 +307,7 @@ static string CondenseBlocks(
     return output;
 }
 
-optional<unique_ptr<LanVariable>> MylangeInterpreter::InterpretBlock(const string& scopeId, const string& blockString)
+optional<unique_ptr<LanVariable>> MylangeInterpreter::InterpretBlock(const string& scopeId, const string& blockString, const bool SkipClearing)
 {
     // Cache stuff
 
@@ -335,6 +333,8 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::InterpretBlock(const strin
             return res;
         }
     }
+    if (!SkipClearing)
+        this->MemBook.ClearScope(scopeId);
     return nullopt;
 }
 

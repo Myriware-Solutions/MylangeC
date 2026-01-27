@@ -11,6 +11,7 @@
 #include "LanType.h"
 #include "LanFunction.h"
 #include "LanIterableEngine.h"
+#include "MylangeInterpreter.h"
 
 bool IncludableFunctions::GetIncludableFunction(
     const std::string& name,
@@ -124,7 +125,30 @@ static bool InitIncludableFunctions()
                    const std::vector<std::unique_ptr<LanVariable>>& args)
                    -> std::optional<std::unique_ptr<LanVariable>>
                 {
-                    std::cout << scopeId << endl;
+                    std::cout << "[" << scopeId << "]" << endl;
+                    return nullopt;
+                }
+            }
+        )
+    );
+
+    IncludableFunctions::Functions.emplace(
+        "VariableDump",
+        std::make_unique<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "VariableDump",
+            std::map<std::string, LanType>{ },
+            BuiltinFunction::CoreBuiltingLogic{
+                [](const std::string& scopeId,
+                   MylangeInterpreter& mi,
+                   const std::vector<std::unique_ptr<LanVariable>>& args)
+                   -> std::optional<std::unique_ptr<LanVariable>>
+                {
+                    std::cout << "[c:" << scopeId << "]" << endl;
+                    for (auto& y : mi.MemBook.Variables) {
+                        std::cout << "    [" << y.first << "] (" << y.second.Type.ToString() << ") " << y.second.ToString() << std::endl;
+                    }
+                    std::cout << "[end sum]" <<  std::endl;
                     return nullopt;
                 }
             }
@@ -175,7 +199,7 @@ static bool InitIncludableFunctions()
                     std::cout << caron;
                     string userInput;
                     std::getline(std::cin, userInput);
-
+                    
                     return std::make_optional(
                         std::make_unique<LanVariable>(
                             LanType(LanTypeEnum::TypeString),
