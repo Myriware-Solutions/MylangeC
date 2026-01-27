@@ -89,6 +89,16 @@ string LanVariable::ToString() const
 		result += "]";
 		return result;
 	}
+	case LanTypeEnum::TypeSet:
+	{
+		string result = "(";
+		const auto& set = get<unordered_map<string, unique_ptr<LanVariable>>>(this->Value);
+		for (auto& pair : set) {
+			if (result.length() > 1) result += ", ";
+			result += pair.first + " => " + pair.second->ToString();
+		}
+		return result + ")";
+	}
 	default:
 		return "<unrepresentable value>";
 	}

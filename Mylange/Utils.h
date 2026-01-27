@@ -166,6 +166,78 @@ public:
         return result;
     }
 
+    static std::vector<std::string> TopLevelSplitStringDep(
+        const std::string& input,
+        const std::string& delimiter
+    ) {
+        std::vector<std::string> result;
+        std::unordered_map<char, int> depth;
+
+        for (auto& b : BracketPairs) {
+            depth[b.first] = 0;
+        }
+
+        std::string current;
+        size_t i = 0;
+
+        while (i < input.size()) {
+            char c = input[i];
+
+            // check opens
+            for (auto& b : BracketPairs) {
+                if (c == b.first) {
+                    depth[b.first]++;
+                    current.push_back(c);
+                    ++i;
+                    goto continue_loop;
+                }
+            }
+
+            // check closes
+            for (auto& b : BracketPairs) {
+                if (c == b.second) {
+                    depth[b.first]--;
+                    current.push_back(c);
+                    ++i;
+                    goto continue_loop;
+                }
+            }
+
+            // check delimiter at top level
+            {
+                bool topLevel = true;
+                for (auto& b : BracketPairs) {
+                    if (depth[b.first] > 0) {
+                        topLevel = false;
+                        break;
+                    }
+                }
+
+                if (topLevel &&
+                    !delimiter.empty() &&
+                    input.compare(i, delimiter.size(), delimiter) == 0)
+                {
+                    result.push_back(current);
+                    current.clear();
+                    i += delimiter.size();
+                    goto continue_loop;
+                }
+            }
+
+            // normal character
+            current.push_back(c);
+            ++i;
+
+        continue_loop:;
+        }
+
+        if (!current.empty())
+            result.push_back(current);
+
+        return result;
+    }
+
+
     static std::vector<std::string> TopLevelSplit(
         const std::string& input,
         vector<char> delimiter
@@ -228,7 +300,7 @@ public:
         return result;
     }
 
-    std::vector<std::string> TopLevelSplit(
+    static std::vector<std::string> TopLevelSplit(
         const std::string& input,
         const std::string& delimiter,
         bool requireWordBoundary = false

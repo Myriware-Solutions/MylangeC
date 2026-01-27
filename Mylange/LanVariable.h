@@ -6,6 +6,10 @@
 class LanIterableEngine;
 
 #include "LanType.h"
+#include <memory>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 class LanVariable
 {
@@ -16,7 +20,7 @@ public:
 		char,
 		string,
 		std::vector<std::unique_ptr<LanVariable>> ,
-		//unordered_map<string, unique_ptr<LanVariable>>,
+		unordered_map<string, unique_ptr<LanVariable>>,
 		std::unique_ptr<LanIterableEngine>
 	>;
 

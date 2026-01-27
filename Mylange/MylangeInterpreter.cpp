@@ -474,7 +474,27 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::RandomTypeConversion(const
         );
     }
     // set
+    else if (regex_match(trimmedValue, regex(R"(^\((?:\s*\w+\s*=>.*)\))"))) {
+        CommandLineInterface::DebugPrint("Found set: " + trimmedValue);
+        vector<string> elementStrings = Utils::TopLevelSplit(
+            trimmedValue.substr(1, trimmedValue.length() - 2), ','
+        );
+        unordered_map<string, unique_ptr<LanVariable>> set_map;
+        for (auto& part : elementStrings) {
+            vector<string> parts = Utils::TopLevelSplit(part, "=>");
+            if (parts.size() != 2) throw runtime_error("Cannot have mulitple => in set.");
+            string name = Utils::TrimString(parts[0]);
+            auto value = this->ParseParameter(scopeId, Utils::TrimString(parts[1]));
+            if (value.has_value())
+                set_map.emplace(name, move(value.value()));
+            else throw runtime_error("Could not parse value for set.");
+        }
 
+        return make_unique<LanVariable>(
+            LanType(LanTypeEnum::TypeSet),
+            LanVariable::LanValue{ move(set_map) }
+        );
+    }   
     // casting
 
     // Iterable
