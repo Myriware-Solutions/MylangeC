@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
         if (arg == "--debug") CommandLineInterface::DebugEnabled = true;
     }
 
-    if (argc == 2 && !std::regex_match(argv[1], valid_arg_pattern)) {
+    if (argc > 1 && !std::regex_match(argv[1], valid_arg_pattern)) {
 		FileInterface::InterpretFile(argv[1]);
     }
     else {

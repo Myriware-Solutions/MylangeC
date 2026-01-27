@@ -499,15 +499,18 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::RandomTypeConversion(const
 
     // Iterable
     else if (regex_match(trimmedValue, matchedMatch, LanIterableEngine::RegexMatch)) {
+        CommandLineInterface::DebugPrint("Found iter: " + trimmedValue);
         bool unpacking_type = false;
         vector<pair<string, LanType>> keys;
         if (Utils::IsWrappedByParens(Utils::TrimString(matchedMatch[1]), '[', ']')) {
+            CommandLineInterface::DebugPrint("Upacking type detected: '" + matchedMatch[1].str() + "'");
             unpacking_type = true;
-            string bare_elements = Utils::TrimString(matchedMatch[1]);
+            string bare_elements = Utils::TrimString(matchedMatch[1].str());
             bare_elements = bare_elements.substr(1, bare_elements.length() - 2);
             for (auto& bare_ele : Utils::TopLevelSplit(bare_elements, ',')) {
                 smatch key_parts;
-                regex_match(bare_ele, key_parts, paramStringPattern);
+                regex_search(bare_ele, key_parts, paramStringPattern);
+                CommandLineInterface::DebugPrint(key_parts[3].str() + " :: " + key_parts[2].str());
                 keys.push_back({key_parts[3].str(), LanType::FromString(key_parts[2].str())});
             }
         }
@@ -524,7 +527,7 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::RandomTypeConversion(const
                 LanVariable::LanValue{ make_unique<LanIterableEngine>(keys, move(matrix_value.value())) }
             );
         }
-        else throw runtime_error("Tryed to obtain a null value for Iterable."); 
+        else throw runtime_error("Tried to obtain a null value for Iterable."); 
     }
     // unknown
     else return nullopt;
