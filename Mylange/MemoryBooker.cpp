@@ -21,8 +21,19 @@ void MemoryBooker::BookVariable(const string& scopeId, const string& name, const
 {
 	CommandLineInterface::DebugPrint("Booking Variable " + scopeId + ":" + name + " with " + variable->ToString());
 	string fullId = scopeId + ":" + name;
-	//this->Variables[fullId] = variable;
+	if (this->Variables.find(fullId) != this->Variables.end()) 
+		throw runtime_error("Cannot declare variable of same name.");
 	this->Variables.emplace(fullId, move(*variable));
+}
+
+void MemoryBooker::RebookVariable(const string& scopeId, const string& name, const unique_ptr<LanVariable> variable)
+{
+	string fullId = scopeId + ":" + name;
+	if (variable->Type != this->Variables[fullId].Type) throw runtime_error("Trying to reset variable with incorrect type.");
+	auto it = this->Variables.find(fullId);
+	if (it != this->Variables.end())
+		it->second = move(*variable);
+	else throw runtime_error("Could not find reference to variable to reset.");
 }
 
 void MemoryBooker::RemoveVariable(const string& scopeId, const string& name)

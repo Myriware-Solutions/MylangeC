@@ -14,6 +14,7 @@ public:
 	MemoryBooker();
 	// Variables
 	void BookVariable(const string& scopeId, const string& name, const unique_ptr<LanVariable> variable);
+	void RebookVariable(const string& scopeId, const string& name, const unique_ptr<LanVariable> variable);
 	void RemoveVariable(const string& scopeId, const string& name);
 	bool GetVariable(const string& scopeId, const string& name, unique_ptr<LanVariable>& var);
 	// Functions

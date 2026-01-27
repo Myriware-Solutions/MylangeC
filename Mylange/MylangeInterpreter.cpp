@@ -90,6 +90,18 @@ vector<Rule> rules = {
             return nullopt;
         }
     },
+    // Reset variable
+    {
+        regex(R"(^\s*(\w+) *=> *(.*))"),
+        [](auto const& m, MylangeInterpreter& mi, const string& scopeId) { 
+            string name = m[1].str();
+            auto new_value = mi.ParseParameter(scopeId, m[2].str());
+            if (new_value.has_value())
+                mi.MemBook.RebookVariable(scopeId, name, move(new_value.value()));
+            else throw runtime_error("Missing value in reset.");
+            return nullopt;
+        }
+    },
     // Do Block
     {
         regex(R"(^do\s+(.*))"),
