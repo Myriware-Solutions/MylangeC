@@ -80,9 +80,9 @@ public:
         );
     }
 
-    static string MakeHexCode(size_t id) {
+    static string MakeHexCode(string prefix, size_t id) {
         ostringstream oss;
-        oss << "0x" << uppercase << hex
+        oss << prefix << uppercase << hex
             << setw(3) << setfill('0') << id;
         return oss.str();
     }

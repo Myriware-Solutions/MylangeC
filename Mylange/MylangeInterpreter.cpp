@@ -253,6 +253,81 @@ optional <unique_ptr< LanVariable >> MylangeInterpreter::Interpret(const string 
     return nullopt;
 }
 
+
+using EscapeMap = std::unordered_map<std::string, char>;
+
+EscapeMap escapes = {
+    { "\\\"", '"'  },
+    { "\\'",  '\'' },
+    { "\\n",  '\n' },
+    { "\\t",  '\t' }
+};
+
+static std::string CondenseQuotedBlocks(
+    const std::string& input,
+    char quote,
+    const std::string& prefix,
+    std::unordered_map<std::string, std::string>* map,
+    size_t& counter,
+    const EscapeMap& escapeMap = escapes
+) {
+    std::string output;
+    size_t i = 0;
+
+    while (i < input.size()) {
+        if (input[i] == quote) {
+            size_t start = i + 1;
+            size_t j = start;
+            std::string inner;
+
+            while (j < input.size()) {
+                // Handle escape sequences
+                if (input[j] == '\\' && j + 1 < input.size()) {
+                    std::string esc = input.substr(j, 2);
+
+                    auto it = escapeMap.find(esc);
+                    if (it != escapeMap.end()) {
+                        inner += it->second;
+                        j += 2;
+                        continue;
+                    }
+
+                    // Unknown escape  keep literal char
+                    inner += input[j + 1];
+                    j += 2;
+                    continue;
+                }
+
+                // Closing quote
+                if (input[j] == quote) {
+                    break;
+                }
+
+                inner += input[j];
+                j++;
+            }
+
+            if (j >= input.size()) {
+                throw std::runtime_error("Unterminated quoted string");
+            }
+
+            // Generate replacement code
+            std::string code = Utils::MakeHexCode(prefix, counter++);
+            (*map)[code] = inner;
+
+            output += code;
+            i = j + 1; // skip closing quote
+        }
+        else {
+            output += input[i];
+            i++;
+        }
+    }
+
+    return output;
+}
+
+
 static string CondenseBlocks(
     const std::string& input,
     char open,
@@ -290,7 +365,7 @@ static string CondenseBlocks(
             );
 
             // Generate code and store mapping
-            std::string code = Utils::MakeHexCode(counter++);
+            std::string code = Utils::MakeHexCode("0x", counter++);
             (*map)[code] = inner;
 
             // Replace block with code
@@ -311,8 +386,10 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::InterpretBlock(const strin
 {
     // Cache stuff
 
-    std::string condensed_block = CondenseBlocks(
-        blockString, '{', '}', &this->BlockMap, this->BlockCounter
+    std::string condensed_block = CondenseQuotedBlocks(blockString, '"', "1x", & this->BlockMap, this->BlockCounter);
+    condensed_block = CondenseQuotedBlocks(condensed_block, '\'', "2x", &this->BlockMap, this->BlockCounter);
+    condensed_block = CondenseBlocks(
+        condensed_block, '{', '}', &this->BlockMap, this->BlockCounter
     );
 
     //std::cout << "Result:\n" << condensed_block << "\n\n";
@@ -339,6 +416,7 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::InterpretBlock(const strin
 }
 
 const regex wordCharsOnly(R"(^[a-zA-Z]\w+$)", std::regex_constants::ECMAScript);
+const regex chachedBit(R"((\d)x([a-f0-9]+))");
 
 optional<unique_ptr<LanVariable>> MylangeInterpreter::ParseParameter(const string& scopeId, const string& rawParamStr)
 {
@@ -346,8 +424,23 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::ParseParameter(const strin
 	CommandLineInterface::DebugPrint("Parsing parameter: " + paramStr);
     unique_ptr<LanVariable> result;
     smatch match;
+    // Cache reference
+    if (regex_match(paramStr, match, chachedBit))
+    {
+        if (match[1].str() == "0") return move(this->InterpretBlock(scopeId, match[0].str()));
+        else if (match[1].str() == "1")
+            return make_unique<LanVariable>(
+                LanType(LanTypeEnum::TypeString), 
+                LanVariable::LanValue{ this->BlockMap[match[0].str()] }
+            );
+        else if (match[1].str() == "2")
+            return make_unique<LanVariable>(
+                LanType(LanTypeEnum::TypeChar),
+                LanVariable::LanValue{ this->BlockMap[match[0].str()].at(0) }
+            );
+    }
     // Possible variable reference (soley word chars)
-    if (regex_match(paramStr, match, wordCharsOnly))
+    else if (regex_match(paramStr, match, wordCharsOnly))
     {
         CommandLineInterface::DebugPrint("Possible variable found: " + paramStr, 1);
         if (this->MemBook.GetVariable(scopeId, paramStr, result)) {
