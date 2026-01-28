@@ -88,10 +88,20 @@ unique_ptr<LanVariable> LanArithmetic::ApplyOperator(
             return make_unique<LanVariable>(LanType(LanTypeEnum::TypeString), result);
         }
     }
-    if (op == "<") make_unique<LanVariable>(*lhs < *rhs);
-	if (op == ">") make_unique<LanVariable>(*lhs > *rhs);
-	if (op == "<=") make_unique<LanVariable>(*lhs <= *rhs);
-	if (op == ">=") make_unique<LanVariable>(*lhs >= *rhs);
+    if (op == "<") return make_unique<LanVariable>(*lhs < *rhs);
+	if (op == ">") return make_unique<LanVariable>(*lhs > *rhs);
+	if (op == "<=") return make_unique<LanVariable>(*lhs <= *rhs);
+	if (op == ">=") return make_unique<LanVariable>(*lhs >= *rhs);
+    if (op == "&&" || op == "and")
+        return make_unique<LanVariable>(
+            LanType(LanTypeEnum::TypeBool),
+            LanVariable::LanValue{ *lhs && *rhs }
+        );
+    if (op == "||" || op == "or")
+        return make_unique<LanVariable>(
+            LanType(LanTypeEnum::TypeBool),
+            LanVariable::LanValue{ *lhs || *rhs }
+        );
 
     throw std::runtime_error("Unknown operator: " + op);
 }

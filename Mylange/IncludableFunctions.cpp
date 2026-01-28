@@ -133,6 +133,31 @@ static bool InitIncludableFunctions()
     );
 
     IncludableFunctions::Functions.emplace(
+        "typeof(any)",
+        std::make_unique<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "typeof",
+            std::map<std::string, LanType>{
+                { "object", LanType(LanTypeEnum::TypeAny)}
+            },
+            BuiltinFunction::CoreBuiltingLogic{
+                [](const std::string& scopeId,
+                   MylangeInterpreter& mi,
+                   const std::vector<std::unique_ptr<LanVariable>>& args)
+                   -> std::optional<std::unique_ptr<LanVariable>>
+                {
+                        return std::make_optional(
+                        std::make_unique<LanVariable>(
+                            LanType(LanTypeEnum::TypeString),
+                            LanVariable::LanValue{ args[0]->Type.ToString() }
+                        )
+                    );
+                }
+            }
+        )
+    );
+
+    IncludableFunctions::Functions.emplace(
         "VariableDump",
         std::make_unique<BuiltinFunction>(
             LanType(LanTypeEnum::TypeNil),

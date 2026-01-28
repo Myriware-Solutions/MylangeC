@@ -336,3 +336,29 @@ LanVariable LanVariable::operator>=(const LanVariable& other) const
 			+ this->Type.ToString() + " >= " + other.Type.ToString());
 	}
 }
+
+bool LanVariable::operator&&(const LanVariable& other) const
+{
+	if ((this->Type.BaseType & LanTypeEnum::TypeBool) == LanTypeEnum::TypeBool &&
+		(other.Type.BaseType & LanTypeEnum::TypeBool) == LanTypeEnum::TypeBool) {
+		return (get<bool>(this->Value)) && (get<bool>(other.Value));
+	}
+	else
+	{
+		throw runtime_error("Unsupported types for and comparison: "
+			+ this->Type.ToString() + " && " + other.Type.ToString());
+	}
+}
+
+bool LanVariable::operator||(const LanVariable& other) const
+{
+	if ((this->Type.BaseType & LanTypeEnum::TypeBool) == LanTypeEnum::TypeBool &&
+		(other.Type.BaseType & LanTypeEnum::TypeBool) == LanTypeEnum::TypeBool) {
+		return (get<bool>(this->Value)) || (get<bool>(other.Value));
+	}
+	else
+	{
+		throw runtime_error("Unsupported types for or comparison: "
+			+ this->Type.ToString() + " || " + other.Type.ToString());
+	}
+}

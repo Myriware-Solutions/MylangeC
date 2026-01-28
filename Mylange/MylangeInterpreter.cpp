@@ -156,8 +156,9 @@ vector<Rule> rules = {
     {
         ifElseThenPattern,
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
-			auto parts = Utils::SplitString(m[2], "else");
+			auto parts = Utils::SplitString(m[0], "else");
 			for (auto& part : parts) {
+                CommandLineInterface::DebugPrint("Running If/Else/Then line: " + part);
                 part = Utils::TrimString(part);
                 smatch match;
                 if (regex_match(part, match, ifElseThenPattern))
@@ -394,9 +395,9 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::InterpretBlock(const strin
 
     //std::cout << "Result:\n" << condensed_block << "\n\n";
     //std::cout << "Map contents:\n";
-    for (const auto& [k, v] : this->BlockMap) {
+    /*for (const auto& [k, v] : this->BlockMap) {
         CommandLineInterface::DebugPrint(k + " -> [" + v + "]");
-    }
+    }*/
 
     // Split into lines
     vector<string> lines = Utils::SplitString(condensed_block, ';');

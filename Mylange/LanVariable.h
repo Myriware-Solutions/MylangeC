@@ -64,4 +64,6 @@ public:
 	LanVariable operator<=(const LanVariable& other) const;
 	LanVariable operator>(const LanVariable& other) const;
 	LanVariable operator>=(const LanVariable& other) const;
+	bool operator&&(const LanVariable& other) const;
+	bool operator||(const LanVariable& other) const;
 };

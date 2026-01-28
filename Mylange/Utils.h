@@ -83,7 +83,7 @@ public:
     static string MakeHexCode(string prefix, size_t id) {
         ostringstream oss;
         oss << prefix << uppercase << hex
-            << setw(3) << setfill('0') << id;
+            << setw(8) << setfill('0') << id;
         return oss.str();
     }
 

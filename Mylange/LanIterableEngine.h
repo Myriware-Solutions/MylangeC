@@ -18,7 +18,7 @@
 class LanIterableEngine {
 public:
 
-	inline static const regex RegexMatch = regex(R"((.*?)\s*\bin\b\s*(.*))");
+	inline static const regex RegexMatch = regex(R"((.*?)\s*(?:\bin\b|::)\s*(.*))");
 
 	vector< variant<vector<unique_ptr<LanVariable>>, unique_ptr<LanVariable>> > Values;
 	std::vector<std::pair<std::string, LanType>> Keys;
