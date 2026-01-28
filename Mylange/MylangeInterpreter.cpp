@@ -37,6 +37,12 @@ struct Rule {
 };
 
 vector<Rule> rules = {
+    {
+        regex(R"(^break)"),
+        [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
+            return make_unique<LanVariable>();
+        }
+    },
     // Return
     {
         regex(R"(return\s+(.*))"),
@@ -212,7 +218,8 @@ vector<Rule> rules = {
                     
                     }, valueVariant);
                 // Run the logic of the loop.
-                mi.InterpretBlock(loop_id, m[2].str());
+                auto out = mi.InterpretBlock(loop_id, m[2].str());
+                if (out.has_value()) break;
             }
 
             return nullopt;
@@ -228,7 +235,8 @@ vector<Rule> rules = {
                 if (condition_var.value()->Type != LanType(LanTypeEnum::TypeBool))
                     throw runtime_error("Must use boolean statement in while loop. Got " + condition_var.value()->Type.ToString());
                 if (!get<bool>(condition_var.value()->Value)) break;
-                mi.InterpretBlock(scopeId + ".while", m[2].str());
+                auto out = mi.InterpretBlock(scopeId + ".while", m[2].str());
+                if (out.has_value()) break;
             }
             return nullopt;
         }
