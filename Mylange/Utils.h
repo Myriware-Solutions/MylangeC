@@ -13,6 +13,29 @@ using namespace std;
 class Utils
 {
 public:
+
+    template <typename T>
+    static bool Find(const vector<T>& list, const T& item) {
+        return (std::find(list.begin(), list.end(), item) != list.end());
+    }
+
+    static std::vector<std::string> GetKeysSortedByLengthDesc(const std::unordered_map<std::string, int>& map)
+    {
+        std::vector<std::string> keys;
+        keys.reserve(map.size());
+
+        for (const auto& [key, _] : map)
+            keys.push_back(key);
+
+        std::sort(keys.begin(), keys.end(),
+            [](const std::string& a, const std::string& b) {
+                return a.size() > b.size();
+            });
+
+        return keys;
+    }
+
+
 	static string TrimString(const string& str)
 	{
 		size_t first = str.find_first_not_of(' ');
@@ -103,6 +126,34 @@ public:
     inline static const std::vector<std::pair<char, char>>& BracketPairs = {
         {'(', ')'}, {'[', ']'}, {'{', '}'}, {'<', '>'}
     };
+
+    static const bool IsOpeningBracket(char& c, vector<char> except) {
+        for (auto& pair : BracketPairs) {
+            if (c == pair.first && !Find(except, c)) return true;
+        }
+        return false;
+    }
+
+    static const bool IsOpeningBracket(char& c) {
+        for (auto& pair : BracketPairs) {
+            if (c == pair.first) return true;
+        }
+        return false;
+    }
+
+    static const bool IsClosingBracket(char& c, vector<char> except) {
+        for (auto& pair : BracketPairs) {
+            if (c == pair.second && !Find(except, c)) return true;
+        }
+        return false;
+    }
+
+    static const bool IsClosingBracket(char& c) {
+        for (auto& pair : BracketPairs) {
+            if (c == pair.second) return true;
+        }
+        return false;
+    }
 
     static std::vector<std::string> TopLevelSplit(
         const std::string& input,

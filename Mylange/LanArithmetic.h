@@ -25,12 +25,19 @@ public:
     };
 
     static const vector<string> Operators() {
-        vector<string> ops;
-        for (auto& pair : Precedence) {
-            ops.push_back(pair.first);
-        }
-        return ops;
+        return Utils::GetKeysSortedByLengthDesc(Precedence);
     };
+
+    static const vector<char> OperatorCharacters() {
+        vector<char> res;
+        for (const auto& op : Operators()) {
+            for (const char c : op) {
+                if (!Utils::Find(res, c))
+                    res.push_back(c);
+            }
+        }
+        return res;
+    }
 
     struct ExprNode {
         virtual ~ExprNode() = default;
@@ -55,7 +62,7 @@ public:
 
             auto it = mi.ParseParameter(scopeId, text);
 			if (it.has_value()) return move(it.value());
-			else throw std::runtime_error("Error in Arithmetics, unable to evaluate value: " + text);
+			else throw std::runtime_error("Error in Arithmetics, unable to evaluate value: '" + text + "'");
         }
     };
 

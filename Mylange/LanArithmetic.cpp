@@ -5,67 +5,157 @@
 #include "LanVariable.h"
 #include "LanType.h"
 #include "LanIterableEngine.h"
+#include <cctype>
+#include <stdexcept>
+#include <string>
+#include <variant>
+#include "CommandLineInterface.h"
 
-bool LanArithmetic::IsValidLogicString(const std::string& input)
+bool LanArithmetic::IsValidLogicString(const std::string& input) {
+    std::string s = Utils::TrimString(input);
+    CommandLineInterface::DebugPrint("Checking for arithmetic: " + s);
+    
+    if (s.empty()) return false;
+
+    int depth = 0;
+    int topLevelOps = 0;
+
+    const auto& ops = LanArithmetic::Operators();
+    const auto& ops_chars = LanArithmetic::OperatorCharacters();
+    /*for (const auto& op : ops) {
+        CommandLineInterface::DebugPrint("Op registered: " + op, 1);
+    }
+    for (const auto& op_c : ops_chars) {
+        string sc{ op_c };
+        CommandLineInterface::DebugPrint("Op char registered: " + sc, 1);
+    }*/
+    
+    for (size_t i = 0; i < s.size(); i++) {
+        char c = s[i];
+        string ss{ c };
+        //CommandLineInterface::DebugPrint("Char: " + ss, 1);
+        if (isspace(c)) continue;
+        
+        bool found = false;
+        if (Utils::Find(ops_chars, c)) {
+            //CommandLineInterface::DebugPrint("Found op char");
+            // Possible operator sequence
+            for (const auto& op : ops) {
+                //CommandLineInterface::DebugPrint("Checking op compat: " + op);
+                bool found_match = true;
+                for (size_t j = 0; j < op.length(); j++) {
+                    if (i + op.length() > s.length()) {
+                        //CommandLineInterface::DebugPrint("Overflow detected");
+                        found_match = false;
+                        break;
+                    }
+                    if (s[i + j] != op[j]) {
+                        //CommandLineInterface::DebugPrint("These do not match:");
+                        found_match = false;
+                        break;
+                    }
+                }
+                if (!found_match) {
+                    continue;
+                }
+                else {
+                    topLevelOps++;
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if (!found && Utils::IsOpeningBracket(c)) {
+            depth++;
+            continue;
+        }
+        else if (!found && Utils::IsClosingBracket(c)) {
+            depth--;
+            continue;
+        }
+
+        // Else, its just a charactere
+    }
+
+    //CommandLineInterface::DebugPrint("Found many top-level operators: " + to_string(topLevelOps));
+    return topLevelOps > 0;
+}
+
+
+
+bool dummy(const std::string& input)
 {
     std::string s = Utils::TrimString(input);
+    
     if (s.empty())
         return false;
 
     int parenDepth = 0;
     bool expectingValue = true;
+    bool foundTopLevelOperator = false;
+    bool inValueToken = false;
+
+    const auto& ops = LanArithmetic::Operators();
 
     for (size_t i = 0; i < s.size(); ++i)
     {
         char c = s[i];
 
-        // Track parentheses
+        if (isspace(static_cast<unsigned char>(c))) {
+            inValueToken = false;
+            continue;
+        }
+
         if (c == '(') {
+            if (!expectingValue) return false;
             parenDepth++;
-            expectingValue = true;
+            inValueToken = false;
             continue;
         }
+
         if (c == ')') {
+            if (expectingValue) return false;
             parenDepth--;
-            if (parenDepth < 0)
-                return false;
+            if (parenDepth < 0) return false;
             expectingValue = false;
+            inValueToken = false;
             continue;
         }
 
-        // Skip whitespace
-        if (isspace(c))
-            continue;
-
-        // Check operators only at top level
-        if (parenDepth == 0)
+        //  operator matching ONLY at token boundary
+        if (parenDepth == 0 && !expectingValue && !inValueToken)
         {
-            bool matchedOp = false;
-            for (const auto& op : LanArithmetic::Operators())
+            for (const auto& op : ops)
             {
                 if (s.compare(i, op.size(), op) == 0)
                 {
-                    if (expectingValue)
-                        return false; // operator where value expected
-
+                    foundTopLevelOperator = true;
                     expectingValue = true;
                     i += op.size() - 1;
-                    matchedOp = true;
-                    break;
+                    goto next_char;
                 }
             }
-            if (matchedOp)
-                continue;
         }
 
-        // Value characters
-        if (expectingValue)
+        // value token
+        if (expectingValue) {
             expectingValue = false;
+            inValueToken = true;
+            continue;
+        }
+
+        // continuation of value token
+        inValueToken = true;
+
+    next_char:
+        continue;
     }
 
-    return parenDepth == 0 && !expectingValue;
+    return parenDepth == 0
+        && !expectingValue
+        && foundTopLevelOperator;
 }
-
 
 
 unique_ptr<LanVariable> LanArithmetic::ApplyOperator(
