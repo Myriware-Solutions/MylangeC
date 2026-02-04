@@ -6,6 +6,9 @@
 #include <unordered_map>
 #include <map>
 #include <optional>
+#include <memory>
+#include <stdexcept>
+#include <utility>
 
 #include "MemoryBooker.h"
 #include "MylangeInterpreter.h"
@@ -16,9 +19,6 @@
 #include "LanArithmetic.h"
 #include "Utils.h"
 #include "LanPackages.h"
-#include <memory>
-#include <stdexcept>
-#include <utility>
 #include "LanVariable.h"
 #include "LanIterableEngine.h"
 
@@ -30,6 +30,11 @@ const regex functionCallStack(R"(^(?:\w+\.?)+(?:\w+\(.*\))+)", std::regex_consta
 const regex functionDotExtention(R"((\)\.))", std::regex_constants::ECMAScript);
 const regex ifElseThenPattern(R"(^if\s*\((.*?)\)\s*then\s*(.*))", std::regex_constants::ECMAScript);
 const regex paramStringPattern(R"((?:(const)\s+)?([\w<|,>]+)\s+(\w+))", std::regex_constants::ECMAScript);
+const regex functionMethodDeclaration(R"(^((?:@?\w+\s+)+)?def\s+(\w+)\s+(\w+)\s*\((.*)\)\s*as\s*(.*))", std::regex_constants::ECMAScript);
+const regex classDeclarationPatter(R"(^class\s+(\w+)\s+(?:extends\s+(\w+))?\s*has\s*(.*))", std::regex_constants::ECMAScript);
+const regex wordCharsOnly(R"(^[a-zA-Z]\w+$)", std::regex_constants::ECMAScript);
+const regex cachedBit(R"((\d)x([a-fA-F0-9]+))", std::regex_constants::ECMAScript);
+
 
 struct Rule {
     regex pattern;
@@ -131,24 +136,44 @@ vector<Rule> rules = {
             return res;
         }
     },
+    // Class
+    {
+        classDeclarationPatter,
+        [](auto const& m, MylangeInterpreter& mi, const string& scopeId) -> std::optional<std::unique_ptr<LanVariable>> {
+       
+            // Determine body
+            smatch match;
+            string body = (regex_match(m[3].str(), cachedBit)) ? mi.BlockMap[m[3].str()] : m[3].str();
+
+			CommandLineInterface::DebugPrint("Parsing class: " + m[1].str() + " / Extends: " + m[2].str());
+
+			auto lines = Utils::TopLevelSplit(body, ';');
+            for (auto& rawLine : lines) {
+				string line = Utils::TrimString(rawLine);
+				if (line.empty()) continue;
+                CommandLineInterface::DebugPrint("Parsing class line: " + line);
+            }
+
+            return nullopt;
+        }
+    },
     // Functions
     {
-        regex(R"(^def\s+(\w+)\s+(\w+)\s*\((.*)\)\s*as\s*(.*))"),
+        functionMethodDeclaration,
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
             /*cout << "RType:" << m[1] << endl << "Name:" << m[2] << endl
                 << "ParamStr:" << m[3] << endl << "Logic:" << m[4] << endl;*/
             // Settup params
             map<string, LanType> parameter_map;
-            for (const auto& param_str : Utils::TopLevelSplit(m[3], ','))
+            for (const auto& param_str : Utils::TopLevelSplit(m[4], ','))
             {
                 auto parts = Utils::TopLevelSplit(Utils::TrimString(param_str), ' ');
                 if (parts.size() != 2) throw runtime_error("Each param must have 2 parts. Found " + to_string(parts.size()));
                 parameter_map[parts[1]] = LanType::FromString(parts[0]);
             }
-            const LanType return_type = LanType::FromString(m[1]);
-            //unique_ptr<LanFunction> function = make_unique<LanFunction>(return_type, m[2].str(), parameter_map, m[4].str());
+            const LanType return_type = LanType::FromString(m[2]);
             unique_ptr<LanFunction> function =
-                make_unique<ScriptFunction>(return_type, m[2].str(), parameter_map, m[4].str());
+                make_unique<ScriptFunction>(return_type, m[3].str(), parameter_map, m[5].str());
             mi.MemBook.BookFunction(scopeId, move(function));
             return nullopt;
         }
@@ -262,11 +287,12 @@ MylangeInterpreter::MylangeInterpreter()
 
 
 
-optional <unique_ptr< LanVariable >> MylangeInterpreter::Interpret(const string & scopeId, const string & code)
+optional<unique_ptr<LanVariable>> MylangeInterpreter::Interpret(const string & scopeId, const string & code)
 {
     smatch match;
+    string clean_code = Utils::TrimString(code);
     for (const auto& rule : rules) {
-        if (regex_search(code, match, rule.pattern)) {
+        if (regex_search(clean_code, match, rule.pattern)) {
             auto res = rule.action(match, *this, scopeId);
             if (res.has_value())
                 CommandLineInterface::DebugPrint("Line looker returned: " + res.value()->Type.ToString() + " / " + res.value()->ToString() + " from " + code);
@@ -439,8 +465,7 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::InterpretBlock(const strin
     return nullopt;
 }
 
-const regex wordCharsOnly(R"(^[a-zA-Z]\w+$)", std::regex_constants::ECMAScript);
-const regex chachedBit(R"((\d)x([a-fA-F0-9]+))");
+
 
 const std::vector<std::string> protectedWords = {
     "true", "false"
@@ -453,7 +478,7 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::ParseParameter(const strin
     unique_ptr<LanVariable> result;
     smatch match;
     // Cache reference
-    if (regex_match(paramStr, match, chachedBit))
+    if (regex_match(paramStr, match, cachedBit))
     {
         CommandLineInterface::DebugPrint("Found cached something.");
         if (match[1].str() == "0") return move(this->InterpretBlock(scopeId, match[0].str()));

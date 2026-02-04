@@ -25,7 +25,7 @@ int FileInterface::InterpretFile(const string& filePath)
     // Remove all comments
 	fileContent = std::regex_replace(fileContent, single_line_comment_pattern, "");
 	fileContent = std::regex_replace(fileContent, multi_line_comment_pattern, "");
-	fileContent = std::regex_replace(fileContent, newline_whitespace_pattern, "");
+	fileContent = std::regex_replace(fileContent, newline_whitespace_pattern, " ");
 
 	// cout << "Content without comments:\n" << fileContent << std::endl;
 
