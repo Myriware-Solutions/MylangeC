@@ -95,5 +95,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="todo" />
+    <None Include="example.myl" />
   </ItemGroup>
 </Project>

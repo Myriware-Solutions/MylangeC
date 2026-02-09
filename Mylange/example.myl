@@ -1,0 +1,95 @@
+#include<io>;
+#include<std>;
+
+
+class Person has {
+
+    public def String Name() as {
+        io.print("Name called from Person");
+    };
+
+};
+
+class Friend extends Person has {
+
+    @override
+    public def String Name() as {
+        io.print("Name called from Friend");
+    };
+
+};
+
+
+return 0;
+
+bool Running => true;
+
+while (Running) do {
+    set ExampleSet => (
+        name=>io.input("Name > "), 
+        age=>std.to_int(io.input("Age > "))
+    );
+
+    for ([string key, any value] in ExampleSet) do {
+        io.print("Key: " .. key .. " / value: (" .. std.typeof(value) .. ")" .. std.to_string(value));
+        if (key == "name" && value == "Anthony") then {
+            io.print("Hello, dup.");
+        };
+    };
+
+    if (io.input("cont  [y/n]> ") == "n") then Running => false;
+};
+
+return 0;
+
+
+//return 0;
+do {
+    int number => 1 + 1;
+    io.print("Number: " .. std.to_string(number));
+    std.VariableDump();
+};
+
+std.VariableDump();
+
+str Input => io.input("Enter int: ");
+int number => std.to_int(Input);
+
+if (number > 10) then io.print("Condition is true")
+else if ((number < 10) && (number > 5)) then {
+    io.print("Condition is medium");
+} else io.print("Condition is false");
+
+//any loop_var => int num in [1, 2, 3, 4, 5, 6, 7];
+
+array<int> Numbers => [1, 2, 3, 4, 5, 6, 7];
+
+for (int num in Numbers) do {
+    io.print(num);
+};
+
+io.print(Numbers);
+
+while ((io.input("cont? > ")) == "cont") do {
+    io.print("You chose to continue");
+};
+
+
+string Name => "Anthony Smith";
+
+io.print("My name is " .. Name);
+
+Name => "Smith";
+
+io.print("Your name is " .. Name);
+
+std.VariableDump();
+
+// str name => input("Enter your name: ");
+
+// do {
+//     print("Hello world!");
+//     print(name); 
+// };
+
+// print("Goodbye!");
