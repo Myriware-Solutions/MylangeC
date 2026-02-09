@@ -48,6 +48,9 @@
     <ClCompile Include="LanType.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="LanClass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommandLineInterface.h">
@@ -84,6 +87,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="LanIterableEngine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LanClass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
