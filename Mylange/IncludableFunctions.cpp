@@ -133,6 +133,39 @@ static bool InitIncludableFunctions()
     );
 
     IncludableFunctions::Functions.emplace(
+        "ClassPrintout",
+        std::make_unique<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "ClassPrintout",
+            std::map<std::string, LanType>{ },
+            BuiltinFunction::CoreBuiltingLogic{
+                [](const std::string& scopeId,
+                   MylangeInterpreter& mi,
+                   const std::vector<std::unique_ptr<LanVariable>>& args)
+                   -> std::optional<std::unique_ptr<LanVariable>>
+                {
+						std::cout << "Classes in scope [" << scopeId << "]:" << endl;
+						for (const auto& [className, lanClass] : mi.MemBook.Classes) {
+							std::cout << "    " << className << std::endl;
+                            for (const auto& [methodName, methodFunc] : lanClass->Methods) {
+                                std::cout << "        " << methodName << " : " << methodFunc->GetId() << std::endl;
+							}
+                            for (const auto& [propName, propType] : lanClass->Properties) {
+                                std::cout << "        " << propName << " : " << propType.ToString() << std::endl;
+                            }
+                            for (const auto& [defaultName, defaultValue] : lanClass->DefaultValues) {
+                                std::cout << "        " << defaultName << " = " << defaultValue->ToString() << std::endl;
+							}
+                        }
+						return nullopt;
+
+
+                }
+            }
+        )
+    );
+
+    IncludableFunctions::Functions.emplace(
         "typeof(any)",
         std::make_unique<BuiltinFunction>(
             LanType(LanTypeEnum::TypeNil),

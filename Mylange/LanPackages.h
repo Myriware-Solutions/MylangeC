@@ -12,7 +12,7 @@ class LanPackages
 {
 public:
 	inline static const unordered_map<string, vector<string>> Packages = {
-		{"std", {"to_string(any)", "to_int(str)", "CurrentScope", "VariableDump", "typeof(any)"}},
+		{"std", {"to_string(any)", "to_int(str)", "CurrentScope", "ClassPrintout", "VariableDump", "typeof(any)"}},
 		{"io", {"print(any)", "input(str)"}}
 	};
 

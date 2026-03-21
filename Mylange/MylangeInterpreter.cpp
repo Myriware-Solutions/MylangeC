@@ -21,6 +21,7 @@
 #include "LanPackages.h"
 #include "LanVariable.h"
 #include "LanIterableEngine.h"
+#include "LanClass.h"
 
 
 using namespace std;
@@ -35,6 +36,11 @@ const regex classDeclarationPatter(R"(^class\s+(\w+)\s+(?:extends\s+(\w+))?\s*ha
 const regex wordCharsOnly(R"(^[a-zA-Z]\w+$)", std::regex_constants::ECMAScript);
 const regex cachedBit(R"((\d)x([a-fA-F0-9]+))", std::regex_constants::ECMAScript);
 
+// For Classes
+
+const regex classDefualtPropertyPatter(R"(^((?:@?\w+\s+)+)?\s*([a-zA-Z<>,|\s]+) +(\w+) *=> *(.*))", std::regex_constants::ECMAScript);
+const regex classPropertyPattern(R"(^((?:@?\w+\s+)+)?\s*([a-zA-Z<>,|\s]+) +(\w+))", std::regex_constants::ECMAScript);
+const std::string overrideString = std::string("@override");
 
 struct Rule {
     regex pattern;
@@ -89,19 +95,25 @@ vector<Rule> rules = {
     {
         regex(R"(^\s*([a-zA-Z<>,|\s]+) +(\w+) *=> *(.*))"),
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
-			LanType expectedType = LanType::FromString(Utils::TrimString(m[1]));
-            CommandLineInterface::DebugPrint("EXP TYPE:" + to_string(static_cast<uint32_t>(expectedType.BaseType)));
-            //auto lv = LanVariable::RandomTypeConversion(m[3]);
-			auto lv = mi.ParseParameter(scopeId, m[3]);
-            if (!lv.has_value()) 
-                throw runtime_error("Failed to parse variable value.");
-			CommandLineInterface::DebugPrint("Setting variable " + m[2].str() + " of type " + expectedType.ToString() + "/" + lv.value()->Type.ToString() + " to value " + lv.value()->ToString());
-            if (lv.value()->IsCompatable(expectedType))
-                mi.MemBook.BookVariable(scopeId, m[2], move(lv.value()));
-            else throw runtime_error("Type mismatch in variable assignment. Expected " 
-                + expectedType.ToString() + ", got " + lv.value()->Type.ToString() 
-                + " (with " + lv.value()->ToString() + ")");
-            return nullopt;
+            try {
+                LanType expectedType = LanType::FromString(Utils::TrimString(m[1]));
+                CommandLineInterface::DebugPrint("EXP TYPE:" + to_string(static_cast<uint32_t>(expectedType.BaseType)));
+                //auto lv = LanVariable::RandomTypeConversion(m[3]);
+                auto lv = mi.ParseParameter(scopeId, m[3]);
+                if (!lv.has_value())
+                    throw runtime_error("Failed to parse variable value.");
+                CommandLineInterface::DebugPrint("Setting variable " + m[2].str() + " of type " + expectedType.ToString() + "/" + lv.value()->Type.ToString() + " to value " + lv.value()->ToString());
+                if (lv.value()->IsCompatable(expectedType))
+                    mi.MemBook.BookVariable(scopeId, m[2], move(lv.value()));
+                else throw runtime_error("Type mismatch in variable assignment. Expected "
+                    + expectedType.ToString() + ", got " + lv.value()->Type.ToString()
+                    + " (with " + lv.value()->ToString() + ")");
+                return nullopt;
+            }
+            catch (exception& e) {
+				throw runtime_error("Debug");
+            }
+			
         }
     },
     // Reset variable
@@ -144,15 +156,99 @@ vector<Rule> rules = {
             // Determine body
             smatch match;
             string body = (regex_match(m[3].str(), cachedBit)) ? mi.BlockMap[m[3].str()] : m[3].str();
+			string name = m[1].str();
+			string extends = m[2].str();
 
-			CommandLineInterface::DebugPrint("Parsing class: " + m[1].str() + " / Extends: " + m[2].str());
+			CommandLineInterface::DebugPrint("Parsing class: " + name + (extends.empty()?"" : " / Extends: " + extends));
 
 			auto lines = Utils::TopLevelSplit(body, ';');
+
+            std::unordered_map<std::string, LanType> properties;
+            std::unordered_map<std::string, std::unique_ptr<LanVariable>> defaultValues;
+            std::unordered_map<std::string, std::unique_ptr<LanFunction>> methods;
+
+            if (!extends.empty()) {
+                unique_ptr<LanClass> parentClass;
+                if (mi.MemBook.GetClass(scopeId, extends, parentClass)) {
+                    CommandLineInterface::DebugPrint("Found parent class: " + extends);
+                    // Inherit properties
+                    for (const auto& [propName, propType] : parentClass->Properties) {
+                        properties[propName] = propType;
+                    }
+                    // Inherit default values
+                    for (const auto& [propName, defaultValue] : parentClass->DefaultValues) {
+                        defaultValues[propName] = defaultValue->Clone();
+                    }
+                    // Inherit methods
+                    for (const auto& [methodName, method] : parentClass->Methods) {
+                        methods[methodName] = method->Clone();
+                    }
+                }
+                else throw runtime_error("Parent class not found: " + extends);
+			}
+
             for (auto& rawLine : lines) {
 				string line = Utils::TrimString(rawLine);
 				if (line.empty()) continue;
                 CommandLineInterface::DebugPrint("Parsing class line: " + line);
+
+                if (regex_match(line, match, classDefualtPropertyPatter)) {
+                    CommandLineInterface::DebugPrint("Found default property: " + match[3].str() + " of type " + match[2].str());
+                    // Modifiers
+					vector<string> modifiers = Utils::TopLevelSplit(Utils::TrimString(match[1].str()), ' ');
+                    // Default property
+                    string property_name = match[3].str();
+                    // Check if override is needed
+                    if (((properties.find(property_name) != properties.end()) && !Utils::Find(modifiers, overrideString))
+                        || ((defaultValues.find(property_name) != defaultValues.end()) && !Utils::Find(modifiers, overrideString)))
+                        throw runtime_error("Cannot declare the same property with default without override.");
+                    LanType property_type = LanType::FromString(Utils::TrimString(match[2].str()));
+                    string default_value_str = match[4].str();
+                    auto default_value = mi.ParseParameter(scopeId, default_value_str);
+                    if (!default_value.has_value()) throw runtime_error("Failed to parse default value for class property.");
+                    if (!default_value.value()->IsCompatable(property_type)) throw runtime_error("Default value type mismatch for class property.");
+
+					defaultValues[property_name] = move(default_value.value());
+                    properties[property_name] = property_type;
+                }
+                else if (regex_match(line, match, classPropertyPattern)) {
+                    CommandLineInterface::DebugPrint("Found property: " + match[3].str() + " of type " + match[2].str());
+                    // Modifiers
+                    vector<string> modifiers = Utils::TopLevelSplit(Utils::TrimString(match[1].str()), ' ');
+                    // Regular property
+                    string property_name = match[3].str();
+                    // Check if override is needed
+                    if ((properties.find(property_name) != properties.end()) && !Utils::Find(modifiers, overrideString))
+                        throw runtime_error("Cannot declare the same property without override.");
+                    LanType property_type = LanType::FromString(Utils::TrimString(match[2].str()));
+                    //mi.MemBook.BookVariable(scopeId + "." + m[1].str(), property_name, make_unique<LanVariable>(property_type, LanVariable::LanValue{}));
+					properties[property_name] = property_type;
+                }
+				else if (regex_match(line, match, functionMethodDeclaration)) {
+                    CommandLineInterface::DebugPrint("Found method: " + match[3].str() + " of type " + match[2].str());
+                    // Modifiers
+                    vector<string> modifiers = Utils::TopLevelSplit(Utils::TrimString(match[1].str()), ' ');
+                    // Method
+                    string method_name = match[3].str();
+                    LanType return_type = LanType::FromString(Utils::TrimString(match[2].str()));
+                    map<string, LanType> parameter_map;
+                    for (const auto& param_str : Utils::TopLevelSplit(match[4], ',')) {
+                        auto parts = Utils::TopLevelSplit(Utils::TrimString(param_str), ' ');
+                        if (parts.size() != 2) throw runtime_error("Each param must have 2 parts. Found " + to_string(parts.size()));
+                        parameter_map[parts[1]] = LanType::FromString(parts[0]);
+                    }
+                    string logic = match[5].str();
+                    unique_ptr<LanFunction> method =
+                        make_unique<ScriptFunction>(return_type, method_name, parameter_map, logic);
+                    // Check if override is needed
+                    if ((methods.find(method->GetId()) != methods.end()) && !Utils::Find(modifiers, overrideString))
+                        throw runtime_error("Cannot declare the same method without override.");
+					methods[method->GetId()] = move(method);
+                }
+				else throw runtime_error("Invalid class body line: " + line);
             }
+
+			mi.MemBook.BookClass(scopeId, make_unique<LanClass>(name, properties, defaultValues, methods));
 
             return nullopt;
         }

@@ -4,7 +4,10 @@
 
 class Person has {
 
-    public def String Name() as {
+    public str Property;
+    public str DefualtedProperty => "something";
+
+    public def str Name() as {
         io.print("Name called from Person");
     };
 
@@ -12,13 +15,18 @@ class Person has {
 
 class Friend extends Person has {
 
+    @override public str DefualtedProperty => "something else";
+
     @override
-    public def String Name() as {
+    public def str Name() as {
         io.print("Name called from Friend");
     };
 
 };
 
+std.ClassPrintout();
+
+//Person anthony => new Person();
 
 return 0;
 

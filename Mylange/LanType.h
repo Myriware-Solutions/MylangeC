@@ -94,6 +94,7 @@ public:
 
 	LanTypeEnum BaseType;
 	optional<vector<LanType>> Archetype;
+	std::string CustomClassName;
 
 	LanType() {
 		this->BaseType = LanTypeEnum::None;
@@ -106,6 +107,11 @@ public:
 	LanType(LanTypeEnum baseType, vector<LanType> archetype) {
 		this->BaseType = baseType;
 		this->Archetype = archetype;
+	}
+	LanType(string customClassName) {
+		this->BaseType = LanTypeEnum::TypeCasting;
+		this->CustomClassName = customClassName;
+		this->Archetype = nullopt;
 	}
 
 	bool IsArrayType() const {
