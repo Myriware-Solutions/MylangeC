@@ -1,5 +1,6 @@
 #include "LanVariable.h"
 #include "LanIterableEngine.h"
+#include "LanClass.h"
 
 std::unique_ptr<LanVariable> LanVariable::Clone() const
 {
@@ -48,6 +49,10 @@ std::unique_ptr<LanVariable> LanVariable::Clone() const
 					result.emplace(k, v ? v->Clone() : nullptr);
 
 				return result;
+			}
+			else if constexpr (std::is_same_v<T, std::unique_ptr<LanCasting>>)
+			{
+				return move(val->Clone());
 			}
 			else
 			{

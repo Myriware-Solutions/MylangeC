@@ -30,35 +30,6 @@ unordered_map<string, unique_ptr<LanFunction>> IncludableFunctions::Functions;
 
 static bool InitIncludableFunctions()
 {
-    /*
-    
-    IncludableFunctions::Functions.emplace(
-        "to_int(str)",
-        std::make_unique<BuiltinFunction>(
-            LanType(LanTypeEnum::TypeNil),
-            "to_int",
-            std::map<std::string, LanType>{
-                { "int_in", LanType(LanTypeEnum::TypeString) }
-    },
-            BuiltinFunction::CoreBuiltingLogic{
-                [](const std::string& scopeId,
-                   MylangeInterpreter& mi,
-                   const std::vector<std::unique_ptr<LanVariable>>& args)
-                   -> std::optional<std::unique_ptr<LanVariable>>
-                {
-                    return std::make_optional(
-                        std::make_unique<LanVariable>(
-                            LanType(LanTypeEnum::TypeInt),
-                            LanVariable::LanValue{ std::stoi(args[0]->ToString()) }
-                        )
-                    );
-                }
-            }
-        )
-    );
-    
-    */
-
 
 //
 // standard PACKAGE
@@ -269,32 +240,6 @@ static bool InitIncludableFunctions()
         )
     );
 
-
-    /*
-
-//
-// io PACKAGE
-//
-
-    IncludableFunctions::Functions.emplace(
-        "input(str)",
-        std::make_unique<BuiltinFunction>(
-            LanType(LanTypeEnum::TypeNil),
-            "input",
-            map<string, LanType>{{ "prompt", LanType(LanTypeEnum::TypeString) }},
-            [](const string& scopeId, MylangeInterpreter& mi, const vector<unique_ptr<LanVariable>> args) {
-				string caron = args.size() > 0 ? args[0]->ToString() : "";
-                std::cout << caron;
-                string userInput;
-                std::getline(std::cin, userInput);
-                return make_unique<LanVariable>(
-                    LanType(LanTypeEnum::TypeString),
-                    LanVariable::LanValue{ userInput }
-                );
-            }
-        )
-    );
-    */
     return true;
 }
 

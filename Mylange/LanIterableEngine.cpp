@@ -9,6 +9,8 @@
 #include "LanIterableEngine.h"
 #include "LanVariable.h"
 #include "LanType.h"
+#include "LanClass.h"
+
 
 LanIterableEngine::LanIterableEngine(std::vector<std::pair<std::string, LanType>> keys, 
 	std::unique_ptr<LanVariable> matrixVar)

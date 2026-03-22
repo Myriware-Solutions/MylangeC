@@ -40,6 +40,16 @@ public:
 		id += ")";
 		return id;
 	}
+	static string GetId(const string& name, const vector<unique_ptr<LanVariable>>& parameters) {
+		string id = name + "(";
+		bool first = true;
+		for (const auto& param : parameters) {
+			id += (first ? "" : ",") + param->Type.ToString();
+			if (first) first = false;
+		}
+		id += ")";
+		return id;
+	}
 
 	virtual optional<unique_ptr<LanVariable>> Execute(const string& scopeId, MylangeInterpreter& mi, 
 		const vector<unique_ptr<LanVariable>>& args) = 0;

@@ -8,6 +8,8 @@
 #include <vector>
 
 class LanIterableEngine;
+class LanClass;
+class LanCasting;
 
 #include "LanType.h"
 
@@ -15,14 +17,15 @@ class LanIterableEngine;
 class LanVariable
 {
 public:
-	using LanValue = variant<
+	using LanValue = std::variant<
 		bool,
 		int,
 		char,
-		string,
+		std::string,
 		std::vector<std::unique_ptr<LanVariable>> ,
-		unordered_map<string, unique_ptr<LanVariable>>,
-		std::unique_ptr<LanIterableEngine>
+		std::unordered_map<std::string, std::unique_ptr<LanVariable>>,
+		std::unique_ptr<LanIterableEngine>,
+		std::unique_ptr<LanCasting>
 	>;
 
 	LanType Type;

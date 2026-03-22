@@ -4,6 +4,10 @@
 
 class Person has {
 
+    public def nil Person(int age) as {
+        io.print("Constructor called" .. age);
+    };
+
     public str Property;
     public str DefualtedProperty => "something";
 
@@ -26,7 +30,9 @@ class Friend extends Person has {
 
 std.ClassPrintout();
 
-//Person anthony => new Person();
+Person anthony => new Person(3);
+
+anthony.Name();
 
 return 0;
 

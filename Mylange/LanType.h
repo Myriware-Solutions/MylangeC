@@ -12,6 +12,8 @@
 
 using namespace std;
 
+class LanClass;
+
 #include "Utils.h"
 #include "CommandLineInterface.h"
 
@@ -94,7 +96,7 @@ public:
 
 	LanTypeEnum BaseType;
 	optional<vector<LanType>> Archetype;
-	std::string CustomClassName;
+	shared_ptr<LanClass> CustomClass;
 
 	LanType() {
 		this->BaseType = LanTypeEnum::None;
@@ -108,11 +110,8 @@ public:
 		this->BaseType = baseType;
 		this->Archetype = archetype;
 	}
-	LanType(string customClassName) {
-		this->BaseType = LanTypeEnum::TypeCasting;
-		this->CustomClassName = customClassName;
-		this->Archetype = nullopt;
-	}
+
+	LanType(shared_ptr<LanClass> customClass);
 
 	bool IsArrayType() const {
 		return (this->BaseType & LanTypeEnum::TypeArray) == LanTypeEnum::TypeArray;

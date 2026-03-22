@@ -5,8 +5,9 @@
 #include <vector>
 #include <memory>
 
-#include "LanVariable.h"
+#include "LanIterableEngine.h"
 #include "LanType.h"
+#include "LanVariable.h"
 #include "LanFunction.h"
 
 /// <summary>
@@ -24,9 +25,7 @@ public:
 	LanClass() {};
 
 	// Clone function for deep copying
-	std::unique_ptr<LanClass> Clone() const {
-		return std::make_unique<LanClass>(Name, Properties, DefaultValues, Methods);
-	}
+	std::unique_ptr<LanClass> Clone() const;
 
 	LanClass(
 		const std::string& name,
@@ -61,5 +60,18 @@ public:
 			Properties[propName] = propValue->Clone();
 		}
 	}
+
+	// Function to clone this casting (deep copy)
+	std::unique_ptr<LanCasting> Clone() const {
+		auto clonedCasting = std::make_unique<LanCasting>(this->ClassInfo);
+		// Deep copy properties
+		for (const auto& [propName, propValue] : this->Properties) {
+			clonedCasting->Properties[propName] = propValue->Clone();
+		}
+		return clonedCasting;
+	}
+
+	optional<unique_ptr<LanVariable>> RunMethod(MylangeInterpreter& mi, const string& scopeId,
+		const std::string& methodName, const std::vector<std::unique_ptr<LanVariable>>& args) const;
 };
 

@@ -40,6 +40,7 @@ const regex cachedBit(R"((\d)x([a-fA-F0-9]+))", std::regex_constants::ECMAScript
 
 const regex classDefualtPropertyPatter(R"(^((?:@?\w+\s+)+)?\s*([a-zA-Z<>,|\s]+) +(\w+) *=> *(.*))", std::regex_constants::ECMAScript);
 const regex classPropertyPattern(R"(^((?:@?\w+\s+)+)?\s*([a-zA-Z<>,|\s]+) +(\w+))", std::regex_constants::ECMAScript);
+const regex castingCreationPattern(R"(^new\s+([\w]+)\((.*)\))", std::regex_constants::ECMAScript);
 const std::string overrideString = std::string("@override");
 
 struct Rule {
@@ -95,24 +96,31 @@ vector<Rule> rules = {
     {
         regex(R"(^\s*([a-zA-Z<>,|\s]+) +(\w+) *=> *(.*))"),
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
+            LanType expectedType;
             try {
-                LanType expectedType = LanType::FromString(Utils::TrimString(m[1]));
-                CommandLineInterface::DebugPrint("EXP TYPE:" + to_string(static_cast<uint32_t>(expectedType.BaseType)));
-                //auto lv = LanVariable::RandomTypeConversion(m[3]);
-                auto lv = mi.ParseParameter(scopeId, m[3]);
-                if (!lv.has_value())
-                    throw runtime_error("Failed to parse variable value.");
-                CommandLineInterface::DebugPrint("Setting variable " + m[2].str() + " of type " + expectedType.ToString() + "/" + lv.value()->Type.ToString() + " to value " + lv.value()->ToString());
-                if (lv.value()->IsCompatable(expectedType))
-                    mi.MemBook.BookVariable(scopeId, m[2], move(lv.value()));
-                else throw runtime_error("Type mismatch in variable assignment. Expected "
-                    + expectedType.ToString() + ", got " + lv.value()->Type.ToString()
-                    + " (with " + lv.value()->ToString() + ")");
-                return nullopt;
+                expectedType = LanType::FromString(Utils::TrimString(m[1]));
             }
-            catch (exception& e) {
-				throw runtime_error("Debug");
+            catch (exception& _) {
+				unique_ptr<LanClass> customClass;
+                if (mi.MemBook.GetClass(scopeId, Utils::TrimString(m[1]), customClass)) {
+					expectedType = LanType(move(customClass));
+                }
+                else
+				throw runtime_error("Cannot resolve type: " + Utils::TrimString(m[1]));
             }
+
+
+            CommandLineInterface::DebugPrint("EXP TYPE:" + to_string(static_cast<uint32_t>(expectedType.BaseType)));
+            auto lv = mi.ParseParameter(scopeId, m[3]);
+            if (!lv.has_value())
+                throw runtime_error("Failed to parse variable value.");
+            CommandLineInterface::DebugPrint("Setting variable " + m[2].str() + " of type " + expectedType.ToString() + "/" + lv.value()->Type.ToString() + " to value " + lv.value()->ToString());
+            if (lv.value()->IsCompatable(expectedType))
+                mi.MemBook.BookVariable(scopeId, m[2], move(lv.value()));
+            else throw runtime_error("Type mismatch in variable assignment. Expected "
+                + expectedType.ToString() + ", got " + lv.value()->Type.ToString()
+                + " (with " + lv.value()->ToString() + ")");
+            return nullopt;
 			
         }
     },
@@ -140,11 +148,11 @@ vector<Rule> rules = {
     },
     // Cached Block
     {
-        regex(R"(^(0x[a-f0-9]+))"),
+        regex(R"(^0x([a-fA-F0-9]+))"),
         [](auto const& m, MylangeInterpreter& mi, const string& scopeId) {
-            CommandLineInterface::DebugPrint("Found cached block: " + m[1].str());
-            string cached_block = mi.BlockMap[m[1]];
-            auto res = mi.InterpretBlock(scopeId + "." + m[1].str(), cached_block);
+            CommandLineInterface::DebugPrint("Found cached block: " + m[0].str());
+            string cached_block = mi.BlockMap[m[0]];
+            auto res = mi.InterpretBlock(scopeId + "." + m[0].str(), cached_block);
             return res;
         }
     },
@@ -702,9 +710,7 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::RandomTypeConversion(const
             CommandLineInterface::DebugPrint("Array element string: " + trimmedElemStr, 1);
             optional <unique_ptr<LanVariable>> elemVar = this->ParseParameter(scopeId, trimmedElemStr);
             if (elemVar.has_value()) {
-                //ISSUE
                 elements.push_back(move(elemVar.value()));
-                //elements.push_back(LanVariable(elemVar.value()->Type, move(elemVar.value()->Value)));
             }
             else {
                 throw runtime_error("Failed to parse array element: " + trimmedElemStr);
@@ -738,7 +744,32 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::RandomTypeConversion(const
         );
     }   
     // casting
+    else if (regex_match(trimmedValue, matchedMatch, castingCreationPattern)) {
+		string target_type_str = matchedMatch[1].str();
+		string param_str = matchedMatch[2].str();
 
+        vector<unique_ptr<LanVariable>> params;
+
+		for (auto& p : Utils::TopLevelSplit(param_str, ',')) {
+            auto param = this->ParseParameter(scopeId, Utils::TrimString(p));
+            if (param.has_value())
+                params.push_back(move(param.value()));
+            else throw runtime_error("Failed to parse casting parameter: " + p);
+        }
+
+        unique_ptr<LanClass> customClass;
+        if (!this->MemBook.GetClass(scopeId, target_type_str, customClass))
+			throw runtime_error("Cannot find type for casting: " + target_type_str);
+
+		LanType target_type = LanType(customClass->Clone());
+        unique_ptr<LanCasting> casting = make_unique<LanCasting>(move(customClass));
+		casting->RunMethod(*this, scopeId, target_type_str, params); // Call the constructor
+
+        return make_unique<LanVariable>(
+            target_type,
+            LanVariable::LanValue{ move(casting) }
+		);
+    }
     // Iterable
     else if (regex_match(trimmedValue, matchedMatch, LanIterableEngine::RegexMatch)) {
         CommandLineInterface::DebugPrint("Found iter: " + trimmedValue);
@@ -775,7 +806,7 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::RandomTypeConversion(const
     else return nullopt;
 };
 
-std::vector<std::string> splitDotParenAware(const std::string& input)
+static std::vector<std::string> splitDotParenAware(const std::string& input)
 {
     std::vector<std::string> parts;
     std::string current;
@@ -854,8 +885,16 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::RunFunctionStack(const str
             vector<unique_ptr<LanVariable>> params;
             vector<LanType> param_types;
 			MakeParameters(*this, scopeId, func_match[2], params, param_types);
+			// If the previoud result is a Casting, then try to get the function from the casting's custom class
+            if (last_result.has_value() && (last_result.value()->Type.BaseType & LanTypeEnum::TypeCasting) == LanTypeEnum::TypeCasting) {
+                
+				unique_ptr<LanCasting>& casting = get<unique_ptr<LanCasting>>(last_result.value()->Value);
+
+				auto v = casting->RunMethod(*this, scopeId, func_name, params);
+				last_result = move(v);
+            }
             // Type Literal approch first.
-            if (LanFunction* func = this->MemBook.GetFunction(function_location_scope_id, func_name, param_types))
+            else if (LanFunction* func = this->MemBook.GetFunction(function_location_scope_id, func_name, param_types))
             {
                 CommandLineInterface::DebugPrint("Function " + func_name + " exists and is running...");
                 last_result = move((func)->Execute(scopeId, *this, params));

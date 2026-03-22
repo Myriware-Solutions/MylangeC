@@ -1,6 +1,16 @@
 #include "LanType.h"
 #include "LanVariable.h"
 #include "LanIterableEngine.h"
+#include "LanClass.h"
+
+LanType::LanType(shared_ptr<LanClass> customClass)
+{
+	{
+		this->BaseType = LanTypeEnum::TypeCasting;
+		this->CustomClass = customClass;
+		this->Archetype = nullopt;
+	}
+}
 
 string LanType::BaseTypeToString(LanTypeEnum flag)
 {
