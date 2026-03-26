@@ -58,6 +58,28 @@ public:
 		return LanVariable::IsCompatable(type, *this);
 	}
 
+	bool Index(int i, unique_ptr<LanVariable>& out)
+	{
+		if (this->Type.IsArrayType())
+		{
+			auto& it = get<std::vector<std::unique_ptr<LanVariable>>>(this->Value);
+			if (i < 0 || i >= it.size()) throw std::runtime_error("Array index out of bounds.");
+			out = it[i]->Clone();
+		}
+		else throw std::runtime_error("Cannot index non-array type.");
+	}
+
+	bool Index(const std::string& key, unique_ptr<LanVariable>& out)
+	{
+		if (this->Type.IsSetType())
+		{
+			auto& it = get<std::unordered_map<std::string, std::unique_ptr<LanVariable>>>(this->Value);
+			if (it.find(key) == it.end()) throw std::runtime_error("Key not found in set.");
+			out = it[key]->Clone();
+		}
+		else throw std::runtime_error("Cannot index non-set type.");
+	}
+
 	LanVariable operator+(const LanVariable& other) const;
 	LanVariable operator-(const LanVariable& other) const;
 	LanVariable operator*(const LanVariable& other) const;

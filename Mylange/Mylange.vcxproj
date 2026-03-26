@@ -157,7 +157,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="example.myl" />
-    <None Include="todo" />
+    <None Include="todo.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

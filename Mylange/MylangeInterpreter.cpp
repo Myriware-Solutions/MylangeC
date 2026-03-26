@@ -575,6 +575,10 @@ const std::vector<std::string> protectedWords = {
     "true", "false"
 };
 
+const regex fullVariablePattern(R"(([a-zA-Z]\w+)((?:(?::\w+)|(?:\[.+?\]))*))", std::regex_constants::ECMAScript);
+const regex variableExtentionPattern(R"((?::\w+)|(?:\[.+?\]))", std::regex_constants::ECMAScript);
+
+
 optional<unique_ptr<LanVariable>> MylangeInterpreter::ParseParameter(const string& scopeId, const string& rawParamStr)
 {
 	string paramStr = Utils::TrimString(rawParamStr);
@@ -596,6 +600,39 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::ParseParameter(const strin
                 LanType(LanTypeEnum::TypeChar),
                 LanVariable::LanValue{ this->BlockMap[match[0].str()].at(0) }
             );
+    }
+    // Indexed variable
+    else if (regex_match(paramStr, match, fullVariablePattern))
+    {
+		string baseName = match[1].str();
+		string extentions = match[2].str();
+
+		unique_ptr<LanVariable> baseVar;
+        if (this->MemBook.GetVariable(scopeId, baseName, baseVar)) {
+            std::sregex_iterator begin(extentions.begin(), extentions.end(), variableExtentionPattern);
+            std::sregex_iterator end;
+            for (std::sregex_iterator i = begin; i != end; ++i) {
+                std::smatch match = *i;
+				string matchStr = match.str();
+                // Colon extention
+                if (matchStr[0] == ':') {
+					string indexStr = matchStr.substr(1);
+                    baseVar->Index(indexStr, move(baseVar));
+                }
+                // Bracket extention
+                else if (matchStr[0] == '[') {
+                    string indexStr = matchStr.substr(1, matchStr.length() - 2);
+                    auto indexVarOpt = this->ParseParameter(scopeId, indexStr);
+                    if (!indexVarOpt.has_value()) throw runtime_error("Failed to parse index in variable extention.");
+					if (!indexVarOpt.value()->IsCompatable(LanType(LanTypeEnum::TypeInt)))
+                        throw runtime_error("Index in variable extention must be int. Got " + indexVarOpt.value()->Type.ToString());
+                    baseVar->Index(get<int>(baseVar->Value), move(baseVar));
+				}
+            }
+			CommandLineInterface::DebugPrint("Found variable with extentions: " + baseName + " with extentions: " + extentions + " with value" + baseVar->ToString(), 1);
+			return move(baseVar);
+        }
+		else throw runtime_error("Base variable not found: " + baseName);
     }
     // Possible variable reference (soley word chars)
     else if (regex_match(paramStr, match, wordCharsOnly) && !Utils::Find(protectedWords, paramStr))

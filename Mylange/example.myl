@@ -1,15 +1,24 @@
 #include<io>;
 #include<std>;
 
+set ExampleSet => (
+    name=>"Anthony", 
+    age=>25
+);
+
+io.print("Name: " .. ExampleSet:name);
+
+return 0;
 
 class Person has {
 
-    public def nil Person(int age) as {
-        io.print("Constructor called" .. age);
-    };
-
     public str Property;
     public str DefualtedProperty => "something";
+
+    public def nil Person(int age, str something) as {
+        io.print("Constructor called" .. age);
+        this:Property => something;
+    };
 
     public def str Name() as {
         io.print("Name called from Person");
@@ -30,7 +39,7 @@ class Friend extends Person has {
 
 std.ClassPrintout();
 
-Person anthony => new Person(3);
+Person anthony => new Person(3, "Something");
 
 anthony.Name();
 

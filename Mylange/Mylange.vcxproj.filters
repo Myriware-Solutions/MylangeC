@@ -94,7 +94,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="todo" />
     <None Include="example.myl" />
+    <None Include="todo.md" />
   </ItemGroup>
 </Project>
