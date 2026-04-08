@@ -58,7 +58,7 @@ public:
 		return LanVariable::IsCompatable(type, *this);
 	}
 
-	bool Index(int i, unique_ptr<LanVariable>& out)
+	bool Index(int& i, unique_ptr<LanVariable>&& out)
 	{
 		if (this->Type.IsArrayType())
 		{
@@ -69,7 +69,7 @@ public:
 		else throw std::runtime_error("Cannot index non-array type.");
 	}
 
-	bool Index(const std::string& key, unique_ptr<LanVariable>& out)
+	bool Index(const std::string& key, unique_ptr<LanVariable>&& out)
 	{
 		if (this->Type.IsSetType())
 		{

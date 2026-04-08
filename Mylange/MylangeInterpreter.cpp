@@ -624,9 +624,12 @@ optional<unique_ptr<LanVariable>> MylangeInterpreter::ParseParameter(const strin
                     string indexStr = matchStr.substr(1, matchStr.length() - 2);
                     auto indexVarOpt = this->ParseParameter(scopeId, indexStr);
                     if (!indexVarOpt.has_value()) throw runtime_error("Failed to parse index in variable extention.");
-					if (!indexVarOpt.value()->IsCompatable(LanType(LanTypeEnum::TypeInt)))
-                        throw runtime_error("Index in variable extention must be int. Got " + indexVarOpt.value()->Type.ToString());
-                    baseVar->Index(get<int>(baseVar->Value), move(baseVar));
+
+                    if (indexVarOpt.value()->IsCompatable(LanType(LanTypeEnum::TypeInt))) {
+                        baseVar->Index(get<int>(indexVarOpt.value()->Value), move(baseVar));
+                    } else if (indexVarOpt.value()->IsCompatable(LanType(LanTypeEnum::TypeString))) {
+                        baseVar->Index(get<string>(indexVarOpt.value()->Value), move(baseVar));
+					} else throw runtime_error("Index in variable extention must be int or str. Got " + indexVarOpt.value()->Type.ToString());
 				}
             }
 			CommandLineInterface::DebugPrint("Found variable with extentions: " + baseName + " with extentions: " + extentions + " with value" + baseVar->ToString(), 1);

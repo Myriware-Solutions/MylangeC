@@ -6,7 +6,11 @@ set ExampleSet => (
     age=>25
 );
 
-io.print("Name: " .. ExampleSet:name);
+arr ExampleArray => [1, 2, 3, 4, 5];
+
+str Index => "name";
+
+io.print("Name: " .. ExampleSet[Index] .. ExampleArray[2]);
 
 return 0;
 
