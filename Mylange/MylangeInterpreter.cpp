@@ -9,19 +9,24 @@
 #include <memory>
 #include <stdexcept>
 #include <utility>
+#include <algorithm>
+#include <cstdint>
+#include <exception>
+#include <type_traits>
+#include <variant>
 
 #include "MemoryBooker.h"
 #include "MylangeInterpreter.h"
 #include "CommandLineInterface.h"
-#include "IncludableFunctions.h"
 #include "LanType.h"
 #include "LanFunction.h"
 #include "LanArithmetic.h"
 #include "Utils.h"
-#include "LanPackages.h"
 #include "LanVariable.h"
 #include "LanIterableEngine.h"
 #include "LanClass.h"
+#include "builtin.h"
+
 
 
 using namespace std;
@@ -74,21 +79,14 @@ vector<Rule> rules = {
 			string package_name = m[1].str();
 			CommandLineInterface::DebugPrint("Including package: " + package_name);
 
-            unique_ptr<vector<string>> package_functions;
-            if (LanPackages::HasPackage(package_name, package_functions)) {
-				mi.ImportedPackages.push_back(package_name);
-                for (auto& func_name : *package_functions) {
-                    unique_ptr<LanFunction> func;
-                    if (IncludableFunctions::GetIncludableFunction(func_name, func))
-                    {
-                        CommandLineInterface::DebugPrint("Included package function: " + func_name + " : " + (func)->GetId(), 1);
-						//string func_scope_id = scopeId + "." + package_name;
-                        mi.MemBook.BookFunction(package_name, std::move(func));
-                    }
-                    else throw runtime_error("Package Function not found: " + func_name);
-                }
+            if (MasterFunctionRegistry::PackageRegistrations.contains(package_name)) {
+                auto& funct = MasterFunctionRegistry::PackageRegistrations[package_name];
+				funct(mi.RegisteredFunctions);
             }
-            else throw runtime_error("Package not found: " + package_name);
+            else {
+				CommandLineInterface::DebugPrint("Package not found: " + package_name);
+            }
+
             return nullopt;
         }
     },
@@ -100,13 +98,13 @@ vector<Rule> rules = {
             try {
                 expectedType = LanType::FromString(Utils::TrimString(m[1]));
             }
-            catch (exception& _) {
+            catch (exception& e) {
 				unique_ptr<LanClass> customClass;
                 if (mi.MemBook.GetClass(scopeId, Utils::TrimString(m[1]), customClass)) {
 					expectedType = LanType(move(customClass));
                 }
                 else
-				throw runtime_error("Cannot resolve type: " + Utils::TrimString(m[1]));
+				throw runtime_error("Cannot resolve type: " + Utils::TrimString(m[1]) + " : " + e.what());
             }
 
 
@@ -387,6 +385,7 @@ vector<Rule> rules = {
 MylangeInterpreter::MylangeInterpreter()
 {
     this->BlockCounter = 1;
+	this->RegisteredFunctions = make_unique<MasterFunctionTree>();
 };
 
 

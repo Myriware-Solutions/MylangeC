@@ -1,5 +1,6 @@
-#include<io>;
 #include<std>;
+#include<io>;
+
 
 set ExampleSet => (
     name=>"Anthony", 
@@ -11,8 +12,6 @@ arr ExampleArray => [1, 2, 3, 4, 5];
 str Index => "name";
 
 io.print("Name: " .. ExampleSet[Index] .. ExampleArray[2]);
-
-return 0;
 
 class Person has {
 
@@ -48,6 +47,10 @@ Person anthony => new Person(3, "Something");
 anthony.Name();
 
 return 0;
+
+
+
+
 
 bool Running => true;
 

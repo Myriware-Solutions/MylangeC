@@ -8,6 +8,7 @@
 #include "LanFunction.h"
 #include "MylangeInterpreter.h"
 #include "LanIterableEngine.h"
+#include "builtin.h"
 
 
 string LanFunction::GetId() const {

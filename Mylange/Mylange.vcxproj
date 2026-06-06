@@ -127,8 +127,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="builtin_io.cpp" />
+    <ClCompile Include="builtin_std.cpp" />
     <ClCompile Include="CommandLineInterface.cpp" />
-    <ClCompile Include="IncludableFunctions.cpp" />
     <ClCompile Include="LanArithmetic.cpp" />
     <ClCompile Include="LanClass.cpp" />
     <ClCompile Include="LanFunction.cpp" />
@@ -141,13 +142,12 @@
     <ClCompile Include="MylangeInterpreter.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="builtin.h" />
     <ClInclude Include="CommandLineInterface.h" />
-    <ClInclude Include="IncludableFunctions.h" />
     <ClInclude Include="LanArithmetic.h" />
     <ClInclude Include="LanClass.h" />
     <ClInclude Include="LanFunction.h" />
     <ClInclude Include="LanIterableEngine.h" />
-    <ClInclude Include="LanPackages.h" />
     <ClInclude Include="LanType.h" />
     <ClInclude Include="LanVariable.h" />
     <ClInclude Include="MemoryBooker.h" />

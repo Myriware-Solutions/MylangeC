@@ -5,9 +5,11 @@
 #include <optional>
 
 class MemoryBooker;
+class MasterFunctionTree;
 
 #include "MemoryBooker.h"
 #include "LanVariable.h"
+#include "builtin.h"
 
 using namespace std;
 
@@ -21,7 +23,9 @@ public:
 	bool RandomTypeConversion(const string& scopeId, const string& value, unique_ptr<LanVariable>& var);
 	optional<unique_ptr<LanVariable>> RandomTypeConversion(const string& scopeId, const string& value);
 	optional<unique_ptr<LanVariable>> RunFunctionStack(const string& scopeIdRaw, const string& functionStackStr);
+	
 	MemoryBooker MemBook;
+	unique_ptr<MasterFunctionTree> RegisteredFunctions;
 	vector<string> ImportedPackages;
 	unordered_map<string, string> BlockMap;
 	size_t BlockCounter;

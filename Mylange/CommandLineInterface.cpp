@@ -5,6 +5,7 @@
 
 #include "CommandLineInterface.h"
 #include "MylangeInterpreter.h"
+#include "builtin.h"
 #include "Utils.h"
 #include "LanIterableEngine.h"
 
@@ -59,6 +60,6 @@ void CommandLineInterface::DebugPrint(const std::string& message, const int& ind
 		cout << "[DEBUG] " << indent_str << message << endl;
 	}
 	catch (const exception& e) {
-		cout << "[OUTERR] error outputting";
+		cout << "[OUTERR] error outputting: " << e.what() << endl;
 	};
 };

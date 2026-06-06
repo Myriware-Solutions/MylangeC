@@ -67,6 +67,7 @@ public:
 			out = it[i]->Clone();
 		}
 		else throw std::runtime_error("Cannot index non-array type.");
+		return false;
 	}
 
 	bool Index(const std::string& key, unique_ptr<LanVariable>&& out)
@@ -78,6 +79,7 @@ public:
 			out = it[key]->Clone();
 		}
 		else throw std::runtime_error("Cannot index non-set type.");
+		return false;
 	}
 
 	LanVariable operator+(const LanVariable& other) const;
