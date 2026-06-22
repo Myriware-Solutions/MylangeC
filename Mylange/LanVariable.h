@@ -7,6 +7,7 @@
 #include <vector>
 #include <functional>
 #include "LanType.h"
+#include "LanFunction.h"
 
 class LanIterableEngine;
 class LanCasting;
@@ -37,8 +38,9 @@ public:
         LanMap,                     // map    (was unordered_map<unique_ptr>)
         std::shared_ptr<LanIterableEngine>,
         std::shared_ptr<LanCasting>,
-        UserFunction,               // user-defined function
-        BuiltinFn                   // builtin function
+        std::shared_ptr<LanFunction>,               // user-defined function
+		std::shared_ptr<LanClass>,                  // class definition
+        //BuiltinFn                   // builtin function
     > ;
 
     LanType  Type;

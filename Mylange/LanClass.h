@@ -18,8 +18,8 @@ class LanClass
 public:
 	std::string Name;
 	std::unordered_map<std::string, LanType> Properties; // For inheritance
-	std::unordered_map<std::string, std::unique_ptr<LanVariable>> DefaultValues;
-	std::unordered_map<std::string, std::unique_ptr<LanFunction>> Methods;
+	std::unordered_map<std::string, std::shared_ptr<LanVariable>> DefaultValues;
+	std::unordered_map<std::string, std::shared_ptr<LanFunction>> Methods;
 	
 	~LanClass() = default;
 	LanClass() {};
@@ -30,13 +30,13 @@ public:
 	LanClass(
 		const std::string& name,
 		const std::unordered_map<std::string, LanType>& properties,
-		const std::unordered_map<std::string, std::unique_ptr<LanVariable>>& defaultValues,
-		const std::unordered_map<std::string, std::unique_ptr<LanFunction>>& methods)
+		const std::unordered_map<std::string, std::shared_ptr<LanVariable>>& defaultValues,
+		const std::unordered_map<std::string, std::shared_ptr<LanFunction>>& methods)
 		: Name(name), Properties(properties)
 	{
 		// Deep copy default values
 		for (const auto& [propName, propValue] : defaultValues) {
-			DefaultValues[propName] = propValue->Clone();
+			DefaultValues[propName] = propValue;
 		}
 		// Deep copy methods
 		for (const auto& [methodName, methodFunc] : methods) {
@@ -51,13 +51,13 @@ public:
 class LanCasting {
 public:
 	std::shared_ptr<LanClass> ClassInfo;
-	std::unordered_map<std::string, std::unique_ptr<LanVariable>> Properties;
+	std::unordered_map<std::string, std::shared_ptr<LanVariable>> Properties;
 	LanCasting(std::shared_ptr<LanClass> classInfo)
 		: ClassInfo(classInfo)
 	{
 		// Initialize properties with default values from the class
 		for (const auto& [propName, propValue] : classInfo->DefaultValues) {
-			Properties[propName] = propValue->Clone();
+			Properties[propName] = propValue;
 		}
 	}
 
@@ -66,7 +66,7 @@ public:
 		auto clonedCasting = std::make_unique<LanCasting>(this->ClassInfo);
 		// Deep copy properties
 		for (const auto& [propName, propValue] : this->Properties) {
-			clonedCasting->Properties[propName] = propValue->Clone();
+			clonedCasting->Properties[propName] = propValue;
 		}
 		return clonedCasting;
 	}

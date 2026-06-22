@@ -19,19 +19,19 @@ class MylangeInterpreter
 {
 public:
 	MylangeInterpreter();
-	optional<LanVariable> Interpret(const string& scopeId, const string& code);
-	optional<LanVariable> InterpretBlock(const string& scopeId, const string& block, const bool SkipClearing = false);
-	optional<LanVariable> ParseParameter(const string& scopeId, const string& rawParamStr);
-	bool RandomTypeConversion(const string& scopeId, const string& value, LanVariable& var);
-	optional<LanVariable> RandomTypeConversion(const string& scopeId, const string& value);
-	optional<LanVariable> RunFunctionStack(const string& scopeIdRaw, const string& functionStackStr);
+	optional<LanVariable> Interpret(const string& code);
+	optional<LanVariable> InterpretBlock(const string& block, const bool SkipClearing = false);
+	optional<LanVariable> ParseParameter(const string& rawParamStr);
+	bool RandomTypeConversion(const string& value, std::shared_ptr<LanVariable>& var);
+	optional<LanVariable> RandomTypeConversion(const string& value);
+	optional<LanVariable> RunFunctionStack(const string& functionStackStr);
 	struct FunctionParts {
 		string Name;
 		vector<LanVariable> Params;
 		vector<LanType> ParamTypes;
 	};
 	//FunctionParts GetFunctionParts(const std::string& scopeId, std::string& input);
-	optional<LanVariable> RunFunctionStackOld(const string& scopeIdRaw, const string& functionStackStr);
+	//optional<LanVariable> RunFunctionStackOld(const string& functionStackStr);
 	
 	//MemoryBooker MemBook;
 	//unique_ptr<MasterFunctionTree> RegisteredFunctions;

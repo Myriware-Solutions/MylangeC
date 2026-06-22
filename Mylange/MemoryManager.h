@@ -110,6 +110,15 @@ public:
         resolveScope(scopeId)->define(name, std::move(value));
     }
 
+    bool resolve(const std::string& name, std::shared_ptr<LanVariable>& out) {
+        auto var = current->resolve(name);
+        if (var) {
+            out = std::make_shared<LanVariable>(*var);
+            return true;
+        }
+        return false;
+    }
+
     // Resolve a symbol — walks up from the current scope
     LanVariable* resolve(const std::string& name) {
         return current->resolve(name);
