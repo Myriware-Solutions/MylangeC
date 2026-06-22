@@ -158,39 +158,39 @@ bool dummy(const std::string& input)
 }
 
 
-unique_ptr<LanVariable> LanArithmetic::ApplyOperator(
+LanVariable LanArithmetic::ApplyOperator(
     const std::string& op,
-    const unique_ptr<LanVariable> lhs,
-    const unique_ptr<LanVariable> rhs)
+    const LanVariable& lhs,
+    const LanVariable& rhs)
 {
-    if (op == "+") return make_unique<LanVariable>(*lhs + *rhs);
-    if (op == "-") return make_unique<LanVariable>(*lhs - *rhs);
-    if (op == "*") return make_unique<LanVariable>(*lhs * *rhs);
-    if (op == "/") return make_unique<LanVariable>(*lhs / *rhs);
-    if (op == "==") return make_unique<LanVariable>(*lhs == *rhs);
+    if (op == "+") return lhs + rhs;
+    if (op == "-") return lhs - rhs;
+    if (op == "*") return lhs * rhs;
+    if (op == "/") return lhs / rhs;
+    if (op == "==") return lhs == rhs;
     if (op == "..") {
-        if (lhs->Type == LanTypeEnum::TypeString && rhs->Type == LanTypeEnum::TypeString) {
-            return make_unique<LanVariable>(LanType(LanTypeEnum::TypeString), get<string>(lhs->Value) + get<string>(rhs->Value));
+        if (lhs.Type == LanTypeEnum::TypeString && rhs.Type == LanTypeEnum::TypeString) {
+            return LanVariable(LanType(LanTypeEnum::TypeString), get<string>(lhs.Value) + get<string>(rhs.Value));
         }
-        if (lhs->Type == LanTypeEnum::TypeString && rhs->Type == LanTypeEnum::TypeInt) {
+        if (lhs.Type == LanTypeEnum::TypeString && rhs.Type == LanTypeEnum::TypeInt) {
             string result = "";
-            for (int i = 0; i < get<int>(rhs->Value); i++) result += get<string>(lhs->Value);
-            return make_unique<LanVariable>(LanType(LanTypeEnum::TypeString), result);
+            for (int i = 0; i < get<int>(rhs.Value); i++) result += get<string>(lhs.Value);
+            return LanVariable(LanType(LanTypeEnum::TypeString), result);
         }
     }
-    if (op == "<") return make_unique<LanVariable>(*lhs < *rhs);
-	if (op == ">") return make_unique<LanVariable>(*lhs > *rhs);
-	if (op == "<=") return make_unique<LanVariable>(*lhs <= *rhs);
-	if (op == ">=") return make_unique<LanVariable>(*lhs >= *rhs);
+    if (op == "<") return lhs < rhs;
+	if (op == ">") return lhs > rhs;
+	if (op == "<=") return lhs <= rhs;
+	if (op == ">=") return lhs >= rhs;
     if (op == "&&" || op == "and")
-        return make_unique<LanVariable>(
+        return LanVariable(
             LanType(LanTypeEnum::TypeBool),
-            LanVariable::LanValue{ *lhs && *rhs }
+            LanVariable::LanValue{ lhs && rhs }
         );
     if (op == "||" || op == "or")
-        return make_unique<LanVariable>(
+        return LanVariable(
             LanType(LanTypeEnum::TypeBool),
-            LanVariable::LanValue{ *lhs || *rhs }
+            LanVariable::LanValue{ lhs || rhs }
         );
 
     throw std::runtime_error("Unknown operator: " + op);

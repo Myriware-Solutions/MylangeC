@@ -842,8 +842,9 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
 			throw runtime_error("Cannot find type for casting: " + target_type_str);
 
         LanType target_type = LanType(std::get<std::shared_ptr<LanClass>>(customClassContainer->Value));
-        unique_ptr<LanCasting> casting = make_unique<LanCasting>(std::get<std::shared_ptr<LanClass>>(customClassContainer->Value));
-		casting->RunMethod(*this, scopeId, target_type_str, params); // Call the constructor
+        shared_ptr<LanCasting> casting = make_unique<LanCasting>(std::get<std::shared_ptr<LanClass>>(customClassContainer->Value));
+		
+        casting->RunMethod(*this, target_type_str, params); // Call the constructor
 
         return LanVariable(
             target_type,
@@ -944,9 +945,9 @@ static void MakeParameters(MylangeInterpreter& mi, string paramString,
     for (const auto& param : paramsOut) paramTypesOut.push_back(param.Type);
 }
 
-optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId, const string& functionStackStr)
+optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functionStackStr)
 {
-    CommandLineInterface::DebugPrint("Executing function stack [" + scopeId + "]: " + functionStackStr);
+    CommandLineInterface::DebugPrint("Executing function stack [" + this->Memory.currentScope()->id + "]: " + functionStackStr);
 
     auto function_calls = splitDotParenAware(functionStackStr);
     bool consiteringPackage = true;
@@ -977,7 +978,7 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId
     smatch match;
     if (regex_search(hangingPath[0], match, functionPartsPattern)) {
         
-        MakeParameters(*this, scopeId, match[2].str(), init_funct_params, init_funct_param_types);
+        MakeParameters(*this, match[2].str(), init_funct_params, init_funct_param_types);
 
         init_funct_name = match[1].str();
 
@@ -988,8 +989,9 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId
 	string functionId = LanFunction::GetId(init_funct_name, init_funct_param_types);
 	CommandLineInterface::DebugPrint("Looking for function with id: " + functionId);
 
-    optional<LanVariable> last_result = make_unique<LanVariable>();
-
+    optional<std::shared_ptr<LanVariable>> last_result = std::make_shared<LanVariable>();
+    
+    /*
     if (auto l = this->RegisteredFunctions->findFunction(packagePath, functionId)) {
         // Packaged function
 		CommandLineInterface::DebugPrint("Found packaged function: " + functionId + " in package " + packagePath);
@@ -1019,7 +1021,7 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& scopeId
     for (int i = 0; i < hangingPath.size(); i++) {
 
     }
-
+    */
 	
 
     return nullopt;

@@ -1,77 +1,76 @@
+// LanClass.h
 #pragma once
-
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <optional>
 #include <memory>
-
 #include "LanIterableEngine.h"
 #include "LanType.h"
 #include "LanVariable.h"
 #include "LanFunction.h"
 
-/// <summary>
-/// Holds the information for a class, including its name, default property values, and methods.
-/// </summary>
-class LanClass
-{
+class MylangeInterpreter;
+
+// -------------------------------------------------------
+// LanClass — holds the blueprint for a class
+// -------------------------------------------------------
+class LanClass {
 public:
-	std::string Name;
-	std::unordered_map<std::string, LanType> Properties; // For inheritance
-	std::unordered_map<std::string, std::shared_ptr<LanVariable>> DefaultValues;
-	std::unordered_map<std::string, std::shared_ptr<LanFunction>> Methods;
-	
-	~LanClass() = default;
-	LanClass() {};
+    std::string                                          Name;
+    std::unordered_map<std::string, LanType>             Properties;
+    std::unordered_map<std::string, LanVariable>         DefaultValues;  // LanVariable is copyable now
+    std::unordered_map<std::string, std::shared_ptr<LanFunction>> Methods;
 
-	// Clone function for deep copying
-	std::unique_ptr<LanClass> Clone() const;
+    LanClass() = default;
+    ~LanClass() = default;
 
-	LanClass(
-		const std::string& name,
-		const std::unordered_map<std::string, LanType>& properties,
-		const std::unordered_map<std::string, std::shared_ptr<LanVariable>>& defaultValues,
-		const std::unordered_map<std::string, std::shared_ptr<LanFunction>>& methods)
-		: Name(name), Properties(properties)
-	{
-		// Deep copy default values
-		for (const auto& [propName, propValue] : defaultValues) {
-			DefaultValues[propName] = propValue;
-		}
-		// Deep copy methods
-		for (const auto& [methodName, methodFunc] : methods) {
-			Methods[methodName] = methodFunc->Clone();
-		}
-	};
+    // Copy & move — both work, no manual Clone() needed
+    LanClass(const LanClass&) = default;
+    LanClass& operator=(const LanClass&) = default;
+    LanClass(LanClass&&) = default;
+    LanClass& operator=(LanClass&&) = default;
+
+    LanClass(const std::string& name,
+        const std::unordered_map<std::string, LanType>& properties,
+        const std::unordered_map<std::string, LanVariable>& defaultValues,
+        const std::unordered_map<std::string, std::shared_ptr<LanFunction>>& methods)
+        : Name(name), Properties(properties),
+        DefaultValues(defaultValues), Methods(methods) {
+    }
 };
 
-/// <summary>
-/// Actual instance of an object, holds a reference to its class and its own property values.
-/// </summary>
+// -------------------------------------------------------
+// LanCasting — a live instance of a LanClass
+// -------------------------------------------------------
 class LanCasting {
 public:
-	std::shared_ptr<LanClass> ClassInfo;
-	std::unordered_map<std::string, std::shared_ptr<LanVariable>> Properties;
-	LanCasting(std::shared_ptr<LanClass> classInfo)
-		: ClassInfo(classInfo)
-	{
-		// Initialize properties with default values from the class
-		for (const auto& [propName, propValue] : classInfo->DefaultValues) {
-			Properties[propName] = propValue;
-		}
-	}
+    std::shared_ptr<LanClass>                    ClassInfo;
+    std::unordered_map<std::string, LanVariable> Properties;  // own copy per instance
 
-	// Function to clone this casting (deep copy)
-	std::unique_ptr<LanCasting> Clone() const {
-		auto clonedCasting = std::make_unique<LanCasting>(this->ClassInfo);
-		// Deep copy properties
-		for (const auto& [propName, propValue] : this->Properties) {
-			clonedCasting->Properties[propName] = propValue;
-		}
-		return clonedCasting;
-	}
+    LanCasting() = default;
+    ~LanCasting() = default;
 
-	optional<unique_ptr<LanVariable>> RunMethod(MylangeInterpreter& mi, const string& scopeId,
-		const std::string& methodName, const std::vector<std::unique_ptr<LanVariable>>& args) const;
+    LanCasting(const LanCasting&) = default;
+    LanCasting& operator=(const LanCasting&) = default;
+    LanCasting(LanCasting&&) = default;
+    LanCasting& operator=(LanCasting&&) = default;
+
+    explicit LanCasting(std::shared_ptr<LanClass> classInfo)
+        : ClassInfo(std::move(classInfo))
+    {
+        // Initialize instance properties from class defaults
+        for (auto& [name, value] : ClassInfo->DefaultValues)
+            Properties[name] = value;
+    }
+
+    // Run a method — scope managed by interpreter, args by value
+    std::optional<LanVariable> RunMethod(MylangeInterpreter& mi,
+        const std::string& methodName,
+        std::vector<LanVariable> args) const {
+        auto it = ClassInfo->Methods.find(methodName);
+        if (it == ClassInfo->Methods.end())
+            throw std::runtime_error("Method not found: " + methodName);
+        return it->second->Execute(mi, std::move(args));
+    }
 };
-

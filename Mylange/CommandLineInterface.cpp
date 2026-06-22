@@ -31,17 +31,17 @@ void CommandLineInterface::RunCLI() {
 
 		if (input_line == "*vars")
 		{
-			for (const auto& pair : mi.MemBook.Variables)
-			{
-				CommandLineInterface::DebugPrint(pair.first + "|" + pair.second.Type.ToString() + "|" + pair.second.ToString());
-			}
+			//for (const auto& pair : mi.MemBook.Variables)
+			//{
+			//	CommandLineInterface::DebugPrint(pair.first + "|" + pair.second.Type.ToString() + "|" + pair.second.ToString());
+			//}
 		}
 
 		try
 		{
-			auto res = mi.InterpretBlock("global", input_line, true);
+			auto res = mi.InterpretBlock(input_line, true);
 			if (res.has_value()) {
-				std::cout << "<< (" << res.value()->Type.ToString() << ")" << res.value()->ToString();
+				std::cout << "<< (" << res.value().Type.ToString() << ")" << res.value().ToString();
 			}
 		}
 		catch (const exception& e) {

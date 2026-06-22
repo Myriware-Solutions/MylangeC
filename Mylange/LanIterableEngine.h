@@ -20,9 +20,9 @@ public:
 
 	inline static const regex RegexMatch = regex(R"((.*?)\s*(?:\bin\b|::)\s*(.*))");
 
-	vector< variant<vector<unique_ptr<LanVariable>>, unique_ptr<LanVariable>> > Values;
+	vector< variant<LanArray, LanVariable> > Values;
 	std::vector<std::pair<std::string, LanType>> Keys;
 	bool IsUnpackingIter;
 
-	LanIterableEngine(std::vector<std::pair<std::string,LanType>> keys, std::unique_ptr < LanVariable > matrixVar);
+	LanIterableEngine(std::vector<std::pair<std::string,LanType>> keys, LanVariable& matrixVar);
 };

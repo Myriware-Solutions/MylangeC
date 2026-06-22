@@ -17,55 +17,6 @@
 #include "CommandLineInterface.h"
 #include "LanType.h"
 
-class BuiltinFunction : public LanFunction
-{
-public:
-
-	using CoreBuiltingLogic = function<optional<unique_ptr<LanVariable>>
-		(const string& scopeId, MylangeInterpreter& mi, const vector<unique_ptr<LanVariable>>& args) >;
-
-	unique_ptr<LanFunction> Clone() const override {
-		return std::make_unique<BuiltinFunction>(*this);
-	}
-
-	BuiltinFunction() {};
-	BuiltinFunction(const LanType& returnType, const std::string& name,
-		const map<string, LanType>& parameters, CoreBuiltingLogic coreLogic)
-		: LanFunction(returnType, name, parameters, ""), CoreLogic(coreLogic)
-	{
-	}
-
-	std::optional<std::unique_ptr<LanVariable>> Execute(
-		const std::string& scopeId,
-		MylangeInterpreter& mi,
-		const std::vector<std::unique_ptr<LanVariable>>& args
-	) override
-	{
-		CommandLineInterface::DebugPrint(
-			"Executing builtin function: " + this->Name
-		);
-
-		auto result = this->CoreLogic(scopeId, mi, args);
-
-		if (result)
-		{
-			CommandLineInterface::DebugPrint(
-				"Builtin function executed: " + result.value()->ToString()
-			);
-		}
-		else
-		{
-			CommandLineInterface::DebugPrint(
-				"Builtin function executed: <no result>"
-			);
-		}
-
-		return result;
-	}
-
-	CoreBuiltingLogic CoreLogic;
-};
-
 struct PackageNode {
 	std::unordered_map<std::string, std::unique_ptr<PackageNode>> children;
 	std::unordered_map<std::string, std::unique_ptr<LanFunction>> functions;

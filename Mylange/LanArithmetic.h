@@ -41,8 +41,7 @@ public:
 
     struct ExprNode {
         virtual ~ExprNode() = default;
-        virtual unique_ptr<LanVariable> Evaluate(MylangeInterpreter& mi,
-            const std::string& scopeId) = 0;
+        virtual LanVariable Evaluate(MylangeInterpreter& mi) = 0;
     };
 
     struct ValueNode : ExprNode {
@@ -52,16 +51,15 @@ public:
             : text(std::move(t)) {
         }
 
-        unique_ptr<LanVariable> Evaluate(MylangeInterpreter& mi,
-            const std::string& scopeId) override
+        LanVariable Evaluate(MylangeInterpreter& mi) override
         {
             // This is where YOU define meaning:
             // - literal number?
             // - variable lookup?
             // - function call?
 
-            auto it = mi.ParseParameter(scopeId, text);
-			if (it.has_value()) return move(it.value());
+            auto it = mi.ParseParameter(text);
+			if (it.has_value()) return it.value();
 			else throw std::runtime_error("Error in Arithmetics, unable to evaluate value: '" + text + "'");
         }
     };
@@ -77,22 +75,21 @@ public:
             : op(std::move(o)), left(std::move(l)), right(std::move(r)) {
         }
 
-        unique_ptr<LanVariable> Evaluate(MylangeInterpreter& mi,
-            const std::string& scopeId) override
+        LanVariable Evaluate(MylangeInterpreter& mi) override
         {
             // 1️⃣ Recursively evaluate children
-            unique_ptr<LanVariable> lhs = left->Evaluate(mi, scopeId);
-            unique_ptr<LanVariable> rhs = right->Evaluate(mi, scopeId);
+            LanVariable lhs = left->Evaluate(mi);
+            LanVariable rhs = right->Evaluate(mi);
 
             // 2️⃣ Apply operator logic
-            return ApplyOperator(op, move(lhs), move(rhs));
+            return ApplyOperator(op, lhs, rhs);
         }
     };
 
-    static unique_ptr<LanVariable> ApplyOperator(
+    static LanVariable ApplyOperator(
         const std::string& op,
-        const unique_ptr<LanVariable> lhs,
-		const unique_ptr<LanVariable> rhs);
+        const LanVariable& lhs,
+		const LanVariable& rhs);
 
     static unique_ptr<LanArithmetic::ExprNode> BuildAST(const string& expr)
     {

@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <vector>
 #include <functional>
+
+
 #include "LanType.h"
 #include "LanFunction.h"
 
@@ -113,4 +115,126 @@ public:
     struct overloaded : Ts... { using Ts::operator()...; };
     template<class... Ts>
     overloaded(Ts...) -> overloaded<Ts...>;
+};
+
+
+
+
+// -------------------------------------------------------
+// Base LanFunction
+// -------------------------------------------------------
+class LanFunction {
+public:
+    LanType                        ReturnType;
+    std::string                    Name;
+    std::map<std::string, LanType> Parameters;
+    std::string                    Logic;
+
+    LanFunction() = default;
+    virtual ~LanFunction() = default;
+
+    LanFunction(const LanType& returnType,
+        const std::string& name,
+        const std::map<std::string, LanType>& parameters,
+        const std::string& logic)
+        : ReturnType(returnType), Name(name),
+        Parameters(parameters), Logic(logic) {
+    }
+
+    LanFunction(const LanFunction&) = default;
+    LanFunction& operator=(const LanFunction&) = default;
+    LanFunction(LanFunction&&) = default;
+    LanFunction& operator=(LanFunction&&) = default;
+
+    // -------------------------------------------------------
+    // ID generation
+    // -------------------------------------------------------
+    std::string GetId() const {
+        std::vector<LanType> types;
+        for (auto& [_, type] : Parameters)
+            types.push_back(type);
+        return GetId(Name, types);
+    }
+
+    static std::string GetId(const std::string& name,
+        const std::map<std::string, LanType>& parameters) {
+        std::vector<LanType> types;
+        for (auto& [_, type] : parameters)
+            types.push_back(type);
+        return GetId(name, types);
+    }
+
+    static std::string GetId(const std::string& name,
+        const std::vector<LanType>& paramTypes) {
+        std::string id = name + "(";
+        bool first = true;
+        for (auto& type : paramTypes) {
+            if (!first) id += ",";
+            id += type.ToString();
+            first = false;
+        }
+        return id + ")";
+    }
+
+    static std::string GetId(const std::string& name,
+        const std::vector<LanVariable>& args) {
+        std::string id = name + "(";
+        bool first = true;
+        for (auto& arg : args) {
+            if (!first) id += ",";
+            id += arg.Type.ToString();
+            first = false;
+        }
+        return id + ")";
+    }
+
+    // -------------------------------------------------------
+    // Execution — scope is managed inside MylangeInterpreter
+    // -------------------------------------------------------
+    virtual std::optional<LanVariable> Execute(MylangeInterpreter& mi,
+        std::vector<LanVariable> args) = 0;
+};
+
+// -------------------------------------------------------
+// ScriptFunction — user-defined function
+// -------------------------------------------------------
+class ScriptFunction : public LanFunction {
+public:
+    ScriptFunction() = default;
+
+    ScriptFunction(const LanType& returnType,
+        const std::string& name,
+        const std::map<std::string, LanType>& parameters,
+        const std::string& logic)
+        : LanFunction(returnType, name, parameters, logic) {
+    }
+
+    std::optional<LanVariable> Execute(MylangeInterpreter& mi,
+        std::vector<LanVariable> args) override;
+};
+
+// -------------------------------------------------------
+// BuiltinFunction — C++ implemented function
+// Scope is not relevant for builtins so the interpreter
+// is also omitted from the impl signature
+// -------------------------------------------------------
+using BuiltinImpl = std::function<std::optional<LanVariable>(std::vector<LanVariable>)>;
+
+class BuiltinFunction : public LanFunction {
+    BuiltinImpl impl;
+public:
+    BuiltinFunction() = default;
+
+    BuiltinFunction(const LanType& returnType,
+        const std::string& name,
+        const std::map<std::string, LanType>& parameters,
+        BuiltinImpl impl)
+        : LanFunction(returnType, name, parameters, ""),
+        impl(std::move(impl)) {
+    }
+
+    std::optional<LanVariable> Execute(MylangeInterpreter& mi,
+        std::vector<LanVariable> args) override {
+        return impl(std::move(args));
+    }
 };
