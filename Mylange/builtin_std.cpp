@@ -154,7 +154,7 @@ std::make_unique<BuiltinFunction>(
     }
 );
 
-void MasterFunctionRegistry::register_std(std::unique_ptr<MasterFunctionTree> tree)
+void MasterFunctionRegistry::register_std(MasterFunctionTree& tree)
 {
     unique_ptr<vector<unique_ptr<BuiltinFunction>>> to_add = make_unique<vector<unique_ptr<BuiltinFunction>>>();
 	//to_add->push_back(std::move(StdToString));
@@ -164,5 +164,5 @@ void MasterFunctionRegistry::register_std(std::unique_ptr<MasterFunctionTree> tr
  //   to_add->push_back(std::move(StdTypeOf));
     to_add->push_back(std::move(StdVariableDump));
 
-    tree->addFunction("std", std::move(to_add));
+    tree.addFunction("std", std::move(to_add));
 }

@@ -4,12 +4,14 @@
 #include <vector>
 #include <optional>
 
-class MemoryBooker;
-class MasterFunctionTree;
+//class MemoryBooker;
+//class MasterFunctionTree;
+class MemoryManager;
 
 #include "MemoryBooker.h"
 #include "LanVariable.h"
 #include "builtin.h"
+#include "MemoryManager.h"
 
 using namespace std;
 
@@ -17,16 +19,23 @@ class MylangeInterpreter
 {
 public:
 	MylangeInterpreter();
-	optional<unique_ptr<LanVariable>> Interpret(const string& scopeId, const string& code);
-	optional<unique_ptr<LanVariable>> InterpretBlock(const string& scopeId, const string& block, const bool SkipClearing = false);
-	optional<unique_ptr<LanVariable>> ParseParameter(const string& scopeId, const string& rawParamStr);
-	bool RandomTypeConversion(const string& scopeId, const string& value, unique_ptr<LanVariable>& var);
-	optional<unique_ptr<LanVariable>> RandomTypeConversion(const string& scopeId, const string& value);
-	optional<unique_ptr<LanVariable>> RunFunctionStack(const string& scopeIdRaw, const string& functionStackStr);
+	optional<LanVariable> Interpret(const string& scopeId, const string& code);
+	optional<LanVariable> InterpretBlock(const string& scopeId, const string& block, const bool SkipClearing = false);
+	optional<LanVariable> ParseParameter(const string& scopeId, const string& rawParamStr);
+	bool RandomTypeConversion(const string& scopeId, const string& value, LanVariable& var);
+	optional<LanVariable> RandomTypeConversion(const string& scopeId, const string& value);
+	optional<LanVariable> RunFunctionStack(const string& scopeIdRaw, const string& functionStackStr);
+	struct FunctionParts {
+		string Name;
+		vector<LanVariable> Params;
+		vector<LanType> ParamTypes;
+	};
+	//FunctionParts GetFunctionParts(const std::string& scopeId, std::string& input);
+	optional<LanVariable> RunFunctionStackOld(const string& scopeIdRaw, const string& functionStackStr);
 	
-	MemoryBooker MemBook;
-	unique_ptr<MasterFunctionTree> RegisteredFunctions;
-	vector<string> ImportedPackages;
+	//MemoryBooker MemBook;
+	//unique_ptr<MasterFunctionTree> RegisteredFunctions;
+	ScopeManager Memory;
 	unordered_map<string, string> BlockMap;
 	size_t BlockCounter;
 	bool DebugMode = false;

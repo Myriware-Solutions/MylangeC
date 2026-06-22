@@ -35,7 +35,7 @@ int FileInterface::InterpretFile(const string& filePath)
 	try {
 		MylangeInterpreter mi = MylangeInterpreter();
 		auto result = mi.InterpretBlock("global", fileContent).value_or(make_unique<LanVariable>());
-		cout << "Program exited with value: (" + result->Type.ToString() + ") " + result->ToString();
+		cout << "Program exited with value: (" + result.Type.ToString() + ") " + result.ToString();
 	}
 	catch (const exception& e) {
 		cerr << "Error during interpretation: " << e.what() << endl;

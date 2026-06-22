@@ -66,14 +66,9 @@ public:
 	CoreBuiltingLogic CoreLogic;
 };
 
-
-
-using LanArgs = std::vector<std::unique_ptr<LanVariable>>;
-using LanReturn = std::optional<std::unique_ptr<LanVariable>>;
-
 struct PackageNode {
 	std::unordered_map<std::string, std::unique_ptr<PackageNode>> children;
-	std::unordered_map<std::string, std::unique_ptr<BuiltinFunction>> functions;
+	std::unordered_map<std::string, std::unique_ptr<LanFunction>> functions;
 };
 
 
@@ -113,6 +108,13 @@ public:
 	}
 
 	void addFunction(const std::string& packagePath,
+		unique_ptr<LanFunction> function) {
+
+		PackageNode& pkg = getOrCreatePackage(packagePath);
+		pkg.functions.emplace(function->GetId(), std::move(function));
+	}
+
+	void addFunction(const std::string& packagePath,
 		unique_ptr<BuiltinFunction> function) {
 
 		PackageNode& pkg = getOrCreatePackage(packagePath);
@@ -124,6 +126,16 @@ public:
 		for (auto& func : *functions) {
 			addFunction(packagePath, std::move(func));
 		}
+	}
+
+	LanFunction* findFunction(const std::string& packagePath, const std::string& functionId) {
+		PackageNode* pkg = findPackage(packagePath);
+		if (!pkg) return nullptr;
+		auto it = pkg->functions.find(functionId);
+		if (it == pkg->functions.end()) {
+			return nullptr;
+		}
+		return it->second.get();
 	}
 
 	void debugPrint() const {
@@ -160,16 +172,12 @@ private:
 class MasterFunctionRegistry
 {
 public:
-	static void register_std(std::unique_ptr<MasterFunctionTree> tree);
-	static void register_io(std::unique_ptr<MasterFunctionTree> tree);
+	static void register_std(MasterFunctionTree& tree);
+	static void register_io(MasterFunctionTree& tree);
 
 	inline static std::unordered_map<std::string,
-		std::function<void(std::unique_ptr<MasterFunctionTree>&)>> PackageRegistrations = {
-		{ "std", [](std::unique_ptr<MasterFunctionTree>& tree) {
-				MasterFunctionRegistry::register_std(std::move(tree)); } },
-		{ "io", [](std::unique_ptr<MasterFunctionTree>& tree) {
-				MasterFunctionRegistry::register_io(std::move(tree)); } }
+		std::function<void(MasterFunctionTree&)>> PackageRegistrations = {
+		{ "std", [](MasterFunctionTree& tree) { MasterFunctionRegistry::register_std(tree); } },
+		{ "io",  [](MasterFunctionTree& tree) { MasterFunctionRegistry::register_io(tree); } }
 	};
-
-
 };

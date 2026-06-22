@@ -35,6 +35,15 @@ public:
         return keys;
     }
 
+	static string JoinStrings(const vector<string>& strings, const string& delimiter) {
+		if (strings.empty()) return "";
+		ostringstream oss;
+		for (size_t i = 0; i < strings.size() - 1; ++i) {
+			oss << strings[i] << delimiter;
+		}
+		oss << strings.back();
+		return oss.str();
+	}
 
 	static string TrimString(const string& str)
 	{
@@ -126,6 +135,12 @@ public:
     inline static const std::vector<std::pair<char, char>>& BracketPairs = {
         {'(', ')'}, {'[', ']'}, {'{', '}'}, {'<', '>'}
     };
+
+    static const bool IsAlphanumeric(const std::string& str) {
+        return !str.empty() && std::all_of(str.begin(), str.end(), [](unsigned char c) {
+            return std::isalnum(c);
+            });
+    }
 
     static const bool IsOpeningBracket(char& c, vector<char> except) {
         for (auto& pair : BracketPairs) {

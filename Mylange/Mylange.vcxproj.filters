@@ -16,6 +16,9 @@
     <Filter Include="Builtin Functions">
       <UniqueIdentifier>{581e0103-a624-411c-805d-9c55ee8839fc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Builtin Functions\Type Functions">
+      <UniqueIdentifier>{a00f7922-9ed3-4776-b8ba-c8a13b011368}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Mylange.cpp">
@@ -57,6 +60,12 @@
     <ClCompile Include="builtin_io.cpp">
       <Filter>Builtin Functions</Filter>
     </ClCompile>
+    <ClCompile Include="TNumbers.cpp">
+      <Filter>Builtin Functions\Type Functions</Filter>
+    </ClCompile>
+    <ClCompile Include="MemoryManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommandLineInterface.h">
@@ -94,6 +103,15 @@
     </ClInclude>
     <ClInclude Include="builtin.h">
       <Filter>Builtin Functions</Filter>
+    </ClInclude>
+    <ClInclude Include="type_funct.h">
+      <Filter>Builtin Functions\Type Functions</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeFunctions.h">
+      <Filter>Builtin Functions\Type Functions</Filter>
+    </ClInclude>
+    <ClInclude Include="MemoryManager.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

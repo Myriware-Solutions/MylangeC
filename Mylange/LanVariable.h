@@ -4,94 +4,111 @@
 #include <string>
 #include <memory>
 #include <unordered_map>
-#include <utility>
 #include <vector>
-
-class LanIterableEngine;
-class LanClass;
-class LanCasting;
-
+#include <functional>
 #include "LanType.h"
 
+class LanIterableEngine;
+class LanCasting;
+class LanVariable; // forward declare for collections
 
-class LanVariable
-{
+// -- Function types --
+// Builtin: implemented in C++
+// UserFunction: defined in your language
+struct UserFunction {
+    std::vector<std::string> params;
+    // Replace with whatever your AST node type is
+    std::shared_ptr<void> body;
+};
+
+using BuiltinFn = std::function<LanVariable(std::vector<LanVariable>)>;
+using LanArray = std::vector<std::shared_ptr<LanVariable>>;
+using LanMap = std::unordered_map<std::string, std::shared_ptr<LanVariable>>;
+
+class LanVariable {
 public:
-	using LanValue = std::variant<
-		bool,
-		int,
-		char,
-		std::string,
-		std::vector<std::unique_ptr<LanVariable>> ,
-		std::unordered_map<std::string, std::unique_ptr<LanVariable>>,
-		std::unique_ptr<LanIterableEngine>,
-		std::unique_ptr<LanCasting>
-	>;
+    using LanValue = std::variant <
+        std::monostate,             // null / uninitialized
+        bool,
+        int,
+        char,
+        std::string,
+        LanArray,                   // array  (was vector<unique_ptr>)
+        LanMap,                     // map    (was unordered_map<unique_ptr>)
+        std::shared_ptr<LanIterableEngine>,
+        std::shared_ptr<LanCasting>,
+        UserFunction,               // user-defined function
+        BuiltinFn                   // builtin function
+    > ;
 
-	LanType Type;
-	LanValue Value;
+    LanType  Type;
+    LanValue Value;
 
-	LanVariable(const LanVariable&) = delete;
-	LanVariable& operator=(const LanVariable&) = delete;
+    // -- Constructors --
+    LanVariable() : Type(), Value(std::monostate{}) {}
 
-	LanVariable(LanVariable&&) = default;
-	LanVariable& operator=(LanVariable&&) = default;
+    LanVariable(LanType type, LanValue value)
+        : Type(std::move(type)), Value(std::move(value)) {
+    }
 
-	LanVariable()
-	{
-		this->Type = LanType();
-		this->Value = {};
-	};
+    // -- Copy & Move (both work now) --
+    LanVariable(const LanVariable&) = default;
+    LanVariable& operator=(const LanVariable&) = default;
+    LanVariable(LanVariable&&) = default;
+    LanVariable& operator=(LanVariable&&) = default;
 
-	std::unique_ptr<LanVariable> Clone() const;
+    // -- Type checks --
+    bool IsNull()     const { return std::holds_alternative<std::monostate>(Value); }
+    bool IsCallable() const {
+        return std::holds_alternative<UserFunction>(Value)
+            || std::holds_alternative<BuiltinFn>(Value);
+    }
 
-	LanVariable(LanType type, LanValue&& value)
-		: Type(std::move(type)),
-		Value(std::move(value)) { };
+    // -- Indexing --
+    // Returns a shared_ptr so the caller shares ownership, not a copy
+    std::shared_ptr<LanVariable> Index(int i) const {
+        if (!Type.IsArrayType())
+            throw std::runtime_error("Cannot index non-array type.");
+        auto& arr = std::get<LanArray>(Value);
+        if (i < 0 || i >= static_cast<int>(arr.size()))
+            throw std::runtime_error("Array index out of bounds.");
+        return arr[i];
+    }
 
-	std::string ToString() const;
+    std::shared_ptr<LanVariable> Index(const std::string& key) const {
+        if (!Type.IsSetType())
+            throw std::runtime_error("Cannot index non-set type.");
+        auto& map = std::get<LanMap>(Value);
+        auto it = map.find(key);
+        if (it == map.end())
+            throw std::runtime_error("Key not found in set.");
+        return it->second;
+    }
 
-	static bool IsCompatable(const LanType& type, const LanVariable& var);
-	
-	bool IsCompatable(const LanType& type) const
-	{
-		return LanVariable::IsCompatable(type, *this);
-	}
+    // -- Utilities --
+    std::string ToString() const;
+    static bool IsCompatible(const LanType& type, const LanVariable& var);
+    bool IsCompatible(const LanType& type) const {
+        return LanVariable::IsCompatible(type, *this);
+    }
 
-	bool Index(int& i, unique_ptr<LanVariable>&& out)
-	{
-		if (this->Type.IsArrayType())
-		{
-			auto& it = get<std::vector<std::unique_ptr<LanVariable>>>(this->Value);
-			if (i < 0 || i >= it.size()) throw std::runtime_error("Array index out of bounds.");
-			out = it[i]->Clone();
-		}
-		else throw std::runtime_error("Cannot index non-array type.");
-		return false;
-	}
+    // -- Operators --
+    LanVariable operator+(const LanVariable& other) const;
+    LanVariable operator-(const LanVariable& other) const;
+    LanVariable operator*(const LanVariable& other) const;
+    LanVariable operator/(const LanVariable& other) const;
+    LanVariable operator==(const LanVariable& other) const;
+    LanVariable operator!=(const LanVariable& other) const;
+    LanVariable operator<(const LanVariable& other) const;
+    LanVariable operator<=(const LanVariable& other) const;
+    LanVariable operator>(const LanVariable& other) const;
+    LanVariable operator>=(const LanVariable& other) const;
+    bool operator&&(const LanVariable& other) const;
+    bool operator||(const LanVariable& other) const;
 
-	bool Index(const std::string& key, unique_ptr<LanVariable>&& out)
-	{
-		if (this->Type.IsSetType())
-		{
-			auto& it = get<std::unordered_map<std::string, std::unique_ptr<LanVariable>>>(this->Value);
-			if (it.find(key) == it.end()) throw std::runtime_error("Key not found in set.");
-			out = it[key]->Clone();
-		}
-		else throw std::runtime_error("Cannot index non-set type.");
-		return false;
-	}
-
-	LanVariable operator+(const LanVariable& other) const;
-	LanVariable operator-(const LanVariable& other) const;
-	LanVariable operator*(const LanVariable& other) const;
-	LanVariable operator/(const LanVariable& other) const;
-	LanVariable operator==(const LanVariable& other) const;
-	LanVariable operator!=(const LanVariable& other) const;
-	LanVariable operator<(const LanVariable& other) const;
-	LanVariable operator<=(const LanVariable& other) const;
-	LanVariable operator>(const LanVariable& other) const;
-	LanVariable operator>=(const LanVariable& other) const;
-	bool operator&&(const LanVariable& other) const;
-	bool operator||(const LanVariable& other) const;
+    // Helper for std::visit
+    template<class... Ts>
+    struct overloaded : Ts... { using Ts::operator()...; };
+    template<class... Ts>
+    overloaded(Ts...) -> overloaded<Ts...>;
 };

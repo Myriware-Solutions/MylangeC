@@ -2,6 +2,17 @@
 #include<io>;
 
 
+def int main() as {
+    io.print("Hello world!");  
+};
+
+io.print("Starting program...");
+
+main();
+
+return 0;
+
+
 set ExampleSet => (
     name=>"Anthony", 
     age=>25

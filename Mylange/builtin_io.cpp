@@ -18,7 +18,7 @@ auto IoPrint = std::make_unique<BuiltinFunction>(
     LanType(LanTypeEnum::TypeNil),
     "print",
     std::map<std::string, LanType>{
-        { "printString", LanType(LanTypeEnum::TypeAny) }
+        { "printString", LanType(LanTypeEnum::TypeString) }
     },
     BuiltinFunction::CoreBuiltingLogic{
         [](const std::string& scopeId,
@@ -62,11 +62,11 @@ auto IoInput = std::make_unique<BuiltinFunction>(
     }
 );
 
-void MasterFunctionRegistry::register_io(std::unique_ptr<MasterFunctionTree> tree)
+void MasterFunctionRegistry::register_io(MasterFunctionTree& tree)
 {
     unique_ptr<vector<unique_ptr<BuiltinFunction>>> to_add = make_unique<vector<unique_ptr<BuiltinFunction>>>();
     to_add->push_back(std::move(IoPrint));
     to_add->push_back(std::move(IoInput));
 
-    tree->addFunction("io", std::move(to_add));
+    tree.addFunction("io", std::move(to_add));
 }
