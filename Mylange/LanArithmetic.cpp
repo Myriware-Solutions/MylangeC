@@ -174,7 +174,8 @@ LanVariable LanArithmetic::ApplyOperator(
         }
         if (lhs.Type == LanTypeEnum::TypeString && rhs.Type == LanTypeEnum::TypeInt) {
             string result = "";
-            for (int i = 0; i < get<int>(rhs.Value); i++) result += get<string>(lhs.Value);
+            for (int i = 0; i < std::get<int>(rhs.Value); i++)
+                result += std::get<string>(lhs.Value);
             return LanVariable(LanType(LanTypeEnum::TypeString), result);
         }
     }

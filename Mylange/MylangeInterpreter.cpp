@@ -19,13 +19,12 @@
 #include "MylangeInterpreter.h"
 #include "CommandLineInterface.h"
 #include "LanType.h"
-#include "LanFunction.h"
 #include "LanArithmetic.h"
 #include "Utils.h"
 #include "LanVariable.h"
 #include "LanIterableEngine.h"
 #include "LanClass.h"
-#include "builtin.h"
+#include "ModuleRegistry.h"
 
 
 
@@ -78,19 +77,25 @@ vector<Rule> rules = {
     {
         regex(R"(^#include\s*<(\w+)>)"),
         [](auto const& m, MylangeInterpreter& mi) {
-			//string package_name = m[1].str();
-			//CommandLineInterface::DebugPrint("Including package: " + package_name);
+            std::string moduleName = m[1].str();
 
-   //         if (MasterFunctionRegistry::PackageRegistrations.contains(package_name)) {
-   //             auto& funct = MasterFunctionRegistry::PackageRegistrations[package_name];
-			//	funct(*mi.RegisteredFunctions);
-   //         }
-   //         else {
-			//	CommandLineInterface::DebugPrint("Package not found: " + package_name);
-   //         }
+            if (mi.LoadedModules.contains(moduleName)) {
+                CommandLineInterface::DebugPrint("Module already loaded: " + moduleName);
+                return std::nullopt;
+            }
 
-			throw runtime_error("Include not implemented yet.");
-            return nullopt;
+            if (!ModuleRegistry::Has(moduleName))
+                throw std::runtime_error("Unknown module: " + moduleName);
+
+            // Push module scope to register functions into it
+            mi.Memory.pushScope(moduleName);
+            std::string moduleScopeId = mi.Memory.currentScope()->id;
+            ModuleRegistry::Load(moduleName, mi, moduleScopeId);
+            mi.Memory.popScope(true); // immediately return to the calling scope
+
+            mi.LoadedModules.insert(moduleName);
+            CommandLineInterface::DebugPrint("Loaded module: " + moduleName + " into scope: " + moduleScopeId);
+            return std::nullopt;
         }
     },
     // Set Variable
@@ -183,27 +188,28 @@ vector<Rule> rules = {
 			auto lines = Utils::TopLevelSplit(body, ';');
 
             std::unordered_map<std::string, LanType> properties;
-            std::unordered_map<std::string, std::LanVariable> defaultValues;
-            std::unordered_map<std::string, std::unique_ptr<LanFunction>> methods;
+            std::unordered_map<std::string, LanVariable> defaultValues;
+            std::unordered_map<std::string, std::shared_ptr<LanFunction>> methods;
 
             if (!extends.empty()) {
-                unique_ptr<LanClass> parentClass;
-                if (mi.MemBook.GetClass(scopeId, extends, parentClass)) {
-                    CommandLineInterface::DebugPrint("Found parent class: " + extends);
-                    // Inherit properties
-                    for (const auto& [propName, propType] : parentClass->Properties) {
-                        properties[propName] = propType;
-                    }
-                    // Inherit default values
-                    for (const auto& [propName, defaultValue] : parentClass->DefaultValues) {
-                        defaultValues[propName] = defaultValue->Clone();
-                    }
-                    // Inherit methods
-                    for (const auto& [methodName, method] : parentClass->Methods) {
-                        methods[methodName] = method->Clone();
-                    }
-                }
-                else throw runtime_error("Parent class not found: " + extends);
+                throw runtime_error("Class declaration not implemented" + extends);
+                //unique_ptr<LanClass> parentClass;
+                //if (mi.MemBook.GetClass(scopeId, extends, parentClass)) {
+                //    CommandLineInterface::DebugPrint("Found parent class: " + extends);
+                //    // Inherit properties
+                //    for (const auto& [propName, propType] : parentClass->Properties) {
+                //        properties[propName] = propType;
+                //    }
+                //    // Inherit default values
+                //    for (const auto& [propName, defaultValue] : parentClass->DefaultValues) {
+                //        defaultValues[propName] = defaultValue->Clone();
+                //    }
+                //    // Inherit methods
+                //    for (const auto& [methodName, method] : parentClass->Methods) {
+                //        methods[methodName] = method->Clone();
+                //    }
+                //}
+                //else throw runtime_error("Parent class not found: " + extends);
 			}
 
             for (auto& rawLine : lines) {
@@ -223,9 +229,9 @@ vector<Rule> rules = {
                         throw runtime_error("Cannot declare the same property with default without override.");
                     LanType property_type = LanType::FromString(Utils::TrimString(match[2].str()));
                     string default_value_str = match[4].str();
-                    auto default_value = mi.ParseParameter(scopeId, default_value_str);
+                    auto default_value = mi.ParseParameter(default_value_str);
                     if (!default_value.has_value()) throw runtime_error("Failed to parse default value for class property.");
-                    if (!default_value.value()->IsCompatable(property_type)) throw runtime_error("Default value type mismatch for class property.");
+                    if (!default_value.value().IsCompatible(property_type)) throw runtime_error("Default value type mismatch for class property.");
 
 					defaultValues[property_name] = move(default_value.value());
                     properties[property_name] = property_type;
@@ -267,7 +273,8 @@ vector<Rule> rules = {
 				else throw runtime_error("Invalid class body line: " + line);
             }
 
-			mi.MemBook.BookClass(scopeId, make_unique<LanClass>(name, properties, defaultValues, methods));
+			//mi.MemBook.BookClass(scopeId, make_unique<LanClass>(name, properties, defaultValues, methods));
+			mi.Memory.define(name, LanVariable(LanType(LanTypeEnum::TypeClass), make_shared<LanClass>(name, properties, defaultValues, methods)));
 
             return nullopt;
         }
@@ -291,7 +298,7 @@ vector<Rule> rules = {
                 make_unique<ScriptFunction>(return_type, m[3].str(), parameter_map, m[5].str());
 			CommandLineInterface::DebugPrint("[" + mi.Memory.currentScope()->id + "] Registering function : " + function->GetId() + " with return type " + return_type.ToString());
             
-			mi.Memory.define(m[3].str(), LanVariable(LanType(LanTypeEnum::TypeFunction), function));
+			mi.Memory.define(function->GetId(), LanVariable(LanType(LanTypeEnum::TypeFunction), function));
 
 			//mi.RegisteredFunctions->addFunction(scopeId, move(function));
 			//mi.RegisteredFunctions->debugPrint();
@@ -319,20 +326,24 @@ vector<Rule> rules = {
                 smatch match;
                 if (regex_match(part, match, ifElseThenPattern))
                 {
-					auto conditionEval = mi.ParseParameter(scopeId, m[1].str());
+					auto conditionEval = mi.ParseParameter(m[1].str());
 
-                    if (conditionEval.has_value() && ((conditionEval.value()->Type.BaseType & LanTypeEnum::TypeBool) == LanTypeEnum::TypeBool)
-                        && get<bool>(conditionEval.value()->Value))
+                    if (conditionEval.has_value() && ((conditionEval.value().Type.BaseType & LanTypeEnum::TypeBool) == LanTypeEnum::TypeBool)
+                        && get<bool>(conditionEval.value().Value))
                     {
-                        auto out = mi.InterpretBlock(scopeId + ".if", match[2].str());
+						mi.Memory.pushScope("if"); // Enter if scope
+                        auto out = mi.InterpretBlock(match[2].str());
+						mi.Memory.popScope(); // Exit if scope
                         if (out.has_value()) {
-                            CommandLineInterface::DebugPrint("If has return value: " + out.value()->Type.ToString());
+                            CommandLineInterface::DebugPrint("If has return value: " + out.value().Type.ToString());
                             return out;
                         }
                     }
                 }
                 else {
-                    auto out = move(mi.InterpretBlock(scopeId + ".if", part));
+					mi.Memory.pushScope("if"); // Enter if scope
+                    auto out = move(mi.InterpretBlock(part));
+					mi.Memory.popScope(); // Exit if scope
                     if (out.has_value())
                         return out;
                 }
@@ -353,30 +364,33 @@ vector<Rule> rules = {
             if (!iter.has_value()) throw runtime_error("Cannot use undefined value for looping.");
             auto& ie = std::get<std::shared_ptr<LanIterableEngine>>(iter.value().Value);
 
-            CommandLineInterface::DebugPrint("This iter has " + to_string(ie->Values.size()) + " value");
+            CommandLineInterface::DebugPrint("This iter has " + to_string(ie->Values.size()) + " value(s)");
 
             for (auto& valueVariant : ie->Values) {
+                mi.Memory.pushScope("for"); // Enter for scope
                 // Create the parameters as variables inside the loop
                 visit([&](const auto& value) {
                     using T = decay_t<decltype(value)>;
-                    if constexpr (is_same_v<T, vector<LanVariable>>) {
-                        auto& value_vector = get<vector<LanVariable>>(valueVariant);
+                    if constexpr (is_same_v<T, LanArray>) {
+                        auto& value_vector = get<LanArray>(valueVariant);
                         for (int i = 0; i < value_vector.size(); i++) {
                             auto& value = value_vector[i];
-                            if (!value->IsCompatable(ie->Keys[i].second)) throw runtime_error("Type expected and given mismatch.");
-                            mi.MemBook.BookVariable(loop_id, ie->Keys[i].first, move(value));
+                            if (!value->IsCompatible(ie->Keys[i].second)) throw runtime_error("Type expected and given mismatch.");
+                            //mi.MemBook.BookVariable(loop_id, ie->Keys[i].first, move(value));
+							mi.Memory.define(ie->Keys[i].first, *value);
                         }
                     }
                     else if constexpr (is_same_v<T, LanVariable>) {
                         auto& value = get<LanVariable>(valueVariant);
                         //CommandLineInterface::DebugPrint("Running loop with '" + ie->Keys[0].first + "' set as: " + value->ToString());
-                        if (!value->IsCompatable(ie->Keys[0].second)) throw runtime_error("Type expected and given mismatch.");
-                        mi.MemBook.BookVariable(loop_id, ie->Keys[0].first, move(value));
+                        if (!value.IsCompatible(ie->Keys[0].second)) throw runtime_error("Type expected and given mismatch.");
+                        //mi.MemBook.BookVariable(loop_id, ie->Keys[0].first, move(value));
+						mi.Memory.define(ie->Keys[0].first, value);
                     };
                     
                     }, valueVariant);
                 // Run the logic of the loop.
-                mi.Memory.pushScope("for"); // Enter for scope
+                
                 auto out = mi.InterpretBlock(m[2].str());
                 mi.Memory.popScope(); // Exit for scope
 
@@ -641,7 +655,7 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& rawParamS
             );
     }
     // Indexed variable
-    else if (regex_match(paramStr, match, fullVariablePattern))
+    else if (regex_match(paramStr, match, fullVariablePattern) && !Utils::Find(protectedWords, paramStr))
     {
 		string baseName = match[1].str();
 		string extentions = match[2].str();
@@ -815,7 +829,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
             auto value = this->ParseParameter(Utils::TrimString(parts[1]));
             if (value.has_value())
                 set_map.emplace(name, make_shared<LanVariable>(value.value()));
-            else throw runtime_error("Could not parse value for set.");
+            else throw runtime_error("Could not parse value for set: " + Utils::TrimString(parts[1]));
         }
 
         return LanVariable(
@@ -842,7 +856,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
 			throw runtime_error("Cannot find type for casting: " + target_type_str);
 
         LanType target_type = LanType(std::get<std::shared_ptr<LanClass>>(customClassContainer->Value));
-        shared_ptr<LanCasting> casting = make_unique<LanCasting>(std::get<std::shared_ptr<LanClass>>(customClassContainer->Value));
+        shared_ptr<LanCasting> casting = std::make_shared<LanCasting>(std::get<std::shared_ptr<LanClass>>(customClassContainer->Value));
 		
         casting->RunMethod(*this, target_type_str, params); // Call the constructor
 
@@ -954,7 +968,7 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functio
     string packagePath = "";
 	vector<string> hangingPath = vector<string>();
     for (auto& fc : function_calls) {
-        CommandLineInterface::DebugPrint("Function call part: " + fc, 1);
+        CommandLineInterface::DebugPrint("Function call part: " + fc, 2);
         if (Utils::IsAlphanumeric(fc) && consiteringPackage) {
 			if (packagePath.empty()) packagePath = fc;
 			else packagePath += "." + fc;
@@ -965,9 +979,9 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functio
         }
     }
 
-	CommandLineInterface::DebugPrint("Package path: " + packagePath);
-	CommandLineInterface::DebugPrint("First function call: " + hangingPath[0]);
-	CommandLineInterface::DebugPrint("Hanging path: " + Utils::JoinStrings(hangingPath, ", "));
+	CommandLineInterface::DebugPrint("Package path: " + packagePath, 1);
+	CommandLineInterface::DebugPrint("First function call: " + hangingPath[0], 1);
+	CommandLineInterface::DebugPrint("Hanging path: " + Utils::JoinStrings(hangingPath, ", "), 1);
 
     // Setup initial value
 
@@ -982,14 +996,53 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functio
 
         init_funct_name = match[1].str();
 
-        CommandLineInterface::DebugPrint("Function name: " + match[1].str());
-        CommandLineInterface::DebugPrint("Function params: " + match[2].str());
+        CommandLineInterface::DebugPrint("Function name: " + match[1].str(), 1);
+        CommandLineInterface::DebugPrint("Function params: " + match[2].str(), 1);
     }
 
 	string functionId = LanFunction::GetId(init_funct_name, init_funct_param_types);
-	CommandLineInterface::DebugPrint("Looking for function with id: " + functionId);
+	CommandLineInterface::DebugPrint("Looking for function with id: " + functionId, 1);
+    this->Memory.dump();
 
     optional<std::shared_ptr<LanVariable>> last_result = std::make_shared<LanVariable>();
+
+
+    
+    if (packagePath != "") {
+		if (this->LoadedModules.find(packagePath) != this->LoadedModules.end()) {
+            // Find scope
+			auto scope = this->Memory.FindSiblingScope(packagePath);
+			if (!scope) throw runtime_error("Package scope not found: " + packagePath);
+			auto fv = scope->resolve(functionId);
+            if (!fv) {
+                // Try to find an overload with any types
+
+				auto any_vector = vector<LanType>(init_funct_param_types.size(), LanType(LanTypeEnum::TypeAny));
+                string any_functionId = LanFunction::GetId(init_funct_name, any_vector);
+                
+				fv = scope->resolve(any_functionId);
+				if (!fv) throw runtime_error("Function not found in package: " + functionId);
+            }
+            
+            auto& f = std::get<std::shared_ptr<LanFunction>>(fv->Value);
+			auto a = f->Execute(*this, init_funct_params);
+            if (a.has_value()) {
+                last_result = std::make_shared<LanVariable>(a.value());
+                CommandLineInterface::DebugPrint("Found function in package: " + functionId + " with value " + a.value().ToString());
+            }
+			//last_result = std::make_shared<LanVariable>(a->Type, a->Value);
+		}
+		else throw runtime_error("Package not found: " + packagePath);
+    }
+	else if (this->Memory.resolve(functionId, last_result.value())) {
+		CommandLineInterface::DebugPrint("Found function: " + functionId);
+        auto a = std::get<std::shared_ptr<LanFunction>>(last_result.value()->Value)->Execute(*this, init_funct_params);
+	}
+	else {
+		throw runtime_error("Function not found: " + functionId);
+	}
+
+	return std::optional<LanVariable>(*last_result.value());
     
     /*
     if (auto l = this->RegisteredFunctions->findFunction(packagePath, functionId)) {
@@ -1030,7 +1083,6 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functio
 
 
 
-#pragma warning disable
 /*
 optional<LanVariable> MylangeInterpreter::RunFunctionStackOld(const string& functionStackStr)
 {
@@ -1112,7 +1164,6 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStackOld(const string& func
     return last_result;
 }
 */
-#pragma warning restore
 
 CodeBlock::CodeBlock(const string& myScopeId)
 {

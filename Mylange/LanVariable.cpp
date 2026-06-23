@@ -62,7 +62,7 @@ bool LanVariable::IsCompatible(const LanType& type, const LanVariable& var)
 	if ((type.BaseType & LanTypeEnum::TypeArray) == LanTypeEnum::TypeArray &&
 		(var.Type.BaseType & LanTypeEnum::TypeArray) == LanTypeEnum::TypeArray)
 	{
-		auto* arr = get_if<vector<unique_ptr<LanVariable>>>(&var.Value);
+		auto* arr = get_if<LanArray>(&var.Value);
 		if (!arr) throw runtime_error("Uh no.");
 		for (auto& element : *arr)
 		{

@@ -5,15 +5,13 @@
 #include <optional>
 
 #include "LanVariable.h"
-#include "LanFunction.h"
 #include "MylangeInterpreter.h"
 #include "LanIterableEngine.h"
-#include "builtin.h"
 
 
-string LanFunction::GetId() const {
-	return LanFunction::GetId(this->Name, this->Parameters);
-};
+//string LanFunction::GetId() const {
+//	return LanFunction::GetId(this->Name, this->Parameters);
+//};
 
 //optional<unique_ptr<LanVariable>> ScriptFunction::Execute(const string& scopeId, MylangeInterpreter& mi,
 //	const vector<unique_ptr<LanVariable>>& args)
@@ -46,6 +44,7 @@ string LanFunction::GetId() const {
 
 std::optional<LanVariable> ScriptFunction::Execute(MylangeInterpreter& mi, std::vector<LanVariable> args)
 {
+	CommandLineInterface::DebugPrint("Executing function: " + this->Name + " with " + std::to_string(args.size()) + " arguments.");
 	if (this->Parameters.size() != args.size())
 	{
 		throw runtime_error("Function " + this->Name + " expected "

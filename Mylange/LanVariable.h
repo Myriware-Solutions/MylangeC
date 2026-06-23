@@ -1,51 +1,49 @@
 // LanVariable.h
 #pragma once
+
 #include <variant>
 #include <string>
 #include <memory>
 #include <unordered_map>
 #include <vector>
 #include <functional>
-
+#include <map>
+#include <optional>
+#include <stdexcept>
 
 #include "LanType.h"
-#include "LanFunction.h"
 
 class LanIterableEngine;
 class LanCasting;
+class LanFunction;
+class LanClass;
+class MylangeInterpreter;
 class LanVariable; // forward declare for collections
 
 // -- Function types --
 // Builtin: implemented in C++
-// UserFunction: defined in your language
-struct UserFunction {
-    std::vector<std::string> params;
-    // Replace with whatever your AST node type is
-    std::shared_ptr<void> body;
-};
-
 using BuiltinFn = std::function<LanVariable(std::vector<LanVariable>)>;
+
 using LanArray = std::vector<std::shared_ptr<LanVariable>>;
 using LanMap = std::unordered_map<std::string, std::shared_ptr<LanVariable>>;
 
 class LanVariable {
 public:
-    using LanValue = std::variant <
-        std::monostate,             // null / uninitialized
+    using LanValue = std::variant<
+        std::monostate,                         // null / uninitialized
         bool,
         int,
         char,
         std::string,
-        LanArray,                   // array  (was vector<unique_ptr>)
-        LanMap,                     // map    (was unordered_map<unique_ptr>)
+        LanArray,                               // array
+        LanMap,                                 // map
         std::shared_ptr<LanIterableEngine>,
         std::shared_ptr<LanCasting>,
-        std::shared_ptr<LanFunction>,               // user-defined function
-		std::shared_ptr<LanClass>,                  // class definition
-        //BuiltinFn                   // builtin function
-    > ;
+        std::shared_ptr<LanFunction>,           // user-defined or builtin function
+        std::shared_ptr<LanClass>               // class definition
+    >;
 
-    LanType  Type;
+    LanType Type;
     LanValue Value;
 
     // -- Constructors --
@@ -55,37 +53,40 @@ public:
         : Type(std::move(type)), Value(std::move(value)) {
     }
 
-    // -- Copy & Move (both work now) --
+    // -- Copy & Move --
     LanVariable(const LanVariable&) = default;
     LanVariable& operator=(const LanVariable&) = default;
     LanVariable(LanVariable&&) = default;
     LanVariable& operator=(LanVariable&&) = default;
 
     // -- Type checks --
-    bool IsNull()     const { return std::holds_alternative<std::monostate>(Value); }
+    bool IsNull() const { return std::holds_alternative<std::monostate>(Value); }
+
     bool IsCallable() const {
-        return std::holds_alternative<UserFunction>(Value)
-            || std::holds_alternative<BuiltinFn>(Value);
+        return std::holds_alternative<std::shared_ptr<LanFunction>>(Value);
     }
 
     // -- Indexing --
-    // Returns a shared_ptr so the caller shares ownership, not a copy
     std::shared_ptr<LanVariable> Index(int i) const {
         if (!Type.IsArrayType())
             throw std::runtime_error("Cannot index non-array type.");
-        auto& arr = std::get<LanArray>(Value);
+
+        const auto& arr = std::get<LanArray>(Value);
         if (i < 0 || i >= static_cast<int>(arr.size()))
             throw std::runtime_error("Array index out of bounds.");
+
         return arr[i];
     }
 
     std::shared_ptr<LanVariable> Index(const std::string& key) const {
         if (!Type.IsSetType())
             throw std::runtime_error("Cannot index non-set type.");
-        auto& map = std::get<LanMap>(Value);
+
+        const auto& map = std::get<LanMap>(Value);
         auto it = map.find(key);
         if (it == map.end())
             throw std::runtime_error("Key not found in set.");
+
         return it->second;
     }
 
@@ -116,9 +117,6 @@ public:
     template<class... Ts>
     overloaded(Ts...) -> overloaded<Ts...>;
 };
-
-
-
 
 // -------------------------------------------------------
 // Base LanFunction
@@ -189,7 +187,7 @@ public:
     }
 
     // -------------------------------------------------------
-    // Execution — scope is managed inside MylangeInterpreter
+    // Execution
     // -------------------------------------------------------
     virtual std::optional<LanVariable> Execute(MylangeInterpreter& mi,
         std::vector<LanVariable> args) = 0;
@@ -215,13 +213,12 @@ public:
 
 // -------------------------------------------------------
 // BuiltinFunction — C++ implemented function
-// Scope is not relevant for builtins so the interpreter
-// is also omitted from the impl signature
 // -------------------------------------------------------
 using BuiltinImpl = std::function<std::optional<LanVariable>(std::vector<LanVariable>)>;
 
 class BuiltinFunction : public LanFunction {
     BuiltinImpl impl;
+
 public:
     BuiltinFunction() = default;
 
@@ -235,6 +232,13 @@ public:
 
     std::optional<LanVariable> Execute(MylangeInterpreter& mi,
         std::vector<LanVariable> args) override {
-        return impl(std::move(args));
+        (void)mi;
+		CommandLineInterface::DebugPrint("Executing builtin function: " + Name + " with " + std::to_string(args.size()) + " arguments.");
+        auto res = impl(std::move(args));
+		if (res.has_value())
+		    CommandLineInterface::DebugPrint("Builtin function " + Name + " executed." + res->ToString());
+		else
+			CommandLineInterface::DebugPrint("Builtin function " + Name + " executed with no return value.");
+        return res;
     }
 };

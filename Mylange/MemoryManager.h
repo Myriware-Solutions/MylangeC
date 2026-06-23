@@ -5,6 +5,7 @@
 #include <memory>
 #include <stdexcept>
 #include <vector>
+#include <iostream>
 #include "LanVariable.h"
 
 class Scope {
@@ -75,12 +76,12 @@ public:
     }
 
     // Pop back to the parent scope, destroying the current one
-    void popScope() {
+    void popScope(bool keepNode = false) {
         if (!current->parent)
             throw std::runtime_error("Cannot pop the global scope.");
 
         Scope* parent = current->parent;
-        parent->children.erase(current->localName()); // destroys the child + all its symbols
+        if (!keepNode) parent->children.erase(current->localName()); // destroys the child + all its symbols
         current = parent;
     }
 
@@ -108,6 +109,13 @@ public:
         const std::string& name,
         LanVariable value) {
         resolveScope(scopeId)->define(name, std::move(value));
+    }
+
+    void defineIn(const std::string& scopeId,
+        LanVariable functionHolder)
+    {
+		string id = std::get<shared_ptr<LanFunction>>(functionHolder.Value)->GetId();
+		resolveScope(scopeId)->define(id, std::move(functionHolder));
     }
 
     bool resolve(const std::string& name, std::shared_ptr<LanVariable>& out) {
@@ -146,6 +154,30 @@ public:
             std::cout << indent << "  " << name << "\n";
         for (auto& [_, child] : scope->children)
             dump(child.get(), depth + 1);
+    }
+
+    Scope* FindSiblingScope(const std::string& name) {
+        Scope* node = current;
+
+        while (node != nullptr) {
+            // Check the current node's own children (siblings of node's children,
+            // and also direct children of current scope)
+            auto it = node->children.find(name);
+            if (it != node->children.end())
+                return it->second.get();
+
+            node = node->parent;
+        }
+
+        return nullptr;
+    }
+
+    LanVariable* FindInSiblingScope(const std::string& scopeName, const std::string& symbolName) {
+        Scope* sibling = FindSiblingScope(scopeName);
+        if (!sibling) return nullptr;
+        auto it = sibling->symbols.find(symbolName);
+        if (it != sibling->symbols.end()) return &it->second;
+        return nullptr;
     }
 
 private:

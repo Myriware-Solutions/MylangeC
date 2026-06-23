@@ -13,7 +13,7 @@
 
 
 LanIterableEngine::LanIterableEngine(std::vector<std::pair<std::string, LanType>> keys, 
-	LanVariable& matrixVar)
+	LanVariable matrixVar)
 {
 	this->Keys = std::move(keys);
 	this->IsUnpackingIter = (this->Keys.size() > 1);

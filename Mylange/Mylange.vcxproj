@@ -141,23 +141,19 @@
     <ClCompile Include="Mylange.cpp" />
     <ClCompile Include="MylangeFileInterface.cpp" />
     <ClCompile Include="MylangeInterpreter.cpp" />
-    <ClCompile Include="TNumbers.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="builtin.h" />
     <ClInclude Include="CommandLineInterface.h" />
     <ClInclude Include="LanArithmetic.h" />
     <ClInclude Include="LanClass.h" />
-    <ClInclude Include="LanFunction.h" />
     <ClInclude Include="LanIterableEngine.h" />
     <ClInclude Include="LanType.h" />
     <ClInclude Include="LanVariable.h" />
     <ClInclude Include="MemoryBooker.h" />
     <ClInclude Include="MemoryManager.h" />
+    <ClInclude Include="ModuleRegistry.h" />
     <ClInclude Include="MylangeFileInterface.h" />
     <ClInclude Include="MylangeInterpreter.h" />
-    <ClInclude Include="TypeFunctions.h" />
-    <ClInclude Include="type_funct.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>

@@ -1,72 +1,47 @@
-#include <iostream>
-#include <string>
-#include <regex>
-#include <map>
-#include <memory>
-#include <optional>
-#include <vector>
-#include <utility>
-
-
-#include "LanVariable.h"
-#include "LanType.h"
-#include "LanIterableEngine.h"
+// builtin_io.cpp
+#include "ModuleRegistry.h"
 #include "MylangeInterpreter.h"
-#include "builtin.h"
+#include "LanVariable.h"
+#include <iostream>
 
-auto IoPrint = std::make_unique<BuiltinFunction>(
-    LanType(LanTypeEnum::TypeNil),
-    "print",
-    std::map<std::string, LanType>{
-        { "printString", LanType(LanTypeEnum::TypeString) }
-    },
-    BuiltinFunction::CoreBuiltingLogic{
-        [](const std::string& scopeId,
-           MylangeInterpreter& mi,
-           const std::vector<std::unique_ptr<LanVariable>>& args)
-           -> std::optional<std::unique_ptr<LanVariable>>
-        {
-            for (const auto& arg : args) {
-                std::cout << arg->ToString() << " ";
+static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
+
+    // print (str)
+    mi.Memory.defineIn(scopeId, LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "print",
+            std::map<std::string, LanType>{ { "x", LanType(LanTypeEnum::TypeString) } },
+            [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                if (args.empty()) throw std::runtime_error("print requires 1 argument.");
+                std::cout << args[0].ToString() << std::endl;
+                return std::nullopt;
             }
-            std::cout << std::endl;
-            return nullopt;
-        }
-    }
-);
+        )
+    ));
 
-auto IoInput = std::make_unique<BuiltinFunction>(
-    LanType(LanTypeEnum::TypeNil),
-    "input",
-    std::map<std::string, LanType>{
-        { "prompt", LanType(LanTypeEnum::TypeString) }
-    },
-    BuiltinFunction::CoreBuiltingLogic{
-        [](const std::string& scopeId,
-           MylangeInterpreter& mi,
-           const std::vector<std::unique_ptr<LanVariable>>& args)
-           -> std::optional<std::unique_ptr<LanVariable>>
-        {
-            string caron = args.size() > 0 ? args[0]->ToString() : "";
-            std::cout << caron;
-            string userInput;
-            std::getline(std::cin, userInput);
-
-            return std::make_optional(
-                std::make_unique<LanVariable>(
-                    LanType(LanTypeEnum::TypeString),
-                    LanVariable::LanValue{ userInput }
-                )
-            );
-        }
-    }
-);
-
-void MasterFunctionRegistry::register_io(MasterFunctionTree& tree)
-{
-    unique_ptr<vector<unique_ptr<BuiltinFunction>>> to_add = make_unique<vector<unique_ptr<BuiltinFunction>>>();
-    to_add->push_back(std::move(IoPrint));
-    to_add->push_back(std::move(IoInput));
-
-    tree.addFunction("io", std::move(to_add));
+	// input (str) -> str
+    mi.Memory.defineIn(scopeId, LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeString),
+            "input",
+            std::map<std::string, LanType>{ { "prompt", LanType(LanTypeEnum::TypeString) } },
+            [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                if (!args.empty())
+                    std::cout << std::get<std::string>(args[0].Value);
+                std::string line;
+                std::getline(std::cin, line);
+				CommandLineInterface::DebugPrint("Input received: " + line);
+                return LanVariable(LanType(LanTypeEnum::TypeString), line);
+            }
+        )
+    ));
 }
+
+// This runs at program startup — registers the factory, NOT the functions
+static bool _registered = [] {
+    ModuleRegistry::Register("io", RegisterIO);
+    return true;
+    }();

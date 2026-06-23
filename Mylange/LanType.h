@@ -36,6 +36,7 @@ enum class LanTypeEnum : uint32_t
 
 	TypeInterable = 1 << 11,
 	TypeFunction = 1 << 12,
+	TypeClass = 1 << 13,
 	// Unions are not their own types, rather, they are
 	// represented if more than 1 bit is set.
 	// Arrays and sets have the Array or Set bit set,

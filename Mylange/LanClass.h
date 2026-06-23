@@ -8,7 +8,6 @@
 #include "LanIterableEngine.h"
 #include "LanType.h"
 #include "LanVariable.h"
-#include "LanFunction.h"
 
 class MylangeInterpreter;
 

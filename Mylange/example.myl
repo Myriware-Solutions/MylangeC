@@ -10,7 +10,6 @@ io.print("Starting program...");
 
 main();
 
-return 0;
 
 
 set ExampleSet => (
@@ -23,6 +22,29 @@ arr ExampleArray => [1, 2, 3, 4, 5];
 str Index => "name";
 
 io.print("Name: " .. ExampleSet[Index] .. ExampleArray[2]);
+
+
+bool Running => true;
+
+while (Running) do {
+    set ExampleSet => (
+        name=>io.input("Name > "), 
+        age=>std.to_int(io.input("Age > "))
+    );
+
+    for ([string key, any value] in ExampleSet) do {
+        io.print("Key: " .. key .. " / value: (" .. std.typeof(value) .. ")" .. std.to_string(value));
+        if (key == "name" && value == "Anthony") then {
+            io.print("Hello, dup.");
+        };
+    };
+
+    if (io.input("cont  [y/n]> ") == "n") then Running => false;
+};
+
+
+
+return 0;
 
 class Person has {
 
@@ -63,23 +85,7 @@ return 0;
 
 
 
-bool Running => true;
 
-while (Running) do {
-    set ExampleSet => (
-        name=>io.input("Name > "), 
-        age=>std.to_int(io.input("Age > "))
-    );
-
-    for ([string key, any value] in ExampleSet) do {
-        io.print("Key: " .. key .. " / value: (" .. std.typeof(value) .. ")" .. std.to_string(value));
-        if (key == "name" && value == "Anthony") then {
-            io.print("Hello, dup.");
-        };
-    };
-
-    if (io.input("cont  [y/n]> ") == "n") then Running => false;
-};
 
 return 0;
 

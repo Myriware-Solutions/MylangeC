@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <unordered_set>
 
 //class MemoryBooker;
 //class MasterFunctionTree;
@@ -10,7 +11,6 @@ class MemoryManager;
 
 #include "MemoryBooker.h"
 #include "LanVariable.h"
-#include "builtin.h"
 #include "MemoryManager.h"
 
 using namespace std;
@@ -36,6 +36,7 @@ public:
 	//MemoryBooker MemBook;
 	//unique_ptr<MasterFunctionTree> RegisteredFunctions;
 	ScopeManager Memory;
+	std::unordered_set<std::string> LoadedModules;
 	unordered_map<string, string> BlockMap;
 	size_t BlockCounter;
 	bool DebugMode = false;

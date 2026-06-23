@@ -1,3 +1,4 @@
+/*
 #include <iostream>
 #include <unordered_map>
 #include "MemoryBooker.h"
@@ -220,5 +221,4 @@ LanFunction* MemoryBooker::GetLiteralFunction(const string& scopeId,
 	CommandLineInterface::DebugPrint("Function " + fullId + " exists.");
 	return it->second.get();  // non-owning pointer
 }
-
-
+*/
