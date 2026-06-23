@@ -138,6 +138,7 @@
     <ClCompile Include="LanVariable.cpp" />
     <ClCompile Include="MemoryBooker.cpp" />
     <ClCompile Include="MemoryManager.cpp" />
+    <ClCompile Include="ModuleRegistry.cpp" />
     <ClCompile Include="Mylange.cpp" />
     <ClCompile Include="MylangeFileInterface.cpp" />
     <ClCompile Include="MylangeInterpreter.cpp" />

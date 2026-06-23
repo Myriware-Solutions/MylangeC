@@ -12,7 +12,7 @@ static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeNil),
             "print",
-            std::map<std::string, LanType>{ { "x", LanType(LanTypeEnum::TypeString) } },
+            std::map<std::string, LanType>{ { "o", LanType(LanTypeEnum::TypeAny) } },
             [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 if (args.empty()) throw std::runtime_error("print requires 1 argument.");
                 std::cout << args[0].ToString() << std::endl;
@@ -38,6 +38,35 @@ static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
             }
         )
     ));
+
+    // void dump
+    mi.Memory.defineIn(scopeId, LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "dump",
+            std::map<std::string, LanType>{ },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                mi.Memory.dump();
+                return std::nullopt;
+            }
+        )
+    ));
+
+    // void debug
+    mi.Memory.defineIn(scopeId, LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "debug",
+            std::map<std::string, LanType>{ },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+				CommandLineInterface::DebugEnabled = !CommandLineInterface::DebugEnabled;
+                return std::nullopt;
+            }
+        )
+    ));
+
 }
 
 // This runs at program startup — registers the factory, NOT the functions

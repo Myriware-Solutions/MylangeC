@@ -22,6 +22,8 @@ public:
     // -- Symbol management --
 
     void define(const std::string& name, LanVariable value) {
+        // prevent overriding values
+        if (symbols.contains(name)) throw runtime_error("Cannot rewrite data.");
         symbols[name] = std::move(value);
     }
 
@@ -101,6 +103,12 @@ public:
     // Define a symbol in the current scope
     void define(const std::string& name, LanVariable value) {
         current->define(name, std::move(value));
+    }
+
+    void define(LanVariable functionHolder)
+    {
+        string id = std::get<shared_ptr<LanFunction>>(functionHolder.Value)->GetId();
+        current->define(id, std::move(functionHolder));
     }
 
     // Define a symbol in a specific scope by id

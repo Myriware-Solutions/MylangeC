@@ -209,22 +209,7 @@ static void Registerstd(MylangeInterpreter& mi, const std::string& scopeId) {
         )
     ));
 
-	// typeof (obj: any) -> str
-    mi.Memory.defineIn(scopeId, LanVariable(
-        LanType(LanTypeEnum::TypeFunction),
-        std::make_shared<BuiltinFunction>(
-            LanType(LanTypeEnum::TypeString),
-            "typeof",
-            std::map<std::string, LanType>{ { "obj", LanType(LanTypeEnum::TypeAny) } },
-            [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
-                if (args.empty()) throw std::runtime_error("typeof requires 1 argument.");
-                return LanVariable(
-                    LanType(LanTypeEnum::TypeString),
-                    LanVariable::LanValue{ args[0].Type.ToString() }
-                );
-            }
-        )
-    ));
+	
 
 };
 

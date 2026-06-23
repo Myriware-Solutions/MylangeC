@@ -7,6 +7,7 @@
 #include "Utils.h"
 #include "MylangeInterpreter.h"
 #include "LanIterableEngine.h"
+#include "ModuleRegistry.h"
 //#include "builtin.h"
 
 using namespace std;
@@ -34,6 +35,7 @@ int FileInterface::InterpretFile(const string& filePath)
 
 	try {
 		MylangeInterpreter mi = MylangeInterpreter();
+		ModuleRegistry::RegisterHardwires(mi);
 		auto result = mi.InterpretBlock(fileContent);
 		if (result.has_value())
 			cout << "Program exited with value: (" + result.value().Type.ToString() + ") " + result.value().ToString();

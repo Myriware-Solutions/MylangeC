@@ -11,6 +11,9 @@ using ModuleFactory = std::function<void(MylangeInterpreter&, const std::string&
 
 class ModuleRegistry {
 public:
+
+    static void RegisterHardwires(MylangeInterpreter& mi);
+
     // Call this at program startup to register the factory — NOT the functions themselves
     static void Register(const std::string& moduleName, ModuleFactory factory) {
         Get()[moduleName] = std::move(factory);

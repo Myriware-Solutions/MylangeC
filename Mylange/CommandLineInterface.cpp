@@ -2,14 +2,13 @@
 #include <iostream>
 #include <string>
 #include <regex>
+#include <exception>
 
 #include "CommandLineInterface.h"
 #include "MylangeInterpreter.h"
 #include "Utils.h"
 #include "LanIterableEngine.h"
-
-
-#include <exception>
+#include "ModuleRegistry.h"
 
 // CODE //
 
@@ -19,32 +18,36 @@ void CommandLineInterface::RunCLI() {
 	cout << "Mylange Linear Interface Running..." << endl;
 
 	MylangeInterpreter mi = MylangeInterpreter();
+	ModuleRegistry::RegisterHardwires(mi);
+	// Line starter in the command line
+	mi.Memory.define("LINE_START", LanVariable(LanType(LanTypeEnum::TypeString), "/>"));
 
 	while (true) {
 		string input_line_raw;
-		cout << "#! ";
+		cout << std::get<string>(mi.Memory.resolve("LINE_START")->Value);
 		getline(cin, input_line_raw);
 
 		string input_line = regex_replace(Utils::TrimString(input_line_raw), regex(R"(\s*;\s*$)"), "");
 		CommandLineInterface::DebugPrint("Input received: " + input_line);
 
-		if (input_line == "*vars")
-		{
-			//for (const auto& pair : mi.MemBook.Variables)
-			//{
-			//	CommandLineInterface::DebugPrint(pair.first + "|" + pair.second.Type.ToString() + "|" + pair.second.ToString());
-			//}
+		if (input_line == "exit" || input_line == "quit") {
+			cout << "Exiting Mylange CLI." << endl;
+			break;
 		}
 
 		try
 		{
 			auto res = mi.InterpretBlock(input_line, true);
 			if (res.has_value()) {
-				std::cout << "<< (" << res.value().Type.ToString() << ")" << res.value().ToString();
+				std::cout << "<< (" << res.value().Type.ToString() << ") " << res.value().ToString() << std::endl;
 			}
 		}
 		catch (const exception& e) {
-			std::cout << "[ERROR] " << e.what() << endl;
+			if (e.what() == "[exit]") {
+				std::cout << "Exiting Mylange CLI." << std::endl;
+				break;
+			}
+			std::cout << "[ERROR] " << e.what() << ";" << endl;
 		}
 		
 

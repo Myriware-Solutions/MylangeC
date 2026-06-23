@@ -38,7 +38,7 @@ const regex ifElseThenPattern(R"(^if\s*\((.*?)\)\s*then\s*(.*))", std::regex_con
 const regex paramStringPattern(R"((?:(const)\s+)?([\w<|,>]+)\s+(\w+))", std::regex_constants::ECMAScript);
 const regex functionMethodDeclaration(R"(^((?:@?\w+\s+)+)?def\s+(\w+)\s+(\w+)\s*\((.*)\)\s*as\s*(.*))", std::regex_constants::ECMAScript);
 const regex classDeclarationPatter(R"(^class\s+(\w+)\s+(?:extends\s+(\w+))?\s*has\s*(.*))", std::regex_constants::ECMAScript);
-const regex wordCharsOnly(R"(^[a-zA-Z]\w+$)", std::regex_constants::ECMAScript);
+const regex wordCharsOnly(R"(^[a-zA-Z]\w*$)", std::regex_constants::ECMAScript);
 const regex cachedBit(R"((\d)x([a-fA-F0-9]+))", std::regex_constants::ECMAScript);
 
 // For Classes
@@ -61,21 +61,10 @@ vector<Rule> rules = {
             return optional<LanVariable>(LanVariable(LanType(LanTypeEnum::TypeNil), 1));
         }
     },
-    // Return
+    
+    // Include (modules)
     {
-        regex(R"(return\s+(.*))"),
-        [](auto const& m, MylangeInterpreter& mi) {
-            auto it = mi.ParseParameter(m[1].str());
-            if (it.has_value()) 
-                //return move(it.value());
-                //return optional<LanVariable>(move(it.value()->Clone()));
-				return optional<LanVariable>(it.value());
-            throw runtime_error("Trying to return nothing");
-        }
-    },
-    // Include
-    {
-        regex(R"(^#include\s*<(\w+)>)"),
+        regex(R"(^#\s*include\s*<(\w+)>)"),
         [](auto const& m, MylangeInterpreter& mi) {
             std::string moduleName = m[1].str();
 
@@ -424,6 +413,18 @@ vector<Rule> rules = {
             }
             return nullopt;
         }
+    },
+    // Return
+    {
+        regex(R"(return\s+(.*))"),
+        [](auto const& m, MylangeInterpreter& mi) {
+            auto it = mi.ParseParameter(m[1].str());
+            if (it.has_value())
+                //return move(it.value());
+                //return optional<LanVariable>(move(it.value()->Clone()));
+                return optional<LanVariable>(it.value());
+            throw runtime_error("Trying to return nothing");
+        }
     }
 };
 
@@ -625,7 +626,7 @@ optional<LanVariable> MylangeInterpreter::InterpretBlock(const string& blockStri
 
 
 const std::vector<std::string> protectedWords = {
-    "true", "false"
+    "true", "false", "nil"
 };
 
 const regex fullVariablePattern(R"(([a-zA-Z]\w+)((?:(?::\w+)|(?:\[.+?\]))*))", std::regex_constants::ECMAScript);
@@ -754,6 +755,16 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
             LanVariable::LanValue{ trimmedValue == "true" }
         );
     }
+    //float
+    else if (regex_match(trimmedValue, regex(R"(^-?\d+\.\d+$)")))
+    {
+        CommandLineInterface::DebugPrint("Found float");
+        // Placeholder implementation
+        return LanVariable(
+            LanType(LanTypeEnum::TypeFloat),
+            LanVariable::LanValue{ }
+        );
+    }
     // int
     else if (regex_match(trimmedValue, regex(R"(^-?\d+$)")))
     {
@@ -761,16 +772,6 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
         return LanVariable(
             LanType(LanTypeEnum::TypeInt),
             LanVariable::LanValue{ stoi(trimmedValue) }
-        );
-    }
-    //float
-    else if (regex_match(trimmedValue, regex(R"(^-?\d+\.\d+$)")))
-    {
-        CommandLineInterface::DebugPrint("Found float");
-        // Placeholder implementation
-        return LanVariable(
-            LanType(LanTypeEnum::TypeUnknown),
-            LanVariable::LanValue{ }
         );
     }
     // char
@@ -1002,11 +1003,12 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functio
 
 	string functionId = LanFunction::GetId(init_funct_name, init_funct_param_types);
 	CommandLineInterface::DebugPrint("Looking for function with id: " + functionId, 1);
-    this->Memory.dump();
+    //this->Memory.dump();
 
     optional<std::shared_ptr<LanVariable>> last_result = std::make_shared<LanVariable>();
 
-
+    auto any_vector = vector<LanType>(init_funct_param_types.size(), LanType(LanTypeEnum::TypeAny));
+    string any_functionId = LanFunction::GetId(init_funct_name, any_vector);
     
     if (packagePath != "") {
 		if (this->LoadedModules.find(packagePath) != this->LoadedModules.end()) {
@@ -1016,10 +1018,6 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functio
 			auto fv = scope->resolve(functionId);
             if (!fv) {
                 // Try to find an overload with any types
-
-				auto any_vector = vector<LanType>(init_funct_param_types.size(), LanType(LanTypeEnum::TypeAny));
-                string any_functionId = LanFunction::GetId(init_funct_name, any_vector);
-                
 				fv = scope->resolve(any_functionId);
 				if (!fv) throw runtime_error("Function not found in package: " + functionId);
             }
@@ -1037,7 +1035,13 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functio
 	else if (this->Memory.resolve(functionId, last_result.value())) {
 		CommandLineInterface::DebugPrint("Found function: " + functionId);
         auto a = std::get<std::shared_ptr<LanFunction>>(last_result.value()->Value)->Execute(*this, init_funct_params);
+        last_result = std::make_shared<LanVariable>(a.value());
 	}
+    else if (this->Memory.resolve(any_functionId, last_result.value())) {
+        CommandLineInterface::DebugPrint("Found function (any overload): " + functionId);
+        auto a = std::get<std::shared_ptr<LanFunction>>(last_result.value()->Value)->Execute(*this, init_funct_params);
+        last_result = std::make_shared<LanVariable>(a.value());
+    }
 	else {
 		throw runtime_error("Function not found: " + functionId);
 	}
