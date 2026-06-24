@@ -16,11 +16,13 @@ using namespace std;
 
 void CommandLineInterface::RunCLI() {
 	cout << "Mylange Linear Interface Running..." << endl;
+	cout << "(c) Myriware Solutions. Version Pre-Orange 0.9.1" << endl;
+	cout << "To exit, enter 'exit' or 'quit'." << endl;
 
 	MylangeInterpreter mi = MylangeInterpreter();
 	ModuleRegistry::RegisterHardwires(mi);
 	// Line starter in the command line
-	mi.Memory.define("LINE_START", LanVariable(LanType(LanTypeEnum::TypeString), "/>"));
+	mi.Memory.define("LINE_START", LanVariable(LanType(LanTypeEnum::TypeString), "/> "));
 
 	while (true) {
 		string input_line_raw;

@@ -90,7 +90,10 @@ protected:
 		{ LanTypeEnum::TypeSet, {"set"}},
 		{ LanTypeEnum::TypeCasting, {"casting"}},
 		{ LanTypeEnum::TypeUnknown, {"unknown"}},
-		{ LanTypeEnum::TypeAny, {"any"}}
+		{ LanTypeEnum::TypeAny, {"any"}},
+		{ LanTypeEnum::TypeInterable, {"iterable"} },
+		{ LanTypeEnum::TypeFunction, {"function", "func"} },
+		{ LanTypeEnum::TypeClass, {"class"} }
 	};
 
 	inline static const regex TypeMatchPattern = regex(R"((\w+)(?:\s*<(.*)>)?)");

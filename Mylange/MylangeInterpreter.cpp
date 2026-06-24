@@ -793,7 +793,8 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
         );
     }
     // array
-    else if (regex_match(trimmedValue, regex(R"(^\[(.*)\]$)")))
+    //else if (regex_match(trimmedValue, regex(R"(^\[(.*)\]$)")))
+    else if (Utils::IsWrappedByParens(trimmedValue, '[', ']') && regex_match(trimmedValue, regex(R"(^\[(.*)\]$)")))
     {
         CommandLineInterface::DebugPrint("Found arr: " + trimmedValue);
         vector<string> elementStrings = Utils::TopLevelSplit(
@@ -960,6 +961,8 @@ static void MakeParameters(MylangeInterpreter& mi, string paramString,
     for (const auto& param : paramsOut) paramTypesOut.push_back(param.Type);
 }
 
+
+
 optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functionStackStr)
 {
     CommandLineInterface::DebugPrint("Executing function stack [" + this->Memory.currentScope()->id + "]: " + functionStackStr);
@@ -1051,91 +1054,6 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functio
         return std::optional<LanVariable>(*last_result.value());
     else return std::nullopt;
 }
-
-
-
-
-/*
-optional<LanVariable> MylangeInterpreter::RunFunctionStackOld(const string& functionStackStr)
-{
-    CommandLineInterface::DebugPrint("Executing function call(s): " + functionStackStr);
-    auto function_calls = splitDotParenAware(functionStackStr);
-	for (auto& fc : function_calls) {
-        CommandLineInterface::DebugPrint("Function call part: " + fc, 1);
-    }
-    optional<LanVariable> last_result = make_unique<LanVariable>();
-    string prefix = "";
-
-    for (const auto& func_call : function_calls) {
-		string function_location_scope_id =  (prefix.empty()) ? scopeId : prefix;
-        //string scopeId = scopeIdRaw;
-        smatch func_match;
-        if (regex_search(func_call, func_match, functionPartsPattern)) {
-            // find function
-            string func_name = func_match[1];
-            vector<LanVariable> params;
-            vector<LanType> param_types;
-			MakeParameters(*this, scopeId, func_match[2], params, param_types);
-			// If the previoud result is a Casting, then try to get the function from the casting's custom class
-            if (last_result.has_value() && (last_result.value()->Type.BaseType & LanTypeEnum::TypeCasting) == LanTypeEnum::TypeCasting) {
-                
-				unique_ptr<LanCasting>& casting = get<unique_ptr<LanCasting>>(last_result.value()->Value);
-
-				auto v = casting->RunMethod(*this, scopeId, func_name, params);
-				last_result = move(v);
-            }
-            // Type Literal approch first.
-            else if (LanFunction* func = this->MemBook.GetFunction(function_location_scope_id, func_name, param_types))
-            {
-                CommandLineInterface::DebugPrint("Function " + func_name + " exists and is running...");
-                last_result = move((func)->Execute(scopeId, *this, params));
-            }
-            // Then, try to see if there is an overload with the "any" type in unmatched positions.
-            else {
-                vector<LanFunction*> overloads = this->MemBook.GetFunctionOverloads(function_location_scope_id, func_name);
-				CommandLineInterface::DebugPrint("Function " + func_name + " has " + to_string(overloads.size()) + " overloads.");
-                bool found = false;
-                for (auto& overload : overloads) {
-                    const auto& param_map = overload->Parameters;
-                    if (param_map.size() != params.size()) continue;
-                    bool match = true;
-                    auto param_it = param_map.begin();
-                    for (size_t i = 0; i < params.size(); ++i, ++param_it) {
-                        if (!(params[i]->Type == param_it->second ||
-                            param_it->second.BaseType == LanTypeEnum::TypeAny)) {
-                            match = false;
-                            break;
-                        }
-                    }
-                    if (match) {
-                        CommandLineInterface::DebugPrint("Function " + func_name + " overload exists and is running...");
-                        last_result = move(overload->Execute(scopeId, *this, params));
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    string err = "Function not found: " + func_name + " with parameter types: ";
-				}
-			}
-        }
-		// Check first to see if it's a variable reference to get the value
-        else if (this->MemBook.GetVariable(scopeId, func_call, last_result.value()))
-        {
-			CommandLineInterface::DebugPrint("Variable reference found in function stack: " + func_call);
-		}
-        // Check then to see if it's a imported package name
-        else if (this->RegisteredFunctions->findPackage(func_call))
-        {
-			CommandLineInterface::DebugPrint("Package reference found in function stack: " + func_call);
-			prefix += func_call;
-        }
-		// Finally, throw error
-        else throw runtime_error("Invalid function call syntax: " + func_call);
-    }
-    return last_result;
-}
-*/
 
 CodeBlock::CodeBlock(const string& myScopeId)
 {

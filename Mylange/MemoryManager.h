@@ -158,8 +158,8 @@ public:
         if (!scope) scope = root.get();
         std::string indent(depth * 2, ' ');
         std::cout << indent << "[" << scope->id << "]\n";
-        for (auto& [name, _] : scope->symbols)
-            std::cout << indent << "  " << name << "\n";
+        for (auto& [name, sym] : scope->symbols)
+            std::cout << indent << "  " << name << " : " << sym.Type.ToString()  << "\n";
         for (auto& [_, child] : scope->children)
             dump(child.get(), depth + 1);
     }

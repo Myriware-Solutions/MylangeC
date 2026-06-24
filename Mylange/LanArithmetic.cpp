@@ -169,15 +169,39 @@ LanVariable LanArithmetic::ApplyOperator(
     if (op == "/") return lhs / rhs;
     if (op == "==") return lhs == rhs;
     if (op == "..") {
+		// Two strings: concatenate
         if (lhs.Type == LanTypeEnum::TypeString && rhs.Type == LanTypeEnum::TypeString) {
             return LanVariable(LanType(LanTypeEnum::TypeString), get<string>(lhs.Value) + get<string>(rhs.Value));
         }
+		// String and int: repeat string
         if (lhs.Type == LanTypeEnum::TypeString && rhs.Type == LanTypeEnum::TypeInt) {
             string result = "";
             for (int i = 0; i < std::get<int>(rhs.Value); i++)
                 result += std::get<string>(lhs.Value);
             return LanVariable(LanType(LanTypeEnum::TypeString), result);
         }
+        // Array and string: concat with string/char delim
+        if (lhs.Type.IsArrayType() && (rhs.Type == LanTypeEnum::TypeString || rhs.Type == LanTypeEnum::TypeChar)) {
+			string result = "";
+			for (auto& item : std::get<LanArray>(lhs.Value)) {
+                result += item->ToString();
+                if (item != std::get<LanArray>(lhs.Value).back()) {
+                    if (rhs.Type == LanTypeEnum::TypeString) result += std::get<string>(rhs.Value);
+					else if (rhs.Type == LanTypeEnum::TypeChar) result += std::get<char>(rhs.Value);
+                }
+			}
+			return LanVariable(LanType(LanTypeEnum::TypeString), result);
+        }
+		// Two arrays: concatenate
+		if (lhs.Type.IsArrayType() && rhs.Type.IsArrayType()) {
+			LanArray result;
+			const auto& lhsArr = std::get<LanArray>(lhs.Value);
+			const auto& rhsArr = std::get<LanArray>(rhs.Value);
+			result.reserve(lhsArr.size() + rhsArr.size());
+			result.insert(result.end(), lhsArr.begin(), lhsArr.end());
+			result.insert(result.end(), rhsArr.begin(), rhsArr.end());
+			return LanVariable(LanType(LanTypeEnum::TypeArray), result);
+		}
     }
     if (op == "<") return lhs < rhs;
 	if (op == ">") return lhs > rhs;
