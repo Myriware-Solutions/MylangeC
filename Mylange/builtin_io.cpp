@@ -53,20 +53,6 @@ static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
         )
     ));
 
-    // void debug
-    mi.Memory.defineIn(scopeId, LanVariable(
-        LanType(LanTypeEnum::TypeFunction),
-        std::make_shared<BuiltinFunction>(
-            LanType(LanTypeEnum::TypeNil),
-            "debug",
-            std::map<std::string, LanType>{ },
-            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
-				CommandLineInterface::DebugEnabled = !CommandLineInterface::DebugEnabled;
-                return std::nullopt;
-            }
-        )
-    ));
-
 }
 
 // This runs at program startup — registers the factory, NOT the functions

@@ -8,6 +8,7 @@
 #include "MylangeInterpreter.h"
 #include "LanIterableEngine.h"
 #include "ModuleRegistry.h"
+#include <exception>
 //#include "builtin.h"
 
 using namespace std;
@@ -33,7 +34,7 @@ int FileInterface::InterpretFile(const string& filePath)
 
 	// Pass in block runner
 
-	try {
+	auto fu = [&]() {
 		MylangeInterpreter mi = MylangeInterpreter();
 		ModuleRegistry::RegisterHardwires(mi);
 		auto result = mi.InterpretBlock(fileContent);
@@ -41,6 +42,10 @@ int FileInterface::InterpretFile(const string& filePath)
 			cout << "Program exited with value: (" + result.value().Type.ToString() + ") " + result.value().ToString();
 		else
 			std::cout << "Program exited with no return value." << std::endl;
+	};
+
+	try {
+		fu();
 	}
 	catch (const exception& e) {
 		cerr << "Error during interpretation: " << e.what() << endl;

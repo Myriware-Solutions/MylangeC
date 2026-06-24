@@ -1,3 +1,4 @@
+debug(true);
 #include<std>;
 #include<io>;
 
@@ -8,9 +9,8 @@ def int main() as {
 
 io.print("Starting program...");
 
+
 main();
-
-
 
 set ExampleSet => (
     name=>"Anthony", 

@@ -2,6 +2,7 @@
 #include "MylangeInterpreter.h"
 #include "LanVariable.h"
 #include "ModuleRegistry.h"
+#include <variant>
 
 void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
 {
@@ -62,6 +63,35 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
                     LanType(LanTypeEnum::TypeInt),
                     LanVariable::LanValue{ static_cast<int>(sizeof(args[0].Value)) }
                 );
+            }
+        )
+    ));
+
+    // void debug ()
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "debug",
+            std::map<std::string, LanType>{ },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                CommandLineInterface::DebugEnabled = !CommandLineInterface::DebugEnabled;
+                return std::nullopt;
+            }
+        )
+    ));
+
+    // void debug (bool)
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "debug",
+            std::map<std::string, LanType>{ { "o", LanType(LanTypeEnum::TypeBool) } },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                if (!args.empty())
+                    CommandLineInterface::DebugEnabled = std::get<bool>(args[0].Value);
+                return std::nullopt;
             }
         )
     ));

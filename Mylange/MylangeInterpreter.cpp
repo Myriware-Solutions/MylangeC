@@ -1028,60 +1028,28 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functio
                 last_result = std::make_shared<LanVariable>(a.value());
                 CommandLineInterface::DebugPrint("Found function in package: " + functionId + " with value " + a.value().ToString());
             }
-			//last_result = std::make_shared<LanVariable>(a->Type, a->Value);
 		}
 		else throw runtime_error("Package not found: " + packagePath);
     }
 	else if (this->Memory.resolve(functionId, last_result.value())) {
 		CommandLineInterface::DebugPrint("Found function: " + functionId);
         auto a = std::get<std::shared_ptr<LanFunction>>(last_result.value()->Value)->Execute(*this, init_funct_params);
-        last_result = std::make_shared<LanVariable>(a.value());
+        if (a.has_value())
+            last_result = std::make_shared<LanVariable>(a.value());
 	}
     else if (this->Memory.resolve(any_functionId, last_result.value())) {
         CommandLineInterface::DebugPrint("Found function (any overload): " + functionId);
         auto a = std::get<std::shared_ptr<LanFunction>>(last_result.value()->Value)->Execute(*this, init_funct_params);
-        last_result = std::make_shared<LanVariable>(a.value());
+        if (a.has_value())
+            last_result = std::make_shared<LanVariable>(a.value());
     }
 	else {
 		throw runtime_error("Function not found: " + functionId);
 	}
 
-	return std::optional<LanVariable>(*last_result.value());
-    
-    /*
-    if (auto l = this->RegisteredFunctions->findFunction(packagePath, functionId)) {
-        // Packaged function
-		CommandLineInterface::DebugPrint("Found packaged function: " + functionId + " in package " + packagePath);
-        last_result = l->Execute(scopeId, *this, init_funct_params);
-    }
-    if (auto l = this->RegisteredFunctions->findFunction(scopeId, functionId)) {
-        // Local function
-		CommandLineInterface::DebugPrint("Found local function: " + functionId + " in scope " + scopeId);
-        last_result = l->Execute(scopeId, *this, init_funct_params);
-    }
-    else {
-        // Variable or other type
-		last_result = this->ParseParameter(scopeId, hangingPath[0]);
-    }
-
-
-
-
-    return nullopt;
-    // First, try seeing if it's a package reference
-    // Then, using the scope to see if it's a user-function or variable reference
-
-    auto l = this->RegisteredFunctions->findFunction(packagePath, "");
-
-	auto last_result = make_unique<LanVariable>();
-
-    for (int i = 0; i < hangingPath.size(); i++) {
-
-    }
-    */
-	
-
-    return nullopt;
+    if (last_result.has_value())
+        return std::optional<LanVariable>(*last_result.value());
+    else return std::nullopt;
 }
 
 
