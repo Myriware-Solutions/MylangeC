@@ -13,7 +13,12 @@ class MemoryManager;
 #include "LanVariable.h"
 #include "MemoryManager.h"
 
-using namespace std;
+struct TokenItem
+{
+	enum TokenType { Value, ColonExtention, BracketExtention, Method };
+	TokenType type;
+	std::string value;
+};
 
 class MylangeInterpreter
 {
@@ -21,6 +26,8 @@ public:
 	MylangeInterpreter();
 	optional<LanVariable> Interpret(const string& code);
 	optional<LanVariable> InterpretBlock(const string& block, const bool SkipClearing = false);
+	std::optional<std::vector<TokenItem>> TokenizeComplexValue(std::string& value);
+	bool ParseParameter(const string& rawParamStr, std::shared_ptr<LanVariable>& var, bool assignVar = true);
 	optional<LanVariable> ParseParameter(const string& rawParamStr);
 	bool RandomTypeConversion(const string& value, std::shared_ptr<LanVariable>& var);
 	optional<LanVariable> RandomTypeConversion(const string& value);

@@ -77,86 +77,8 @@ bool LanArithmetic::IsValidLogicString(const std::string& input) {
 
         // Else, its just a charactere
     }
-
-    //CommandLineInterface::DebugPrint("Found many top-level operators: " + to_string(topLevelOps));
     return topLevelOps > 0;
 }
-
-
-
-bool dummy(const std::string& input)
-{
-    std::string s = Utils::TrimString(input);
-    
-    if (s.empty())
-        return false;
-
-    int parenDepth = 0;
-    bool expectingValue = true;
-    bool foundTopLevelOperator = false;
-    bool inValueToken = false;
-
-    const auto& ops = LanArithmetic::Operators();
-
-    for (size_t i = 0; i < s.size(); ++i)
-    {
-        char c = s[i];
-
-        if (isspace(static_cast<unsigned char>(c))) {
-            inValueToken = false;
-            continue;
-        }
-
-        if (c == '(') {
-            if (!expectingValue) return false;
-            parenDepth++;
-            inValueToken = false;
-            continue;
-        }
-
-        if (c == ')') {
-            if (expectingValue) return false;
-            parenDepth--;
-            if (parenDepth < 0) return false;
-            expectingValue = false;
-            inValueToken = false;
-            continue;
-        }
-
-        //  operator matching ONLY at token boundary
-        if (parenDepth == 0 && !expectingValue && !inValueToken)
-        {
-            for (const auto& op : ops)
-            {
-                if (s.compare(i, op.size(), op) == 0)
-                {
-                    foundTopLevelOperator = true;
-                    expectingValue = true;
-                    i += op.size() - 1;
-                    goto next_char;
-                }
-            }
-        }
-
-        // value token
-        if (expectingValue) {
-            expectingValue = false;
-            inValueToken = true;
-            continue;
-        }
-
-        // continuation of value token
-        inValueToken = true;
-
-    next_char:
-        continue;
-    }
-
-    return parenDepth == 0
-        && !expectingValue
-        && foundTopLevelOperator;
-}
-
 
 LanVariable LanArithmetic::ApplyOperator(
     const std::string& op,

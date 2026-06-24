@@ -2,6 +2,11 @@ debug(true);
 #include<std>;
 #include<io>;
 
+io.print( (s => 1, k => "string"):k.toUpper()[3].toLower() );
+io.print("hello".toUpper());
+io.print(1.add(2));
+
+return 0;
 
 def int main() as {
     io.print("Hello world!");  

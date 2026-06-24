@@ -2,6 +2,18 @@
 #include "LanIterableEngine.h"
 #include "LanClass.h"
 
+std::shared_ptr<LanVariable> LanVariable::DotMethod(const std::string& name, LanArray params) const
+{
+	// User class castring, not implemented
+	if (this->Type == LanTypeEnum::TypeCasting) throw runtime_error("User-castring dot method, not implemented yet");
+	else
+	{
+		// Mylange Primitive Type
+		CommandLineInterface::DebugPrint("Looking for dot method '' on type '" + this->Type.ToString() + "'");
+	}
+	return std::shared_ptr<LanVariable>();
+}
+
 string LanVariable::ToString() const
 {
 	switch (this->Type.BaseType) {

@@ -624,7 +624,6 @@ optional<LanVariable> MylangeInterpreter::InterpretBlock(const string& blockStri
 }
 
 
-
 const std::vector<std::string> protectedWords = {
     "true", "false", "nil"
 };
@@ -632,6 +631,38 @@ const std::vector<std::string> protectedWords = {
 const regex fullVariablePattern(R"(([a-zA-Z]\w+)((?:(?::\w+)|(?:\[.+?\]))*))", std::regex_constants::ECMAScript);
 const regex variableExtentionPattern(R"((?::\w+)|(?:\[.+?\]))", std::regex_constants::ECMAScript);
 
+
+
+std::optional<std::vector<TokenItem>> MylangeInterpreter::TokenizeComplexValue(std::string& value)
+{
+    CommandLineInterface::DebugPrint("\n\n\nAttempting to tokenize: '" + value + "'");
+    // Split on all dots
+    auto dot_split = Utils::TopLevelSplit(value, '.');
+    bool first = true;
+    vector<TokenItem> token_list;
+    for (auto d_split : dot_split)
+    {
+        // Must match one of the types in TokenItem::TokenType, or null is returned (no possible value can be found)
+        // Also, split up all the different types so that each can be further analyzed if a value is found
+        if (first) {
+            //if (this->ParseParameter())
+            first = false;
+        }
+    }
+    CommandLineInterface::DebugPrint("End tokenization\n\n\n");
+    return token_list;
+}
+
+
+bool MylangeInterpreter::ParseParameter(const string& rawParamStr, std::shared_ptr<LanVariable>& var, bool assignVar)
+{
+    auto res = this->ParseParameter(rawParamStr);
+    if (res.has_value()) {
+        if (assignVar) *var = res.value();
+        return true;
+    }
+    else return false;
+}
 
 optional<LanVariable> MylangeInterpreter::ParseParameter(const string& rawParamStr)
 {
@@ -654,6 +685,10 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& rawParamS
                 LanType(LanTypeEnum::TypeChar),
                 LanVariable::LanValue{ this->BlockMap[match[0].str()].at(0) }
             );
+    }
+    else if (TokenizeComplexValue(paramStr))
+    {
+
     }
     // Indexed variable
     else if (regex_match(paramStr, match, fullVariablePattern) && !Utils::Find(protectedWords, paramStr))
@@ -818,7 +853,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
         );
     }
     // set
-    else if (regex_match(trimmedValue, regex(R"(^\((?:\s*\w+\s*=>.*)\))"))) {
+    else if (Utils::IsWrappedByParens(trimmedValue, '(', ')') && regex_match(trimmedValue, regex(R"(^\((?:\s*\w+\s*=>.*)\))"))) {
         CommandLineInterface::DebugPrint("Found set: " + trimmedValue);
         vector<string> elementStrings = Utils::TopLevelSplit(
             trimmedValue.substr(1, trimmedValue.length() - 2), ','
@@ -1013,6 +1048,12 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functio
     auto any_vector = vector<LanType>(init_funct_param_types.size(), LanType(LanTypeEnum::TypeAny));
     string any_functionId = LanFunction::GetId(init_funct_name, any_vector);
     
+    // Check for other value first
+    if (this->ParseParameter(packagePath, last_result.value()))
+    {
+
+    }
+    // Look for a package and function
     if (packagePath != "") {
 		if (this->LoadedModules.find(packagePath) != this->LoadedModules.end()) {
             // Find scope
@@ -1034,12 +1075,14 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functio
 		}
 		else throw runtime_error("Package not found: " + packagePath);
     }
+    // Find a user defined function
 	else if (this->Memory.resolve(functionId, last_result.value())) {
 		CommandLineInterface::DebugPrint("Found function: " + functionId);
         auto a = std::get<std::shared_ptr<LanFunction>>(last_result.value()->Value)->Execute(*this, init_funct_params);
         if (a.has_value())
             last_result = std::make_shared<LanVariable>(a.value());
 	}
+    // User function any overload
     else if (this->Memory.resolve(any_functionId, last_result.value())) {
         CommandLineInterface::DebugPrint("Found function (any overload): " + functionId);
         auto a = std::get<std::shared_ptr<LanFunction>>(last_result.value()->Value)->Execute(*this, init_funct_params);

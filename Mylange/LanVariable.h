@@ -91,6 +91,8 @@ public:
         return it->second;
     }
 
+    std::shared_ptr<LanVariable> DotMethod(const std::string& name, LanArray params) const;
+
     // -- Utilities --
     std::string ToString() const;
     static bool IsCompatible(const LanType& type, const LanVariable& var);
