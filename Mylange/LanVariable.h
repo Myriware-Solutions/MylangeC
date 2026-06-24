@@ -33,6 +33,7 @@ public:
         std::monostate,                         // null / uninitialized
         bool,
         int,
+        float,
         char,
         std::string,
         LanArray,                               // array
@@ -116,6 +117,36 @@ public:
     struct overloaded : Ts... { using Ts::operator()...; };
     template<class... Ts>
     overloaded(Ts...) -> overloaded<Ts...>;
+
+
+	// Static, quick convience functions for creating LanVariable instances of specific types
+    static LanVariable Nil() {
+        return LanVariable(LanType(LanTypeEnum::TypeNil), LanValue{ });
+    }
+
+    static LanVariable Bool(bool value) {
+        return LanVariable(LanType(LanTypeEnum::TypeBool), LanValue{ value });
+    }
+
+    static LanVariable Int(int value) {
+        return LanVariable(LanType(LanTypeEnum::TypeInt), LanValue{ value });
+    }
+
+    static LanVariable Float(float value) {
+        return LanVariable(LanType(LanTypeEnum::TypeFloat), LanValue{ value });
+    }
+
+    static LanVariable Char(char value) {
+        return LanVariable(LanType(LanTypeEnum::TypeChar), LanValue{ value });
+    }
+
+	static LanVariable String(std::string value) {
+		return LanVariable(LanType(LanTypeEnum::TypeString), LanValue{ value });
+	}
+
+    static LanVariable Array(LanArray value) {
+        return LanVariable(LanType(LanTypeEnum::TypeArray), LanValue{ value });
+    }
 };
 
 // -------------------------------------------------------

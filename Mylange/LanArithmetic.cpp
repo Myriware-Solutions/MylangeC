@@ -171,14 +171,14 @@ LanVariable LanArithmetic::ApplyOperator(
     if (op == "..") {
 		// Two strings: concatenate
         if (lhs.Type == LanTypeEnum::TypeString && rhs.Type == LanTypeEnum::TypeString) {
-            return LanVariable(LanType(LanTypeEnum::TypeString), get<string>(lhs.Value) + get<string>(rhs.Value));
+            return LanVariable::String(get<string>(lhs.Value) + get<string>(rhs.Value));
         }
 		// String and int: repeat string
         if (lhs.Type == LanTypeEnum::TypeString && rhs.Type == LanTypeEnum::TypeInt) {
             string result = "";
             for (int i = 0; i < std::get<int>(rhs.Value); i++)
                 result += std::get<string>(lhs.Value);
-            return LanVariable(LanType(LanTypeEnum::TypeString), result);
+            return LanVariable::String(result);
         }
         // Array and string: concat with string/char delim
         if (lhs.Type.IsArrayType() && (rhs.Type == LanTypeEnum::TypeString || rhs.Type == LanTypeEnum::TypeChar)) {
@@ -190,7 +190,7 @@ LanVariable LanArithmetic::ApplyOperator(
 					else if (rhs.Type == LanTypeEnum::TypeChar) result += std::get<char>(rhs.Value);
                 }
 			}
-			return LanVariable(LanType(LanTypeEnum::TypeString), result);
+			return LanVariable::String(result);
         }
 		// Two arrays: concatenate
 		if (lhs.Type.IsArrayType() && rhs.Type.IsArrayType()) {
@@ -200,7 +200,7 @@ LanVariable LanArithmetic::ApplyOperator(
 			result.reserve(lhsArr.size() + rhsArr.size());
 			result.insert(result.end(), lhsArr.begin(), lhsArr.end());
 			result.insert(result.end(), rhsArr.begin(), rhsArr.end());
-			return LanVariable(LanType(LanTypeEnum::TypeArray), result);
+			return LanVariable::Array(result);
 		}
     }
     if (op == "<") return lhs < rhs;
@@ -208,15 +208,9 @@ LanVariable LanArithmetic::ApplyOperator(
 	if (op == "<=") return lhs <= rhs;
 	if (op == ">=") return lhs >= rhs;
     if (op == "&&" || op == "and")
-        return LanVariable(
-            LanType(LanTypeEnum::TypeBool),
-            LanVariable::LanValue{ lhs && rhs }
-        );
+        return LanVariable::Bool(lhs && rhs);
     if (op == "||" || op == "or")
-        return LanVariable(
-            LanType(LanTypeEnum::TypeBool),
-            LanVariable::LanValue{ lhs || rhs }
-        );
+        return LanVariable::Bool(lhs || rhs);
 
     throw std::runtime_error("Unknown operator: " + op);
 }
