@@ -95,4 +95,88 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
             }
         )
     ));
+
+    // Strings
+    mi.Memory.pushScope("str");
+    mi.LoadedModules.insert("str");
+
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeString),
+            "toUpper",
+            std::map<std::string, LanType>{ { "o", LanType(LanTypeEnum::TypeString) } },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                string text = std::get<string>(args[0].Value);
+                for (char& c : text) {
+                    c = std::toupper(static_cast<unsigned char>(c));
+                }
+                return LanVariable::String(text);
+            }
+        )
+    ));
+
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeString),
+            "toLower",
+            std::map<std::string, LanType>{ { "self", LanType(LanTypeEnum::TypeString) } },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                string text = std::get<string>(args[0].Value);
+                for (char& c : text) {
+                    c = std::tolower(static_cast<unsigned char>(c));
+                }
+                return LanVariable::String(text);
+            }
+        )
+    ));
+
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeChar),
+            "at",
+            std::map<std::string, LanType>{
+                { "self", LanType(LanTypeEnum::TypeString) },
+                { "index", LanType(LanTypeEnum::TypeInt) }},
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                string text = std::get<string>(args[0].Value);
+                return LanVariable::Char(text[std::get<int>(args[1].Value)]);
+            }
+        )
+    ));
+
+    mi.Memory.popScope(true);
+
+    // Char
+
+    mi.Memory.pushScope("char");
+    mi.LoadedModules.insert("char");
+
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeChar),
+            "toUpper",
+            std::map<std::string, LanType>{ { "self", LanType(LanTypeEnum::TypeChar) } },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                return LanVariable::Char(std::tolower(static_cast<unsigned char>(std::get<char>(args[0].Value))));
+            }
+        )
+    ));
+
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeChar),
+            "toLower",
+            std::map<std::string, LanType>{ { "self", LanType(LanTypeEnum::TypeChar) } },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                return LanVariable::Char(std::tolower(static_cast<unsigned char>(std::get<char>(args[0].Value))));
+            }
+        )
+    ));
+
+    mi.Memory.popScope(true);
 }

@@ -69,14 +69,19 @@ public:
 
     // -- Indexing --
     std::shared_ptr<LanVariable> Index(int i) const {
-        if (!Type.IsArrayType())
-            throw std::runtime_error("Cannot index non-array type.");
-
-        const auto& arr = std::get<LanArray>(Value);
-        if (i < 0 || i >= static_cast<int>(arr.size()))
-            throw std::runtime_error("Array index out of bounds.");
-
-        return arr[i];
+        if (Type.IsArrayType()) {
+            const auto& arr = std::get<LanArray>(Value);
+            if (i < 0 || i >= static_cast<int>(arr.size()))
+                throw std::runtime_error("Array index out of bounds.");
+            return arr[i];
+        }
+        else if (Type == LanTypeEnum::TypeString) {
+            const auto& str = std::get<string>(Value);
+            if (i < 0 || i >= static_cast<int>(str.length()))
+                throw std::runtime_error("Array index out of bounds.");
+            return make_shared<LanVariable>(LanVariable::Char(str[i]));
+        }
+        else throw std::runtime_error("Type does not support int indexing: " + Type.ToString());
     }
 
     std::shared_ptr<LanVariable> Index(const std::string& key) const {

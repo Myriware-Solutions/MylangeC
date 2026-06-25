@@ -134,5 +134,5 @@ LanVariable LanArithmetic::ApplyOperator(
     if (op == "||" || op == "or")
         return LanVariable::Bool(lhs || rhs);
 
-    throw std::runtime_error("Unknown operator: " + op);
+    throw std::runtime_error("Unknown operator: " + lhs.Type.ToString() + " " + op + " " + rhs.Type.ToString());
 }

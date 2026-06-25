@@ -15,9 +15,29 @@ class MemoryManager;
 
 struct TokenItem
 {
-	enum TokenType { Value, ColonExtention, BracketExtention, Method };
+	enum TokenType { Value, ColonExtention, BracketExtention, Method, PackageName, PackageMethod };
+	TokenItem(TokenType t, string& v) {
+		type = t;
+		value = v;
+	}
 	TokenType type;
 	std::string value;
+	string type_string() const {
+		switch (this->type) {
+			case TokenType::Value:
+				return "Value";
+			case TokenType::ColonExtention:
+				return "ColonExtention";
+			case TokenType::BracketExtention:
+				return "BracketExtention";
+			case TokenType::Method:
+				return "Method";
+			case TokenType::PackageName:
+				return "PackageName";
+			case TokenType::PackageMethod:
+				return "PackageMethod";
+		}
+	}
 };
 
 class MylangeInterpreter
@@ -26,9 +46,12 @@ public:
 	MylangeInterpreter();
 	optional<LanVariable> Interpret(const string& code);
 	optional<LanVariable> InterpretBlock(const string& block, const bool SkipClearing = false);
-	std::optional<std::vector<TokenItem>> TokenizeComplexValue(std::string& value);
+	std::vector<TokenItem> TokenizeComplexValue(std::string& value);
 	bool ParseParameter(const string& rawParamStr, std::shared_ptr<LanVariable>& var, bool assignVar = true);
+	LanVariable ForcedParseParameter(const string& rawParamStr);
 	optional<LanVariable> ParseParameter(const string& rawParamStr);
+	pair<shared_ptr<LanFunction>, vector<LanVariable>> FindFunction(const string& functionCallStr, std::string packagePath = "", vector<LanVariable> self = {});
+	void MakeParameters(string& paramString, vector<LanVariable>& paramsOut, vector<LanType>& paramTypesOut);
 	bool RandomTypeConversion(const string& value, std::shared_ptr<LanVariable>& var);
 	optional<LanVariable> RandomTypeConversion(const string& value);
 	optional<LanVariable> RunFunctionStack(const string& functionStackStr);

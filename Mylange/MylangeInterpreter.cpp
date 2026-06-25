@@ -14,6 +14,7 @@
 #include <exception>
 #include <type_traits>
 #include <variant>
+#include <cctype>
 
 #include "MemoryBooker.h"
 #include "MylangeInterpreter.h"
@@ -300,7 +301,8 @@ vector<Rule> rules = {
     {
         functionCallStack,
         [](auto const& m, MylangeInterpreter& mi) {
-			mi.RunFunctionStack(m[0].str());
+			// mi.RunFunctionStack(m[0].str());
+            auto _ = mi.ParseParameter(m[0].str());
             return nullopt;
         }
     },
@@ -631,26 +633,158 @@ const std::vector<std::string> protectedWords = {
 const regex fullVariablePattern(R"(([a-zA-Z]\w+)((?:(?::\w+)|(?:\[.+?\]))*))", std::regex_constants::ECMAScript);
 const regex variableExtentionPattern(R"((?::\w+)|(?:\[.+?\]))", std::regex_constants::ECMAScript);
 
+const regex colonExtention(R"(:(\w+)$)", std::regex_constants::ECMAScript);
+const regex bracketExtention(R"(\[(\d+)\]$)", std::regex_constants::ECMAScript);
 
+// :(\w+)$
+// \[(\d+)\]$
 
-std::optional<std::vector<TokenItem>> MylangeInterpreter::TokenizeComplexValue(std::string& value)
+struct DepthEngine
 {
-    CommandLineInterface::DebugPrint("\n\n\nAttempting to tokenize: '" + value + "'");
-    // Split on all dots
-    auto dot_split = Utils::TopLevelSplit(value, '.');
-    bool first = true;
-    vector<TokenItem> token_list;
-    for (auto d_split : dot_split)
-    {
-        // Must match one of the types in TokenItem::TokenType, or null is returned (no possible value can be found)
-        // Also, split up all the different types so that each can be further analyzed if a value is found
-        if (first) {
-            //if (this->ParseParameter())
-            first = false;
+    std::unordered_map<char, int> depth;
+
+    bool Place(char c) {
+        bool result = true;
+        for (auto& b : Utils::BracketPairs) {
+            if (c == b.first) {
+                depth[b.first]++;
+                result = true;
+            }
+            else if (c == b.second) {
+                if (b.second == '>' && last == '=') result = false;
+                else {
+                    depth[b.first]--;
+                    result = true;
+                }
+            }
+        }
+        if (!std::isspace(c)) last = c;
+        return result;
+    }
+
+    int Get() {
+        int u = 0;
+        for (auto o : depth) u += o.second;
+        return u;
+    }
+private:
+    char last;
+};
+
+std::vector<TokenItem> MylangeInterpreter::TokenizeComplexValue(std::string& value)
+{
+    CommandLineInterface::DebugPrint("Attempting to tokenize: '" + value + "'");
+
+    // Go char-by-char to get all the different possible parts of the value
+    DepthEngine depth = DepthEngine();
+
+    vector<TokenItem> parts = {};
+    string to_append = "";
+    bool possible_package_method = false;
+    auto place_back = [&]() {
+        if (to_append.length() == 0) return;
+        if (parts.size() > 0) throw runtime_error("Should not be unhandled");
+        if (ModuleRegistry::Has(to_append)) {
+            possible_package_method = true;
+            parts.push_back(TokenItem(TokenItem::TokenItem::PackageName, to_append));
+        }
+        else parts.push_back(TokenItem(TokenItem::TokenItem::Value, to_append));
+        to_append = "";
+    };
+    string operator_check = "";
+    for (int i = 0; i < value.length(); i++) {
+        char c = value[i];
+        
+        
+        if (depth.Get() == 0) {
+            // Ensure no top-level operators exist, which would automatically fail
+            // this check as it is an arithmetic, not stack call
+            if (Utils::Find(LanArithmetic::OperatorCharacters(), c)) {
+                string op = "";
+                for (int j = 0; j < value.length() - i; j++) {
+                    char k = value[i + j];
+                    if (!Utils::Find(LanArithmetic::OperatorCharacters(), k)) break;
+                    op += k;
+                }
+                CommandLineInterface::DebugPrint("Possible operator found: " + op);
+                if (LanArithmetic::IsOperator(op)) return {};
+            }
+
+            // Check to see if it could be a bracket index
+            // The only way to disqualify this is if it contains commas,
+            // which indicates an array.
+            if (c == '[') {
+                place_back();
+                DepthEngine d = DepthEngine();
+                bool valid_extention = true;
+                string s = "";
+                int j = 0;
+                for (j = 1; j < value.length() - i; j++) {
+                    char k = value[i + j];
+                    if (d.Get() == 0 && k == ',') valid_extention = false; // Comma at top-level found, which indicates an array
+                    d.Place(k);
+                    if (d.depth['['] == -1) break; // The closing bracket that matches the first was found, exiting check
+                    s += k;
+                }
+                i += j; // Adjust the global runner to skip over the already-analyzed part
+                if (valid_extention && parts.size() > 0) {
+                    // It looks like a valid extention, and it is not the first array-like thing.
+                    parts.push_back(TokenItem(TokenItem::TokenItem::BracketExtention, s));
+                }
+                else if (!valid_extention && parts.size() == 0) {
+                    // Not a valid extention (is array), but being first, it can be allowed
+                    std::string full_array = "[" + s + "]";
+                    parts.push_back(TokenItem(TokenItem::TokenItem::Value, full_array));
+                }
+                else throw runtime_error("Odd array call found.");
+            }
+            // Check for colon extention
+            else if (c == ':') {
+                place_back();
+                string s = "";
+                int j = 0;
+                for (j = 1; j < value.length() - i; j++) {
+                    char k = value[i + j];
+                    if (!std::isalnum(k)) break;
+                    s += k;
+                }
+                i += j - 1; // Adjust the global runner to skip over the already-analyzed part
+                parts.push_back(TokenItem(TokenItem::TokenItem::ColonExtention, s));
+            }
+            // Check for method
+            else if (c == '.') {
+                place_back();
+                DepthEngine d = DepthEngine();
+                string s = "";
+                int j = 0;
+                for (j = 1; j < value.length() - i; j++) {
+                    char k = value[i + j];
+                    d.Place(k);
+                    s += k;
+                    if (k == ')' && d.depth['('] == 0) break;
+                }
+                i += j; // Adjust the global runner to skip over the already-analyzed part
+                if (possible_package_method) {
+                    parts.push_back(TokenItem(TokenItem::TokenItem::PackageMethod, s));
+                    possible_package_method = false;
+                }
+                else parts.push_back(TokenItem(TokenItem::TokenItem::Method, s));
+            }
+            else {
+                depth.Place(c);
+                to_append += c;
+            }
+        }
+        else {
+            depth.Place(c);
+            to_append += c;
         }
     }
-    CommandLineInterface::DebugPrint("End tokenization\n\n\n");
-    return token_list;
+
+    for (auto& p : parts) {
+        CommandLineInterface::DebugPrint("Part '" + p.value + "', type " + p.type_string());
+    }
+    return parts;
 }
 
 
@@ -664,97 +798,200 @@ bool MylangeInterpreter::ParseParameter(const string& rawParamStr, std::shared_p
     else return false;
 }
 
+LanVariable MylangeInterpreter::ForcedParseParameter(const string& rawParamStr) {
+    auto res = this->ParseParameter(rawParamStr);
+    if (res.has_value()) {
+        return res.value();
+    }
+    else throw runtime_error("Critical Parse failed on: " + rawParamStr);
+}
+
 optional<LanVariable> MylangeInterpreter::ParseParameter(const string& rawParamStr)
 {
-	string paramStr = Utils::TrimString(rawParamStr);
-	CommandLineInterface::DebugPrint("Parsing parameter: " + paramStr);
-    shared_ptr<LanVariable> result;
-    smatch match;
-    // Cache reference
-    if (regex_match(paramStr, match, cachedBit))
-    {
-        CommandLineInterface::DebugPrint("Found cached something.");
-        if (match[1].str() == "0") return move(this->InterpretBlock(match[0].str()));
-        else if (match[1].str() == "1")
-            return LanVariable(
-                LanType(LanTypeEnum::TypeString), 
-                LanVariable::LanValue{ this->BlockMap[match[0].str()] }
-            );
-        else if (match[1].str() == "2")
-            return LanVariable(
-                LanType(LanTypeEnum::TypeChar),
-                LanVariable::LanValue{ this->BlockMap[match[0].str()].at(0) }
-            );
-    }
-    else if (TokenizeComplexValue(paramStr))
-    {
+    string paramStr = Utils::TrimString(rawParamStr);
+    CommandLineInterface::DebugPrint("Parsing parameter: " + paramStr);
 
-    }
-    // Indexed variable
-    else if (regex_match(paramStr, match, fullVariablePattern) && !Utils::Find(protectedWords, paramStr))
-    {
-		string baseName = match[1].str();
-		string extentions = match[2].str();
+    auto tokens = TokenizeComplexValue(paramStr);
 
-        shared_ptr<LanVariable> baseVar;
-        if (this->Memory.resolve(baseName, baseVar)) {
-            std::sregex_iterator begin(extentions.begin(), extentions.end(), variableExtentionPattern);
-            std::sregex_iterator end;
-            for (std::sregex_iterator i = begin; i != end; ++i) {
-                std::smatch match = *i;
-				string matchStr = match.str();
-                // Colon extention
-                if (matchStr[0] == ':') {
-					string indexStr = matchStr.substr(1);
-                    baseVar = baseVar->Index(indexStr);
-                }
-                // Bracket extention
-                else if (matchStr[0] == '[') {
-                    string indexStr = matchStr.substr(1, matchStr.length() - 2);
-                    auto indexVarOpt = this->ParseParameter(indexStr);
-                    if (!indexVarOpt.has_value()) throw runtime_error("Failed to parse index in variable extention.");
+    // Split into two cases,
+    // A single token (simple type, cast right away
+    // Multi tokens, means that the stack needs to be analyzed
 
-                    if (indexVarOpt.value().IsCompatible(LanType(LanTypeEnum::TypeInt))) {
-                        baseVar = baseVar->Index(std::get<int>(indexVarOpt.value().Value));
-                    } else if (indexVarOpt.value().IsCompatible(LanType(LanTypeEnum::TypeString))) {
-                        baseVar = baseVar->Index(std::get<string>(indexVarOpt.value().Value));
-					} else throw runtime_error("Index in variable extention must be int or str. Got " + indexVarOpt.value().Type.ToString());
-				}
-            }
-			CommandLineInterface::DebugPrint("Found variable with extentions: " + baseName + " with extentions: " + extentions
-                + " with value" + baseVar->ToString(), 1);
-            return std::optional<LanVariable>(*baseVar);
+    if (tokens.size() <= 1) {
+        // A single value, randomtype or variable reference
+        shared_ptr<LanVariable> result;
+        smatch match;
+        // Cache reference
+        if (regex_match(paramStr, match, cachedBit))
+        {
+            CommandLineInterface::DebugPrint("Found cached something.");
+            if (match[1].str() == "0") return move(this->InterpretBlock(match[0].str()));
+            else if (match[1].str() == "1")
+                return LanVariable::String(this->BlockMap[match[0].str()]);
+            else if (match[1].str() == "2")
+                return LanVariable::Char(this->BlockMap[match[0].str()].at(0));
         }
-		else throw runtime_error("Base variable not found: " + baseName);
-    }
-    // Possible variable reference (soley word chars)
-    else if (regex_match(paramStr, match, wordCharsOnly) && !Utils::Find(protectedWords, paramStr))
-    {
-        CommandLineInterface::DebugPrint("Possible variable found: " + paramStr, 1);
-        if (this->Memory.resolve(paramStr, result)) {
-            CommandLineInterface::DebugPrint("Found variable: " + paramStr, 1);
+        // Possible variable reference (soley word chars)
+        else if (regex_match(paramStr, match, wordCharsOnly) && !Utils::Find(protectedWords, paramStr))
+        {
+            CommandLineInterface::DebugPrint("Possible variable found: " + paramStr, 1);
+            if (this->Memory.resolve(paramStr, result)) {
+                CommandLineInterface::DebugPrint("Found variable: " + paramStr, 1);
+                return *result;
+            }
+            else throw runtime_error("Variable not found: " + paramStr);
+        }
+        // Failsafe Random Type Conversion
+        else if (this->RandomTypeConversion(paramStr, result))
+        {
             return *result;
         }
-        else throw runtime_error("Variable not found: " + paramStr);
-	}
-    // Failsafe Random Type Conversion
-    else if (this->RandomTypeConversion(paramStr, result))
-    {
-        return *result;
+        // Arithmetic Statement
+        else if (LanArithmetic::IsValidLogicString(paramStr)) {
+            CommandLineInterface::DebugPrint("Found Arithmetic Statement: " + paramStr);
+            return LanArithmetic::BuildAST(paramStr)->Evaluate(*this);
+        }
+        // Possible function call
+        else if (regex_search(paramStr, match, functionCallStack)) {
+            CommandLineInterface::DebugPrint("Found function call: " + paramStr);
+            //throw runtime_error("Call here: " + paramStr);
+            auto res = this->FindFunction(paramStr);
+            return res.first->Execute(*this, res.second);
+        }
     }
-    // Arithmetic Statement
-    else if (LanArithmetic::IsValidLogicString(paramStr)) {
-        CommandLineInterface::DebugPrint("Found Arithmetic Statement: " + paramStr);
-        return LanArithmetic::BuildAST(paramStr)->Evaluate(*this);
+    else {
+        std::optional<LanVariable> working;
+        std::string pack_path;
+        for (int i = 0; i < tokens.size(); i++) {
+            auto& token = tokens[i];
+            CommandLineInterface::DebugPrint("Working on token [" + to_string(i) + "/" + to_string(tokens.size()) + "]: " + token.value + " | " + token.type_string());
+            switch (token.type) {
+            case TokenItem::Value:
+                working = this->ForcedParseParameter(token.value);
+                break;
+            case TokenItem::ColonExtention:
+                if (working.has_value())
+                {
+                    working = *working->Index(token.value);
+                }
+                else throw runtime_error("Someone is bad");
+                break;
+            case TokenItem::BracketExtention:
+            {
+                auto a = this->ParseParameter(token.value);
+                if (a.has_value() && working.has_value()) {
+                    if (working.value().Type.IsArrayType())
+                        working = *working->Index(std::get<int>(a.value().Value));
+                    else if (working.value().Type.IsSetType())
+                        working = *working->Index(std::get<string>(a.value().Value));
+                }
+                else throw runtime_error("Someone is bad");
+            }
+                break;
+            case TokenItem::PackageName:
+                if (i > 0) throw runtime_error("Package name use should not be in stack middleman.");
+                pack_path = token.value;
+                break;
+            case TokenItem::Method:
+            {
+                if (!working.has_value()) throw runtime_error("Calling method on nil value.");
+                else {
+                    auto res = this->FindFunction(token.value, working.value().Type.ToString(), { working.value() });
+                    working = res.first->Execute(*this, res.second);
+                }
+            }
+                break;
+            case TokenItem::PackageMethod:
+            {
+                auto res = this->FindFunction(token.value, pack_path);
+                working = res.first->Execute(*this, res.second);
+            }
+                break;
+            }
+        }
+        if (working.has_value()) return working.value();
+        else return nullopt;
     }
-    // Possible function call
-    else if (regex_search(paramStr, match, functionCallStack)) {
-        auto res = this->RunFunctionStack(paramStr);
-        if (res) return std::move(res);
-        return nullopt;
+}
+
+pair<shared_ptr<LanFunction>, vector<LanVariable>> MylangeInterpreter::FindFunction(const string& functionCallStr, std::string packagePath, vector<LanVariable> self)
+{
+    string function_name = "";
+    vector<LanVariable> function_parameters;
+    vector<LanType> function_parameters_types;
+
+    for (auto& self_var : self) {
+        CommandLineInterface::DebugPrint("G");
+        function_parameters.push_back(self_var);
+        function_parameters_types.push_back(self_var.Type);
     }
 
-    return nullopt;
+    smatch match;
+    if (regex_search(functionCallStr, match, functionPartsPattern)) {
+        string param_str = match[2].str();
+        this->MakeParameters(param_str, function_parameters, function_parameters_types);
+
+        function_name = match[1].str();
+
+        CommandLineInterface::DebugPrint("Function name: " + match[1].str(), 1);
+        CommandLineInterface::DebugPrint("Function params: " + match[2].str(), 1);
+    }
+
+    string functionId = LanFunction::GetId(function_name, function_parameters_types);
+    CommandLineInterface::DebugPrint("Looking for function with id: " + functionId, 1);
+
+    auto any_vector = vector<LanType>(function_parameters_types.size(), LanType(LanTypeEnum::TypeAny));
+    string any_functionId = LanFunction::GetId(function_name, any_vector);
+
+    shared_ptr<LanVariable> resultContainer;
+
+    // Look for a package and function
+    if (packagePath != "") {
+        if (this->LoadedModules.find(packagePath) != this->LoadedModules.end()) {
+            // Find scope
+            auto scope = this->Memory.FindSiblingScope(packagePath);
+            if (!scope) throw runtime_error("Package scope not found: " + packagePath);
+            auto fv = scope->resolve(functionId);
+            if (!fv) {
+                // Try to find an overload with any types
+                fv = scope->resolve(any_functionId);
+                if (!fv) throw runtime_error("Function not found in package: " + functionId);
+            }
+
+            return { std::get<std::shared_ptr<LanFunction>>(fv->Value), function_parameters };
+        }
+        else throw runtime_error("Package not found: " + packagePath);
+    }
+    // Find a user defined function
+    else if (this->Memory.resolve(functionId, resultContainer)) {
+        CommandLineInterface::DebugPrint("Found function: " + functionId);
+        return { std::get<std::shared_ptr<LanFunction>>(resultContainer->Value), function_parameters };
+    }
+    // User function any overload
+    else if (this->Memory.resolve(any_functionId, resultContainer)) {
+        CommandLineInterface::DebugPrint("Found function (any overload): " + functionId);
+        return { std::get<std::shared_ptr<LanFunction>>(resultContainer->Value), function_parameters };
+    }
+
+    throw runtime_error("Coudl not resolve function: " + functionId);
+};
+
+void MylangeInterpreter::MakeParameters(string& paramString,
+    vector<LanVariable>& paramsOut, vector<LanType>& paramTypesOut)
+{
+    vector<string> param_strs = Utils::TopLevelSplit(paramString, ',');
+    for (const auto& param_str : param_strs) {
+        auto param = this->ParseParameter(Utils::TrimString(param_str));
+        if (param.has_value()) {
+            auto& p = param.value();
+            paramTypesOut.push_back(p.Type);
+            paramsOut.push_back(p);
+        }
+        else
+        {
+            throw runtime_error("Failed to parse function argument: " + param_str);
+        }
+    }
 }
 
 bool MylangeInterpreter::RandomTypeConversion(const string& value, std::shared_ptr<LanVariable>& var)
@@ -828,7 +1065,6 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
         );
     }
     // array
-    //else if (regex_match(trimmedValue, regex(R"(^\[(.*)\]$)")))
     else if (Utils::IsWrappedByParens(trimmedValue, '[', ']') && regex_match(trimmedValue, regex(R"(^\[(.*)\]$)")))
     {
         CommandLineInterface::DebugPrint("Found arr: " + trimmedValue);
@@ -936,7 +1172,9 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
     }
     // unknown
     else return nullopt;
-};
+}
+
+
 
 static std::vector<std::string> splitDotParenAware(const std::string& input)
 {
@@ -978,28 +1216,13 @@ static std::vector<std::string> splitDotParenAware(const std::string& input)
 }
 
 
-static void MakeParameters(MylangeInterpreter& mi, string paramString,
-    vector<LanVariable>& paramsOut, vector<LanType>& paramTypesOut)
-{
-    vector<string> param_strs = Utils::TopLevelSplit(paramString, ',');
-    for (const auto& param_str : param_strs) {
-        auto param = mi.ParseParameter(Utils::TrimString(param_str));
-        if (param.has_value()) {
-            auto& p = param.value();
-            paramsOut.push_back(move(p));
-        }
-        else
-        {
-            throw runtime_error("Failed to parse function argument: " + param_str);
-        }
-    }
-    for (const auto& param : paramsOut) paramTypesOut.push_back(param.Type);
-}
+
 
 
 
 optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functionStackStr)
 {
+    throw runtime_error("Deprecated");
     CommandLineInterface::DebugPrint("Executing function stack [" + this->Memory.currentScope()->id + "]: " + functionStackStr);
 
     auto function_calls = splitDotParenAware(functionStackStr);
@@ -1031,7 +1254,7 @@ optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functio
     smatch match;
     if (regex_search(hangingPath[0], match, functionPartsPattern)) {
         
-        MakeParameters(*this, match[2].str(), init_funct_params, init_funct_param_types);
+        //MakeParameters(*this, match[2].str(), init_funct_params, init_funct_param_types);
 
         init_funct_name = match[1].str();
 

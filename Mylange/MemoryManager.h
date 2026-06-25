@@ -23,7 +23,7 @@ public:
 
     void define(const std::string& name, LanVariable value) {
         // prevent overriding values
-        if (symbols.contains(name)) throw runtime_error("Cannot rewrite data.");
+        if (symbols.contains(name)) { throw runtime_error("Cannot rewrite data: " + name); }
         symbols[name] = std::move(value);
     }
 
@@ -49,6 +49,7 @@ public:
         auto pos = id.rfind('.');
         return pos == std::string::npos ? id : id.substr(pos + 1);
     }
+
 };
 
 

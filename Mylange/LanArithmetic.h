@@ -39,6 +39,10 @@ public:
         return res;
     }
 
+    static const bool IsOperator(string op) {
+        return Utils::Find(LanArithmetic::Operators(), op);
+    }
+
     struct ExprNode {
         virtual ~ExprNode() = default;
         virtual LanVariable Evaluate(MylangeInterpreter& mi) = 0;
