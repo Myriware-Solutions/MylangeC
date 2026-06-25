@@ -130,10 +130,8 @@ vector<Rule> rules = {
         [](auto const& m, MylangeInterpreter& mi) { 
             string name = m[1].str();
             auto new_value = mi.ParseParameter(m[2].str());
-            if (new_value.has_value()) {
-                //mi.MemBook.RebookVariable(scopeId, name, move(new_value.value()));
+            if (new_value.has_value())
                 mi.Memory.assign(name, new_value.value());
-            }
             else throw runtime_error("Missing value in reset.");
             return nullopt;
         }
@@ -273,8 +271,6 @@ vector<Rule> rules = {
     {
         functionMethodDeclaration,
         [](auto const& m, MylangeInterpreter& mi) {
-            /*cout << "RType:" << m[1] << endl << "Name:" << m[2] << endl
-                << "ParamStr:" << m[3] << endl << "Logic:" << m[4] << endl;*/
             // Settup params
             map<string, LanType> parameter_map;
             for (const auto& param_str : Utils::TopLevelSplit(m[4], ','))
@@ -289,11 +285,6 @@ vector<Rule> rules = {
 			CommandLineInterface::DebugPrint("[" + mi.Memory.currentScope()->id + "] Registering function : " + function->GetId() + " with return type " + return_type.ToString());
             
 			mi.Memory.define(function->GetId(), LanVariable(LanType(LanTypeEnum::TypeFunction), function));
-
-			//mi.RegisteredFunctions->addFunction(scopeId, move(function));
-			//mi.RegisteredFunctions->debugPrint();
-            
-            //mi.MemBook.BookFunction(scopeId, move(function));
             return nullopt;
         }
     },
@@ -301,7 +292,6 @@ vector<Rule> rules = {
     {
         functionCallStack,
         [](auto const& m, MylangeInterpreter& mi) {
-			// mi.RunFunctionStack(m[0].str());
             auto _ = mi.ParseParameter(m[0].str());
             return nullopt;
         }
@@ -333,7 +323,7 @@ vector<Rule> rules = {
                 }
                 else {
 					mi.Memory.pushScope("if"); // Enter if scope
-                    auto out = move(mi.InterpretBlock(part));
+                    auto out = mi.InterpretBlock(part);
 					mi.Memory.popScope(); // Exit if scope
                     if (out.has_value())
                         return out;
@@ -401,7 +391,7 @@ vector<Rule> rules = {
                 if (!condition_var.has_value()) throw runtime_error("Cannot use undefined in while loop.");
                 if (condition_var.value().Type != LanType(LanTypeEnum::TypeBool))
                     throw runtime_error("Must use boolean statement in while loop. Got " + condition_var.value().Type.ToString());
-                if (!std::get<bool>(condition_var.value().Value)) running = false;
+                running = std::get<bool>(condition_var.value().Value);
                 
 
                 mi.Memory.pushScope("while"); // Enter while scope
@@ -880,7 +870,7 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& rawParamS
             {
                 auto a = this->ParseParameter(token.value);
                 if (a.has_value() && working.has_value()) {
-                    if (working.value().Type.IsArrayType())
+                    if (working.value().Type.IsArrayType() || working.value().Type == LanTypeEnum::TypeString)
                         working = *working->Index(std::get<int>(a.value().Value));
                     else if (working.value().Type.IsSetType())
                         working = *working->Index(std::get<string>(a.value().Value));

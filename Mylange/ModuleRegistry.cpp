@@ -161,7 +161,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
             "toUpper",
             std::map<std::string, LanType>{ { "self", LanType(LanTypeEnum::TypeChar) } },
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
-                return LanVariable::Char(std::tolower(static_cast<unsigned char>(std::get<char>(args[0].Value))));
+                return LanVariable::Char(std::toupper(static_cast<unsigned char>(std::get<char>(args[0].Value))));
             }
         )
     ));

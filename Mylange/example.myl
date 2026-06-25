@@ -1,4 +1,4 @@
-debug(true);
+debug(false);
 #include<std>;
 #include<io>;
 
@@ -32,10 +32,7 @@ str Index => "name";
 
 io.print("Name: " .. ExampleSet[Index] .. ExampleArray[2]);
 
-
-bool Running => true;
-
-while (Running) do {
+while (true) do {
     set ExampleSet => (
         name=>io.input("Name > "), 
         age=>std.to_int(io.input("Age > "))
@@ -48,7 +45,7 @@ while (Running) do {
         };
     };
 
-    if (io.input("cont  [y/n]> ") == "n") then Running => false;
+    if (io.input("cont [y/n]> ") == "n") then break;
 };
 
 

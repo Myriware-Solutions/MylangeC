@@ -67,6 +67,10 @@ public:
         return std::holds_alternative<std::shared_ptr<LanFunction>>(Value);
     }
 
+    bool IsBracketIndexable() const {
+        return (Type.IsArrayType() || Type == LanTypeEnum::TypeString);
+    }
+
     // -- Indexing --
     std::shared_ptr<LanVariable> Index(int i) const {
         if (Type.IsArrayType()) {
