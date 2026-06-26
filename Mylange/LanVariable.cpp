@@ -2,6 +2,25 @@
 #include "LanIterableEngine.h"
 #include "LanClass.h"
 
+std::shared_ptr<LanVariable> LanVariable::Index(const std::string& key) const {
+	if (Type.IsSetType()) {
+		const auto& map = std::get<LanMap>(Value);
+		auto it = map.find(key);
+		if (it == map.end())
+			throw std::runtime_error("Key not found in set: " + key + " : " + this->ToString());
+		return it->second;
+	}
+	else if (Type == LanTypeEnum::TypeCasting) {
+		const auto& casting = std::get<shared_ptr<LanCasting>>(Value);
+		auto& mapc = casting->Properties;
+		auto it = mapc.find(key);
+		if (it == mapc.end())
+			throw std::runtime_error("Key not found in properties: " + key + " : " + this->ToString());
+		return it->second;
+	}
+	else throw std::runtime_error("Cannot index non-set type: " + Type.ToString());
+}
+
 std::shared_ptr<LanVariable> LanVariable::DotMethod(const std::string& name, LanArray params) const
 {
 	// User class castring, not implemented
@@ -48,6 +67,23 @@ string LanVariable::ToString() const
 			result += pair.first + " => " + pair.second->ToString();
 		}
 		return result + ")";
+	}
+	case LanTypeEnum::TypeCasting:
+	{
+		string result = "{";
+		const auto& casting = get<shared_ptr<LanCasting>>(this->Value);
+		// Methods
+		for (auto& [name, _] : casting->ClassInfo->Methods) {
+			if (result.length() > 1) result += ", ";
+			result += name;
+		}
+		// Properties
+		result += "|";
+		for (auto& [name, prop] : casting->Properties) {
+			if (result.length() > 1) result += ", ";
+			result += "(" + casting->ClassInfo->Properties[name].ToString() + ")" + name + "=>(" + prop->Type.ToString() + ")" + prop->ToString();
+		}
+		return result + "}";
 	}
 	default:
 		return "<unrepresentable value>";

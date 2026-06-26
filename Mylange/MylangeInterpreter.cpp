@@ -92,22 +92,20 @@ vector<Rule> rules = {
     {
         regex(R"(^\s*([a-zA-Z<>,|\s]+) +(\w+) *=> *(.*))"),
         [](auto const& m, MylangeInterpreter& mi) {
+            string expected_type_name = Utils::TrimString(m[1]);
             LanType expectedType;
             try {
-                expectedType = LanType::FromString(Utils::TrimString(m[1]));
+                expectedType = LanType::FromString(expected_type_name);
             }
             catch (exception& e) {
-                throw runtime_error("Custom classes not implemented yet.");
-				//unique_ptr<LanClass> customClass;
-    //            if (mi.MemBook.GetClass(scopeId, Utils::TrimString(m[1]), customClass)) {
-				//	expectedType = LanType(move(customClass));
-    //            }
-    //            else
-				//throw runtime_error("Cannot resolve type: " + Utils::TrimString(m[1]) + " : " + e.what());
+                auto a = mi.Memory.resolve(expected_type_name);
+                if (a)
+                    expectedType = LanType(std::get<shared_ptr<LanClass>>(a->Value));
+                else throw runtime_error("Cannot resolve type: " + Utils::TrimString(m[1]) + " : " + e.what());
             }
 
 
-            CommandLineInterface::DebugPrint("EXP TYPE:" + to_string(static_cast<uint32_t>(expectedType.BaseType)));
+            CommandLineInterface::DebugPrint("EXP TYPE:" + to_string(static_cast<uint32_t>(expectedType.BaseType)) + " / " + expectedType.ToString());
             auto lv = mi.ParseParameter(m[3]);
             if (!lv.has_value())
                 throw runtime_error("Failed to parse variable value.");
@@ -126,12 +124,40 @@ vector<Rule> rules = {
     },
     // Reset variable
     {
-        regex(R"(^\s*(\w+) *=> *(.*))"),
+        regex(R"(^\s*(\w[\w :\[\]]+?)\s*=>\s*(.*)$)"),
         [](auto const& m, MylangeInterpreter& mi) { 
-            string name = m[1].str();
+            string place_to_write = m[1].str();
+            auto tokens = mi.TokenizeComplexValue(place_to_write);
+
+            LanVariable* working = nullptr;
+            for (auto& token : tokens) {
+                switch (token.type) {
+                case TokenItem::Value:
+                    // Resolve first what variable is being called
+                    working = mi.Memory.resolve(token.value);
+                    break;
+                case TokenItem::ColonExtention:
+                    working = working->Index(token.value).get();
+                    break;
+                case TokenItem::BracketExtention:
+                    auto indexValue = mi.ParseParameter(token.value);
+                    if (indexValue.has_value() && working) {
+                        if (working->Type.IsArrayType())
+                            working = working->Index(std::get<int>(indexValue.value().Value)).get();
+                        else if (working->Type.IsSetType())
+                            working = working->Index(std::get<std::string>(indexValue.value().Value)).get();
+                        else throw runtime_error("Cannot assign on bracket extention to non-bracket indexable type");
+                    }
+                    else throw runtime_error("Something does not hold value that should.");
+                    break;
+                }
+            }
+            // Now that the pointer is found, we can re-assign the value
             auto new_value = mi.ParseParameter(m[2].str());
-            if (new_value.has_value())
-                mi.Memory.assign(name, new_value.value());
+            if (new_value.has_value() && working) { 
+                //if (!working->IsCompatible(new_value.value().Type)) throw runtime_error("New type does not match.");
+                *working = new_value.value();
+            }
             else throw runtime_error("Missing value in reset.");
             return nullopt;
         }
@@ -180,24 +206,23 @@ vector<Rule> rules = {
             std::unordered_map<std::string, std::shared_ptr<LanFunction>> methods;
 
             if (!extends.empty()) {
-                throw runtime_error("Class declaration not implemented" + extends);
-                //unique_ptr<LanClass> parentClass;
-                //if (mi.MemBook.GetClass(scopeId, extends, parentClass)) {
-                //    CommandLineInterface::DebugPrint("Found parent class: " + extends);
-                //    // Inherit properties
-                //    for (const auto& [propName, propType] : parentClass->Properties) {
-                //        properties[propName] = propType;
-                //    }
-                //    // Inherit default values
-                //    for (const auto& [propName, defaultValue] : parentClass->DefaultValues) {
-                //        defaultValues[propName] = defaultValue->Clone();
-                //    }
-                //    // Inherit methods
-                //    for (const auto& [methodName, method] : parentClass->Methods) {
-                //        methods[methodName] = method->Clone();
-                //    }
-                //}
-                //else throw runtime_error("Parent class not found: " + extends);
+
+                auto a = mi.Memory.resolve(extends);
+                if (!a) throw runtime_error("Parent class not found: " + extends);
+                shared_ptr<LanClass> parentClass = std::get<shared_ptr<LanClass>>(a->Value);
+                CommandLineInterface::DebugPrint("Found parent class: " + extends);
+                // Inherit properties
+                for (auto& [propName, propType] : parentClass->Properties) {
+                    properties[propName] = propType;
+                }
+                // Inherit default values
+                for (auto& [propName, defaultValue] : parentClass->DefaultValues) {
+                    defaultValues[propName] = defaultValue;
+                }
+                // Inherit methods
+                for (auto& [methodName, method] : parentClass->Methods) {
+                    methods[methodName] = method;
+                }
 			}
 
             for (auto& rawLine : lines) {
@@ -205,7 +230,26 @@ vector<Rule> rules = {
 				if (line.empty()) continue;
                 CommandLineInterface::DebugPrint("Parsing class line: " + line);
 
-                if (regex_match(line, match, classDefualtPropertyPatter)) {
+                if (line == "@default constructor") {
+                    if (extends.empty()) throw runtime_error("Cannot define default constructor on non-extended class.");
+                    
+                    std::smatch old_match;
+                    std::regex u(R"((\w+)(\(.*\)))");
+
+                    for (auto it = methods.begin(); it != methods.end(); ) {
+                        auto& [methodName, method] = *it;
+                        if (!std::regex_match(methodName, old_match, u))
+                            throw std::runtime_error("Method does not match correct format?: " + methodName);
+                        if (old_match[1].str() == extends) {
+                            std::string new_id = name + old_match[2].str();
+                            methods[new_id] = method;      // copy value
+                            it = methods.erase(it);        // continue from next element
+                        }
+                        else ++it;
+                    }
+                    
+                }
+                else if (regex_match(line, match, classDefualtPropertyPatter)) {
                     CommandLineInterface::DebugPrint("Found default property: " + match[3].str() + " of type " + match[2].str());
                     // Modifiers
 					vector<string> modifiers = Utils::TopLevelSplit(Utils::TrimString(match[1].str()), ' ');
@@ -258,10 +302,9 @@ vector<Rule> rules = {
                         throw runtime_error("Cannot declare the same method without override.");
 					methods[method->GetId()] = move(method);
                 }
-				else throw runtime_error("Invalid class body line: " + line);
+				else throw runtime_error("Invalid class body line: '" + line + "'");
             }
 
-			//mi.MemBook.BookClass(scopeId, make_unique<LanClass>(name, properties, defaultValues, methods));
 			mi.Memory.define(name, LanVariable(LanType(LanTypeEnum::TypeClass), make_shared<LanClass>(name, properties, defaultValues, methods)));
 
             return nullopt;
@@ -886,8 +929,15 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& rawParamS
             {
                 if (!working.has_value()) throw runtime_error("Calling method on nil value.");
                 else {
-                    auto res = this->FindFunction(token.value, working.value().Type.ToString(), { working.value() });
-                    working = res.first->Execute(*this, res.second);
+                    if (working.value().Type == LanTypeEnum::TypeCasting) {
+                        auto& self_casting = std::get<shared_ptr<LanCasting>>(working.value().Value);
+                        auto y = this->GetFunctionParts(token.value);
+                        return self_casting->RunMethod(*this, y.first, y.second);
+                    }
+                    else {
+                        auto res = this->FindFunction(token.value, working.value().Type.ToString(), { working.value() });
+                        working = res.first->Execute(*this, res.second);
+                    }
                 }
             }
                 break;
@@ -904,6 +954,27 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& rawParamS
     }
 }
 
+std::pair<std::string, std::vector<LanVariable>> MylangeInterpreter::GetFunctionParts(const string& functionCallStr) {
+    string function_name = "";
+    vector<LanVariable> function_parameters;
+    vector<LanType> function_parameters_types;
+    
+    smatch match;
+    if (regex_search(functionCallStr, match, functionPartsPattern)) {
+        string param_str = match[2].str();
+        this->MakeParameters(param_str, function_parameters, function_parameters_types);
+
+        function_name = match[1].str();
+
+        CommandLineInterface::DebugPrint("Function name: " + match[1].str(), 1);
+        CommandLineInterface::DebugPrint("Function params: " + match[2].str(), 1);
+    }
+
+    string functionId = LanFunction::GetId(function_name, function_parameters_types);
+
+    return { functionId, function_parameters };
+}
+
 pair<shared_ptr<LanFunction>, vector<LanVariable>> MylangeInterpreter::FindFunction(const string& functionCallStr, std::string packagePath, vector<LanVariable> self)
 {
     string function_name = "";
@@ -911,7 +982,6 @@ pair<shared_ptr<LanFunction>, vector<LanVariable>> MylangeInterpreter::FindFunct
     vector<LanType> function_parameters_types;
 
     for (auto& self_var : self) {
-        CommandLineInterface::DebugPrint("G");
         function_parameters.push_back(self_var);
         function_parameters_types.push_back(self_var.Type);
     }
@@ -1121,7 +1191,9 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
         LanType target_type = LanType(std::get<std::shared_ptr<LanClass>>(customClassContainer->Value));
         shared_ptr<LanCasting> casting = std::make_shared<LanCasting>(std::get<std::shared_ptr<LanClass>>(customClassContainer->Value));
 		
-        casting->RunMethod(*this, target_type_str, params); // Call the constructor
+        string func_id = LanFunction::GetId(target_type_str, params);
+
+        casting->RunMethod(*this, func_id, params); // Call the constructor
 
         return LanVariable(
             target_type,

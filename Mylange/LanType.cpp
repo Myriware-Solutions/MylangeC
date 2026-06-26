@@ -30,6 +30,7 @@ string LanType::ToStringFromBits(LanTypeEnum bits)
 		if (!result.empty()) result += "|";
 		result += BaseTypeToString(static_cast<LanTypeEnum>(y));
 	}
+	if (result.empty()) return "Empty";
 	return result;
 }
 
@@ -45,7 +46,8 @@ string LanType::ToString(const LanType& type)
 	}
 	else if ((type.BaseType & LanTypeEnum::TypeAny) == LanTypeEnum::TypeAny) {
 		string result = "any<";
-		result += ToString(type.BaseType & ~LanTypeEnum::TypeAny);
+		auto others = type.BaseType & ~LanTypeEnum::TypeAny;
+		if (others != LanTypeEnum::None) result += ToString(others);
 		if (type.Archetype) {
 			result += "_adv";
 		}

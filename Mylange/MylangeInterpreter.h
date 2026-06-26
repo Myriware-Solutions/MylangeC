@@ -50,6 +50,7 @@ public:
 	bool ParseParameter(const string& rawParamStr, std::shared_ptr<LanVariable>& var, bool assignVar = true);
 	LanVariable ForcedParseParameter(const string& rawParamStr);
 	optional<LanVariable> ParseParameter(const string& rawParamStr);
+	std::pair<std::string, std::vector<LanVariable>> GetFunctionParts(const string& functionCallStr);
 	pair<shared_ptr<LanFunction>, vector<LanVariable>> FindFunction(const string& functionCallStr, std::string packagePath = "", vector<LanVariable> self = {});
 	void MakeParameters(string& paramString, vector<LanVariable>& paramsOut, vector<LanType>& paramTypesOut);
 	bool RandomTypeConversion(const string& value, std::shared_ptr<LanVariable>& var);

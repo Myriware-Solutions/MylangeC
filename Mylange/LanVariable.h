@@ -88,17 +88,7 @@ public:
         else throw std::runtime_error("Type does not support int indexing: " + Type.ToString());
     }
 
-    std::shared_ptr<LanVariable> Index(const std::string& key) const {
-        if (!Type.IsSetType())
-            throw std::runtime_error("Cannot index non-set type.");
-
-        const auto& map = std::get<LanMap>(Value);
-        auto it = map.find(key);
-        if (it == map.end())
-            throw std::runtime_error("Key not found in set.");
-
-        return it->second;
-    }
+    std::shared_ptr<LanVariable> Index(const std::string& key) const;
 
     std::shared_ptr<LanVariable> DotMethod(const std::string& name, LanArray params) const;
 
@@ -157,6 +147,10 @@ public:
 
     static LanVariable Array(LanArray value) {
         return LanVariable(LanType(LanTypeEnum::TypeArray), LanValue{ value });
+    }
+
+    static LanVariable Set(LanMap value) {
+        return LanVariable(LanType(LanTypeEnum::TypeSet), LanValue{ value });
     }
 };
 

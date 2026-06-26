@@ -1,12 +1,14 @@
-debug(false);
+//debug(true);
 #include<std>;
 #include<io>;
 
 io.dump();
 
+
+
 def int supper() as return 0;
 
-//io.print( [1,2,3][1] );
+io.print( [1,2,3][1] );
 io.print("Hello world".toUpper());
 io.print( (s => 1, k => "string"):k.toUpper()[3].toLower() );
 io.print("hello".toUpper());
@@ -49,41 +51,59 @@ while (true) do {
 };
 
 
-
-return 0;
+//debug(true);
+io.print("Testing classes");
 
 class Person has {
 
     public str Property;
     public str DefualtedProperty => "something";
+    public int Age;
 
     public def nil Person(int age, str something) as {
         io.print("Constructor called" .. age);
         this:Property => something;
+        this:Age => age;
     };
 
     public def str Name() as {
-        io.print("Name called from Person");
+        io.print(this);
+        io.print("Name called from Person: 0" .. this:Age);
     };
 
 };
 
 class Friend extends Person has {
 
+    @default constructor;
+
     @override public str DefualtedProperty => "something else";
 
     @override
     public def str Name() as {
-        io.print("Name called from Friend");
+        io.print(this);
+        io.print("Name called from Friend" .. this:DefualtedProperty);
+    };
+
+    public def nil Other(int i) as {
+        io.print("Number: " .. (i + this:Age));
     };
 
 };
 
-std.ClassPrintout();
+
+
+//io.dump();
+io.dumpClass(Friend);
 
 Person anthony => new Person(3, "Something");
-
 anthony.Name();
+
+Friend john => new Friend(5, "Another");
+io.print("John:");
+io.print(john);
+john.Name();
+john.Other(3);
 
 return 0;
 

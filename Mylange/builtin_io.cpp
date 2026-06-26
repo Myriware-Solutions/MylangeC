@@ -2,6 +2,7 @@
 #include "ModuleRegistry.h"
 #include "MylangeInterpreter.h"
 #include "LanVariable.h"
+#include "LanClass.h"
 #include <iostream>
 
 static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
@@ -48,6 +49,32 @@ static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
             std::map<std::string, LanType>{ },
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 mi.Memory.dump();
+                return std::nullopt;
+            }
+        )
+    ));
+
+    // class printout
+    mi.Memory.defineIn(scopeId, LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "dumpClass",
+            std::map<std::string, LanType>{ { "cls", LanType(LanTypeEnum::TypeClass) } },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                shared_ptr<LanClass> cls = std::get<shared_ptr<LanClass>>(args[0].Value);
+                std::cout << "Class: " << cls->Name << "\nMethods:\n";
+                for (auto& method : cls->Methods) {
+                    std::cout << "\t" << method.second->GetId() << "\n";
+                }
+                std::cout << "Defaulted Properties:\n";
+                for (auto& prop : cls->DefaultValues) {
+                    std::cout << "\t" << prop.first << " : " << prop.second.Type.ToString() << " => " << prop.second.ToString() << "\n";
+                }
+                std::cout << "Properties:\n";
+                for (auto& prop : cls->Properties) {
+                    std::cout << "\t" << prop.first << " : " << prop.second.ToString() << "\n";
+                }
                 return std::nullopt;
             }
         )

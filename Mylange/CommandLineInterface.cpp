@@ -55,15 +55,3 @@ void CommandLineInterface::RunCLI() {
 
 	};
 }
-
-void CommandLineInterface::DebugPrint(const std::string& message, const int& indent)
-{
-	if (!CommandLineInterface::DebugEnabled) return;
-	string indent_str = string(indent * 4, ' ');
-	try {
-		cout << "[DEBUG] " << indent_str << message << endl;
-	}
-	catch (const exception& e) {
-		cout << "[OUTERR] error outputting: " << e.what() << endl;
-	};
-};
