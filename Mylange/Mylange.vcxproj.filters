@@ -27,9 +27,6 @@
     <ClCompile Include="MylangeInterpreter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MemoryBooker.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="MylangeFileInterface.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -48,17 +45,11 @@
     <ClCompile Include="LanType.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="LanClass.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="builtin_std.cpp">
       <Filter>Builtin Functions</Filter>
     </ClCompile>
     <ClCompile Include="builtin_io.cpp">
       <Filter>Builtin Functions</Filter>
-    </ClCompile>
-    <ClCompile Include="MemoryManager.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ModuleRegistry.cpp">
       <Filter>Builtin Functions</Filter>
@@ -69,9 +60,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MylangeInterpreter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MemoryBooker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="LanType.h">

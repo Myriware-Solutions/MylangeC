@@ -1,18 +1,17 @@
 // LanIterableEngine.h
 #pragma once
-#include <vector>
-#include <string>
-#include <regex>
-#include <unordered_map>
-#include <optional>
-#include <variant>
-#include <functional>
-#include <type_traits>
-#include <bitset>
-#include <bit>
-
-#include "LanVariable.h"
 #include "LanType.h"
+#include "LanVariable.h"
+#include <bit>
+#include <bitset>
+#include <functional>
+#include <optional>
+#include <regex>
+#include <string>
+#include <type_traits>
+#include <unordered_map>
+#include <variant>
+#include <vector>
 
 
 class LanIterableEngine {

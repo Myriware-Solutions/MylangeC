@@ -1,21 +1,20 @@
 #pragma once
-#include <vector>
-#include <string>
-#include <regex>
-#include <unordered_map>
-#include <optional>
-#include <variant>
-#include <functional>
-#include <type_traits>
-#include <bitset>
+#include "CommandLineInterface.h"
+#include "Utils.h"
 #include <bit>
+#include <bitset>
+#include <functional>
+#include <optional>
+#include <regex>
+#include <string>
+#include <type_traits>
+#include <unordered_map>
+#include <variant>
+#include <vector>
 
 using namespace std;
 
 class LanClass;
-
-#include "Utils.h"
-#include "CommandLineInterface.h"
 
 enum class LanTypeEnum : uint32_t
 {

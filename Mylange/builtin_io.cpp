@@ -1,13 +1,13 @@
 // builtin_io.cpp
+#include "LanClass.h"
+#include "LanVariable.h"
 #include "ModuleRegistry.h"
 #include "MylangeInterpreter.h"
-#include "LanVariable.h"
-#include "LanClass.h"
 #include <iostream>
 
 static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
 
-    // print (str)
+    // nil print (str: o)
     mi.Memory.defineIn(scopeId, LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
@@ -22,7 +22,7 @@ static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
         )
     ));
 
-	// input (str) -> str
+	// str input (str: prompt)
     mi.Memory.defineIn(scopeId, LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
@@ -40,7 +40,7 @@ static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
         )
     ));
 
-    // void dump
+    // nil dump ()
     mi.Memory.defineIn(scopeId, LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
@@ -54,7 +54,7 @@ static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
         )
     ));
 
-    // class printout
+    // nil dumpClass (class: cls)
     mi.Memory.defineIn(scopeId, LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
@@ -82,7 +82,7 @@ static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
 
 }
 
-// This runs at program startup — registers the factory, NOT the functions
+// Register factory
 static bool _registered = [] {
     ModuleRegistry::Register("io", RegisterIO);
     return true;

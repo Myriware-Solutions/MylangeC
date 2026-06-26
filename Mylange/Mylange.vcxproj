@@ -131,13 +131,10 @@
     <ClCompile Include="builtin_std.cpp" />
     <ClCompile Include="CommandLineInterface.cpp" />
     <ClCompile Include="LanArithmetic.cpp" />
-    <ClCompile Include="LanClass.cpp" />
     <ClCompile Include="LanFunction.cpp" />
     <ClCompile Include="LanIterableEngine.cpp" />
     <ClCompile Include="LanType.cpp" />
     <ClCompile Include="LanVariable.cpp" />
-    <ClCompile Include="MemoryBooker.cpp" />
-    <ClCompile Include="MemoryManager.cpp" />
     <ClCompile Include="ModuleRegistry.cpp" />
     <ClCompile Include="Mylange.cpp" />
     <ClCompile Include="MylangeFileInterface.cpp" />
@@ -150,7 +147,6 @@
     <ClInclude Include="LanIterableEngine.h" />
     <ClInclude Include="LanType.h" />
     <ClInclude Include="LanVariable.h" />
-    <ClInclude Include="MemoryBooker.h" />
     <ClInclude Include="MemoryManager.h" />
     <ClInclude Include="ModuleRegistry.h" />
     <ClInclude Include="MylangeFileInterface.h" />

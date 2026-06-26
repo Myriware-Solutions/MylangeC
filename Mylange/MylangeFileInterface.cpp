@@ -1,15 +1,13 @@
-#include <iostream>
-#include <string>
-#include <regex>
-#include <vector>
-
-#include "MylangeFileInterface.h"
-#include "Utils.h"
-#include "MylangeInterpreter.h"
 #include "LanIterableEngine.h"
 #include "ModuleRegistry.h"
+#include "MylangeFileInterface.h"
+#include "MylangeInterpreter.h"
+#include "Utils.h"
 #include <exception>
-//#include "builtin.h"
+#include <iostream>
+#include <regex>
+#include <string>
+#include <vector>
 
 using namespace std;
 
@@ -23,16 +21,10 @@ int FileInterface::InterpretFile(const string& filePath)
 
 	string fileContent = Utils::ReadFileContents(filePath);
 
-    
-	// std::cout << "File Content:\n" << fileContent << std::endl;
     // Remove all comments
 	fileContent = std::regex_replace(fileContent, single_line_comment_pattern, "");
 	fileContent = std::regex_replace(fileContent, multi_line_comment_pattern, "");
 	fileContent = std::regex_replace(fileContent, newline_whitespace_pattern, " ");
-
-	// cout << "Content without comments:\n" << fileContent << std::endl;
-
-	// Pass in block runner
 
 	auto fu = [&]() {
 		MylangeInterpreter mi = MylangeInterpreter();
@@ -43,8 +35,6 @@ int FileInterface::InterpretFile(const string& filePath)
 		else
 			std::cout << "Program exited with no return value." << std::endl;
 	};
-
-	//fu();
 
 	try {
 		fu();

@@ -1,14 +1,14 @@
 ﻿#pragma once
-#include <string>
-#include <vector>
-#include <unordered_map>
-#include <memory>
-#include "MylangeInterpreter.h"
-#include <climits>
-#include <stdexcept>
-#include <utility>
 #include "LanVariable.h"
+#include "MylangeInterpreter.h"
 #include "Utils.h"
+#include <climits>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 using namespace std;
 
@@ -57,11 +57,6 @@ public:
 
         LanVariable Evaluate(MylangeInterpreter& mi) override
         {
-            // This is where YOU define meaning:
-            // - literal number?
-            // - variable lookup?
-            // - function call?
-
             auto it = mi.ParseParameter(text);
 			if (it.has_value()) return it.value();
 			else throw std::runtime_error("Error in Arithmetics, unable to evaluate value: '" + text + "'");
@@ -81,11 +76,10 @@ public:
 
         LanVariable Evaluate(MylangeInterpreter& mi) override
         {
-            // 1️⃣ Recursively evaluate children
+            // Recursively evaluate children
             LanVariable lhs = left->Evaluate(mi);
             LanVariable rhs = right->Evaluate(mi);
-
-            // 2️⃣ Apply operator logic
+            // Apply operator logic
             return ApplyOperator(op, lhs, rhs);
         }
     };
@@ -99,7 +93,6 @@ public:
     {
         std::string s = Utils::TrimString(expr);
         if (s.empty())
-            //throw runtime_error("Empty parse.");
             return nullptr;
 
         // Strip outer parentheses
@@ -151,8 +144,6 @@ public:
         );
     }
 
-
     static bool IsValidLogicString(const std::string& input);
 
 };
-

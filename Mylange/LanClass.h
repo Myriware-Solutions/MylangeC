@@ -1,14 +1,14 @@
 // LanClass.h
 #pragma once
-#include <string>
-#include <unordered_map>
-#include <vector>
-#include <optional>
-#include <memory>
 #include "LanIterableEngine.h"
 #include "LanType.h"
 #include "LanVariable.h"
 #include "MylangeInterpreter.h"
+#include <memory>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 class MylangeInterpreter;
 
@@ -85,7 +85,6 @@ public:
         // Create Function Runtime Scope
         mi.Memory.pushScope(this->ClassInfo->Name + "::"+ method->Name + "()");
         auto uiu = LanVariable::LanValue{ shared_from_this() };
-        //auto uiu = LanVariable::LanValue{ true };
         auto l = LanVariable(LanType(LanTypeEnum::TypeCasting), uiu);
         std::string this_label("this");
         mi.Memory.define(this_label, l);

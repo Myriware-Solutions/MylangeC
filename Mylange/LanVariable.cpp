@@ -130,27 +130,6 @@ bool LanVariable::IsCompatible(const LanType& type, const LanVariable& var)
 	return false;
 }
 
-//LanVariable LanVariable::DoTypeFunction(const string& scopeId, const std::string& name,
-//	MylangeInterpreter& mi, const vector<unique_ptr<LanVariable>>& parameters)
-//{
-//	std::visit(overloaded{
-//			[&](int arg) {},
-//			[&](bool arg) {},
-//			[&](char arg) {},
-//			[&](const std::string& arg) {},
-//			[&](const std::vector<std::unique_ptr<LanVariable>>& arg) {},
-//			[&](const std::unordered_map<std::string, std::unique_ptr<LanVariable>>& arg) {},
-//			[&](const std::unique_ptr<LanIterableEngine>& arg) {},
-//			[&](const std::unique_ptr<LanCasting>& arg) {
-//
-//				auto v = arg->RunMethod(mi, scopeId, name, parameters);
-//				return move(v);
-//		
-//			}
-//		}, this->Value);
-//	return LanVariable();
-//}
-
 LanVariable LanVariable::operator+(const LanVariable& other) const
 {
 	if (this->Type.BaseType == LanTypeEnum::TypeInt &&

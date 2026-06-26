@@ -1,36 +1,31 @@
 // IMPORTS //
-#include <vector>
-#include <string>
-#include <regex>
-#include <functional>
-#include <unordered_map>
-#include <map>
-#include <optional>
-#include <memory>
-#include <stdexcept>
-#include <utility>
+#include "CommandLineInterface.h"
+#include "LanArithmetic.h"
+#include "LanClass.h"
+#include "LanIterableEngine.h"
+#include "LanType.h"
+#include "LanVariable.h"
+#include "ModuleRegistry.h"
+#include "MylangeInterpreter.h"
+#include "Utils.h"
 #include <algorithm>
+#include <cctype>
 #include <cstdint>
 #include <exception>
+#include <functional>
+#include <map>
+#include <memory>
+#include <optional>
+#include <regex>
+#include <stdexcept>
+#include <string>
 #include <type_traits>
+#include <unordered_map>
+#include <utility>
 #include <variant>
-#include <cctype>
+#include <vector>
 
-#include "MemoryBooker.h"
-#include "MylangeInterpreter.h"
-#include "CommandLineInterface.h"
-#include "LanType.h"
-#include "LanArithmetic.h"
-#include "Utils.h"
-#include "LanVariable.h"
-#include "LanIterableEngine.h"
-#include "LanClass.h"
-#include "ModuleRegistry.h"
-
-
-
-using namespace std;
-
+// General Regexes
 const regex functionPartsPattern(R"(^([\w.]+)\s*\((.*)\))", std::regex_constants::ECMAScript);
 const regex singleFunctionPartPattern(R"(^(\w+)\s*\((.*)\)$)", std::regex_constants::ECMAScript);
 const regex functionCallStack(R"(^(?:\w+\.?)+(?:\w+\(.*\))+)", std::regex_constants::ECMAScript);
@@ -43,7 +38,6 @@ const regex wordCharsOnly(R"(^[a-zA-Z]\w*$)", std::regex_constants::ECMAScript);
 const regex cachedBit(R"((\d)x([a-fA-F0-9]+))", std::regex_constants::ECMAScript);
 
 // For Classes
-
 const regex classDefualtPropertyPatter(R"(^((?:@?\w+\s+)+)?\s*([a-zA-Z<>,|\s]+) +(\w+) *=> *(.*))", std::regex_constants::ECMAScript);
 const regex classPropertyPattern(R"(^((?:@?\w+\s+)+)?\s*([a-zA-Z<>,|\s]+) +(\w+))", std::regex_constants::ECMAScript);
 const regex castingCreationPattern(R"(^new\s+([\w]+)\((.*)\))", std::regex_constants::ECMAScript);
@@ -111,10 +105,8 @@ vector<Rule> rules = {
                 throw runtime_error("Failed to parse variable value.");
             CommandLineInterface::DebugPrint("Setting variable " + m[2].str() + " of type " + expectedType.ToString()
                 + "/" + lv.value().Type.ToString() + " to value " + lv.value().ToString());
-            if (lv.value().IsCompatible(expectedType)) {
-                //mi.MemBook.BookVariable(scopeId, m[2], move(lv.value()));
+            if (lv.value().IsCompatible(expectedType))
                 mi.Memory.define(m[2].str(), lv.value());
-            }
             else throw runtime_error("Type mismatch in variable assignment. Expected "
                 + expectedType.ToString() + ", got " + lv.value().Type.ToString()
                 + " (with " + lv.value().ToString() + ")");
@@ -154,8 +146,7 @@ vector<Rule> rules = {
             }
             // Now that the pointer is found, we can re-assign the value
             auto new_value = mi.ParseParameter(m[2].str());
-            if (new_value.has_value() && working) { 
-                //if (!working->IsCompatible(new_value.value().Type)) throw runtime_error("New type does not match.");
+            if (new_value.has_value() && working) {
                 *working = new_value.value();
             }
             else throw runtime_error("Missing value in reset.");
@@ -278,7 +269,6 @@ vector<Rule> rules = {
                     if ((properties.find(property_name) != properties.end()) && !Utils::Find(modifiers, overrideString))
                         throw runtime_error("Cannot declare the same property without override.");
                     LanType property_type = LanType::FromString(Utils::TrimString(match[2].str()));
-                    //mi.MemBook.BookVariable(scopeId + "." + m[1].str(), property_name, make_unique<LanVariable>(property_type, LanVariable::LanValue{}));
 					properties[property_name] = property_type;
                 }
 				else if (regex_match(line, match, functionMethodDeclaration)) {
@@ -400,15 +390,12 @@ vector<Rule> rules = {
                         for (int i = 0; i < value_vector.size(); i++) {
                             auto& value = value_vector[i];
                             if (!value->IsCompatible(ie->Keys[i].second)) throw runtime_error("Type expected and given mismatch.");
-                            //mi.MemBook.BookVariable(loop_id, ie->Keys[i].first, move(value));
 							mi.Memory.define(ie->Keys[i].first, *value);
                         }
                     }
                     else if constexpr (is_same_v<T, LanVariable>) {
                         auto& value = get<LanVariable>(valueVariant);
-                        //CommandLineInterface::DebugPrint("Running loop with '" + ie->Keys[0].first + "' set as: " + value->ToString());
                         if (!value.IsCompatible(ie->Keys[0].second)) throw runtime_error("Type expected and given mismatch.");
-                        //mi.MemBook.BookVariable(loop_id, ie->Keys[0].first, move(value));
 						mi.Memory.define(ie->Keys[0].first, value);
                     };
                     
@@ -455,8 +442,6 @@ vector<Rule> rules = {
         [](auto const& m, MylangeInterpreter& mi) {
             auto it = mi.ParseParameter(m[1].str());
             if (it.has_value())
-                //return move(it.value());
-                //return optional<LanVariable>(move(it.value()->Clone()));
                 return optional<LanVariable>(it.value());
             throw runtime_error("Trying to return nothing");
         }
@@ -467,7 +452,6 @@ vector<Rule> rules = {
 MylangeInterpreter::MylangeInterpreter()
 {
     this->BlockCounter = 1;
-	//this->RegisteredFunctions = make_unique<MasterFunctionTree>();
 };
 
 
@@ -625,18 +609,11 @@ static string CondenseBlocks(
 optional<LanVariable> MylangeInterpreter::InterpretBlock(const string& blockString, const bool SkipClearing)
 {
     // Cache stuff
-
     std::string condensed_block = CondenseQuotedBlocks(blockString, '"', "1x", & this->BlockMap, this->BlockCounter);
     condensed_block = CondenseQuotedBlocks(condensed_block, '\'', "2x", &this->BlockMap, this->BlockCounter);
     condensed_block = CondenseBlocks(
         condensed_block, '{', '}', &this->BlockMap, this->BlockCounter
     );
-
-    //std::cout << "Result:\n" << condensed_block << "\n\n";
-    //std::cout << "Map contents:\n";
-    /*for (const auto& [k, v] : this->BlockMap) {
-        CommandLineInterface::DebugPrint(k + " -> [" + v + "]");
-    }*/
 
     // Split into lines
     vector<string> lines = Utils::SplitString(condensed_block, ';');
@@ -653,8 +630,7 @@ optional<LanVariable> MylangeInterpreter::InterpretBlock(const string& blockStri
             return res;
         }
     }
-    //if (!SkipClearing)
-    //    this->Memory.popScope();
+
     return nullopt;
 }
 
@@ -669,8 +645,6 @@ const regex variableExtentionPattern(R"((?::\w+)|(?:\[.+?\]))", std::regex_const
 const regex colonExtention(R"(:(\w+)$)", std::regex_constants::ECMAScript);
 const regex bracketExtention(R"(\[(\d+)\]$)", std::regex_constants::ECMAScript);
 
-// :(\w+)$
-// \[(\d+)\]$
 
 struct DepthEngine
 {
@@ -887,7 +861,6 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& rawParamS
         // Possible function call
         else if (regex_search(paramStr, match, functionCallStack)) {
             CommandLineInterface::DebugPrint("Found function call: " + paramStr);
-            //throw runtime_error("Call here: " + paramStr);
             auto res = this->FindFunction(paramStr);
             return res.first->Execute(*this, res.second);
         }
@@ -1232,7 +1205,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
         }
         else throw runtime_error("Tried to obtain a null value for Iterable."); 
     }
-    // unknown
+    // Unknown
     else return nullopt;
 }
 
@@ -1275,115 +1248,9 @@ static std::vector<std::string> splitDotParenAware(const std::string& input)
         parts.push_back(current);
 
     return parts;
-}
-
-
-
-
-
-
-optional<LanVariable> MylangeInterpreter::RunFunctionStack(const string& functionStackStr)
-{
-    throw runtime_error("Deprecated");
-    CommandLineInterface::DebugPrint("Executing function stack [" + this->Memory.currentScope()->id + "]: " + functionStackStr);
-
-    auto function_calls = splitDotParenAware(functionStackStr);
-    bool consiteringPackage = true;
-    string packagePath = "";
-	vector<string> hangingPath = vector<string>();
-    for (auto& fc : function_calls) {
-        CommandLineInterface::DebugPrint("Function call part: " + fc, 2);
-        if (Utils::IsAlphanumeric(fc) && consiteringPackage) {
-			if (packagePath.empty()) packagePath = fc;
-			else packagePath += "." + fc;
-        }
-        else {
-            if (consiteringPackage) consiteringPackage = false;
-            hangingPath.push_back(fc);
-        }
-    }
-
-	CommandLineInterface::DebugPrint("Package path: " + packagePath, 1);
-	CommandLineInterface::DebugPrint("First function call: " + hangingPath[0], 1);
-	CommandLineInterface::DebugPrint("Hanging path: " + Utils::JoinStrings(hangingPath, ", "), 1);
-
-    // Setup initial value
-
-    string init_funct_name = "";
-    vector<LanVariable> init_funct_params;
-    vector<LanType> init_funct_param_types;
-
-    smatch match;
-    if (regex_search(hangingPath[0], match, functionPartsPattern)) {
-        
-        //MakeParameters(*this, match[2].str(), init_funct_params, init_funct_param_types);
-
-        init_funct_name = match[1].str();
-
-        CommandLineInterface::DebugPrint("Function name: " + match[1].str(), 1);
-        CommandLineInterface::DebugPrint("Function params: " + match[2].str(), 1);
-    }
-
-	string functionId = LanFunction::GetId(init_funct_name, init_funct_param_types);
-	CommandLineInterface::DebugPrint("Looking for function with id: " + functionId, 1);
-    //this->Memory.dump();
-
-    optional<std::shared_ptr<LanVariable>> last_result = std::make_shared<LanVariable>();
-
-    auto any_vector = vector<LanType>(init_funct_param_types.size(), LanType(LanTypeEnum::TypeAny));
-    string any_functionId = LanFunction::GetId(init_funct_name, any_vector);
-    
-    // Check for other value first
-    if (this->ParseParameter(packagePath, last_result.value()))
-    {
-
-    }
-    // Look for a package and function
-    if (packagePath != "") {
-		if (this->LoadedModules.find(packagePath) != this->LoadedModules.end()) {
-            // Find scope
-			auto scope = this->Memory.FindSiblingScope(packagePath);
-			if (!scope) throw runtime_error("Package scope not found: " + packagePath);
-			auto fv = scope->resolve(functionId);
-            if (!fv) {
-                // Try to find an overload with any types
-				fv = scope->resolve(any_functionId);
-				if (!fv) throw runtime_error("Function not found in package: " + functionId);
-            }
-            
-            auto& f = std::get<std::shared_ptr<LanFunction>>(fv->Value);
-			auto a = f->Execute(*this, init_funct_params);
-            if (a.has_value()) {
-                last_result = std::make_shared<LanVariable>(a.value());
-                CommandLineInterface::DebugPrint("Found function in package: " + functionId + " with value " + a.value().ToString());
-            }
-		}
-		else throw runtime_error("Package not found: " + packagePath);
-    }
-    // Find a user defined function
-	else if (this->Memory.resolve(functionId, last_result.value())) {
-		CommandLineInterface::DebugPrint("Found function: " + functionId);
-        auto a = std::get<std::shared_ptr<LanFunction>>(last_result.value()->Value)->Execute(*this, init_funct_params);
-        if (a.has_value())
-            last_result = std::make_shared<LanVariable>(a.value());
-	}
-    // User function any overload
-    else if (this->Memory.resolve(any_functionId, last_result.value())) {
-        CommandLineInterface::DebugPrint("Found function (any overload): " + functionId);
-        auto a = std::get<std::shared_ptr<LanFunction>>(last_result.value()->Value)->Execute(*this, init_funct_params);
-        if (a.has_value())
-            last_result = std::make_shared<LanVariable>(a.value());
-    }
-	else {
-		throw runtime_error("Function not found: " + functionId);
-	}
-
-    if (last_result.has_value())
-        return std::optional<LanVariable>(*last_result.value());
-    else return std::nullopt;
-}
+};
 
 CodeBlock::CodeBlock(const string& myScopeId)
 {
-	this->MyScopeID = myScopeId;
-}
+    this->MyScopeID = myScopeId;
+};
