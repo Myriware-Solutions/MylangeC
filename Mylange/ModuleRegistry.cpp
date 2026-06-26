@@ -1,12 +1,12 @@
-#include "ModuleRegistry.h"
-#include "MylangeInterpreter.h"
+// ModuleRegistry.cpp
 #include "LanVariable.h"
 #include "ModuleRegistry.h"
+#include "MylangeInterpreter.h"
 #include <variant>
 
 void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
 {
-    // exit
+    // nil exit ()
     mi.Memory.define(LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
@@ -19,7 +19,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         )
     ));
 
-    // return
+    // any return (any: o)
     mi.Memory.define(LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
@@ -33,7 +33,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         )
     ));
 
-    // typeof (obj: any) -> str
+    // str typeof (o: any)
     mi.Memory.define(LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
@@ -50,7 +50,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         )
     ));
 
-    // sizeof (obj: any) -> str
+    // str sizeof (o: any)
     mi.Memory.define(LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
@@ -67,7 +67,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         )
     ));
 
-    // void debug ()
+    // nil debug ()
     mi.Memory.define(LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
@@ -81,7 +81,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         )
     ));
 
-    // void debug (bool)
+    // nil debug (bool: o)
     mi.Memory.define(LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
@@ -100,12 +100,13 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
     mi.Memory.pushScope("str");
     mi.LoadedModules.insert("str");
 
+    // str <str>.toUpper()
     mi.Memory.define(LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeString),
             "toUpper",
-            std::map<std::string, LanType>{ { "o", LanType(LanTypeEnum::TypeString) } },
+            std::map<std::string, LanType>{ { "self", LanType(LanTypeEnum::TypeString) } },
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 string text = std::get<string>(args[0].Value);
                 for (char& c : text) {
@@ -116,6 +117,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         )
     ));
 
+    // str <str>.toLower()
     mi.Memory.define(LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
@@ -132,6 +134,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         )
     ));
 
+    // str <str>.at(int: index)
     mi.Memory.define(LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
@@ -154,6 +157,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
     mi.Memory.pushScope("char");
     mi.LoadedModules.insert("char");
 
+    // char <char>.toUpper()
     mi.Memory.define(LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
@@ -166,6 +170,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         )
     ));
 
+    // char <char>.toLower()
     mi.Memory.define(LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(

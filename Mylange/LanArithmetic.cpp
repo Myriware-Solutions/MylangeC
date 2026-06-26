@@ -1,15 +1,14 @@
-#include <memory>
-
+#include "CommandLineInterface.h"
 #include "LanArithmetic.h"
-#include "Utils.h"
-#include "LanVariable.h"
-#include "LanType.h"
 #include "LanIterableEngine.h"
+#include "LanType.h"
+#include "LanVariable.h"
+#include "Utils.h"
 #include <cctype>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <variant>
-#include "CommandLineInterface.h"
 
 bool LanArithmetic::IsValidLogicString(const std::string& input) {
     std::string s = Utils::TrimString(input);
@@ -22,35 +21,23 @@ bool LanArithmetic::IsValidLogicString(const std::string& input) {
 
     const auto& ops = LanArithmetic::Operators();
     const auto& ops_chars = LanArithmetic::OperatorCharacters();
-    /*for (const auto& op : ops) {
-        CommandLineInterface::DebugPrint("Op registered: " + op, 1);
-    }
-    for (const auto& op_c : ops_chars) {
-        string sc{ op_c };
-        CommandLineInterface::DebugPrint("Op char registered: " + sc, 1);
-    }*/
-    
+
     for (size_t i = 0; i < s.size(); i++) {
         char c = s[i];
         string ss{ c };
-        //CommandLineInterface::DebugPrint("Char: " + ss, 1);
         if (isspace(c)) continue;
         
         bool found = false;
         if (Utils::Find(ops_chars, c)) {
-            //CommandLineInterface::DebugPrint("Found op char");
             // Possible operator sequence
             for (const auto& op : ops) {
-                //CommandLineInterface::DebugPrint("Checking op compat: " + op);
                 bool found_match = true;
                 for (size_t j = 0; j < op.length(); j++) {
                     if (i + op.length() > s.length()) {
-                        //CommandLineInterface::DebugPrint("Overflow detected");
                         found_match = false;
                         break;
                     }
                     if (s[i + j] != op[j]) {
-                        //CommandLineInterface::DebugPrint("These do not match:");
                         found_match = false;
                         break;
                     }
@@ -74,8 +61,7 @@ bool LanArithmetic::IsValidLogicString(const std::string& input) {
             depth--;
             continue;
         }
-
-        // Else, its just a charactere
+        // Else, its just a character
     }
     return topLevelOps > 0;
 }

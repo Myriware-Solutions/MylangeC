@@ -1,17 +1,15 @@
 // LanVariable.h
 #pragma once
-
-#include <variant>
-#include <string>
-#include <memory>
-#include <unordered_map>
-#include <vector>
+#include "LanType.h"
 #include <functional>
 #include <map>
+#include <memory>
 #include <optional>
 #include <stdexcept>
-
-#include "LanType.h"
+#include <string>
+#include <unordered_map>
+#include <variant>
+#include <vector>
 
 class LanIterableEngine;
 class LanCasting;

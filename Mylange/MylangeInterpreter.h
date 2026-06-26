@@ -5,11 +5,8 @@
 #include <optional>
 #include <unordered_set>
 
-//class MemoryBooker;
-//class MasterFunctionTree;
 class MemoryManager;
 
-#include "MemoryBooker.h"
 #include "LanVariable.h"
 #include "MemoryManager.h"
 
@@ -61,11 +58,7 @@ public:
 		vector<LanVariable> Params;
 		vector<LanType> ParamTypes;
 	};
-	//FunctionParts GetFunctionParts(const std::string& scopeId, std::string& input);
-	//optional<LanVariable> RunFunctionStackOld(const string& functionStackStr);
-	
-	//MemoryBooker MemBook;
-	//unique_ptr<MasterFunctionTree> RegisteredFunctions;
+
 	ScopeManager Memory;
 	std::unordered_set<std::string> LoadedModules;
 	unordered_map<string, string> BlockMap;
@@ -81,4 +74,3 @@ public:
 	vector<string> lines;
 	unordered_map<string, string> blockCache;
 };
-

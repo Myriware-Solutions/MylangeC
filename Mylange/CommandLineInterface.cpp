@@ -1,14 +1,13 @@
 // IMPORTS //
-#include <iostream>
-#include <string>
-#include <regex>
-#include <exception>
-
 #include "CommandLineInterface.h"
-#include "MylangeInterpreter.h"
-#include "Utils.h"
 #include "LanIterableEngine.h"
 #include "ModuleRegistry.h"
+#include "MylangeInterpreter.h"
+#include "Utils.h"
+#include <exception>
+#include <iostream>
+#include <regex>
+#include <string>
 
 // CODE //
 
@@ -51,7 +50,7 @@ void CommandLineInterface::RunCLI() {
 			}
 			std::cout << "[ERROR] " << e.what() << ";" << endl;
 		}
-		
+
 
 	};
-}
+};

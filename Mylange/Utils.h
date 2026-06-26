@@ -1,12 +1,12 @@
 #pragma once
-#include <string>
-#include <vector>
 #include <fstream>
-#include <sstream>
-#include <iterator>
-#include <stdexcept>
 #include <iomanip>
+#include <iterator>
+#include <sstream>
+#include <stdexcept>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 using namespace std;
 

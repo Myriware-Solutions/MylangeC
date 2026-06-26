@@ -1,8 +1,8 @@
 #pragma once
-#include <iostream>
-#include <string>
-#include <regex>
 #include <exception>
+#include <iostream>
+#include <regex>
+#include <string>
 
 class CommandLineInterface
 {

@@ -1,3 +1,7 @@
+#include "LanClass.h"
+#include "LanIterableEngine.h"
+#include "LanType.h"
+#include "LanVariable.h"
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -5,11 +9,6 @@
 #include <utility>
 #include <variant>
 #include <vector>
-
-#include "LanIterableEngine.h"
-#include "LanVariable.h"
-#include "LanType.h"
-#include "LanClass.h"
 
 
 LanIterableEngine::LanIterableEngine(std::vector<std::pair<std::string, LanType>> keys, 
