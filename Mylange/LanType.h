@@ -12,6 +12,8 @@
 
 using namespace std;
 
+class LanClass;
+
 #include "Utils.h"
 #include "CommandLineInterface.h"
 
@@ -33,6 +35,8 @@ enum class LanTypeEnum : uint32_t
 	TypeCasting = 1 << 10,
 
 	TypeInterable = 1 << 11,
+	TypeFunction = 1 << 12,
+	TypeClass = 1 << 13,
 	// Unions are not their own types, rather, they are
 	// represented if more than 1 bit is set.
 	// Arrays and sets have the Array or Set bit set,
@@ -86,7 +90,10 @@ protected:
 		{ LanTypeEnum::TypeSet, {"set"}},
 		{ LanTypeEnum::TypeCasting, {"casting"}},
 		{ LanTypeEnum::TypeUnknown, {"unknown"}},
-		{ LanTypeEnum::TypeAny, {"any"}}
+		{ LanTypeEnum::TypeAny, {"any"}},
+		{ LanTypeEnum::TypeInterable, {"iterable"} },
+		{ LanTypeEnum::TypeFunction, {"function", "func"} },
+		{ LanTypeEnum::TypeClass, {"class"} }
 	};
 
 	inline static const regex TypeMatchPattern = regex(R"((\w+)(?:\s*<(.*)>)?)");
@@ -94,6 +101,7 @@ public:
 
 	LanTypeEnum BaseType;
 	optional<vector<LanType>> Archetype;
+	shared_ptr<LanClass> CustomClass;
 
 	LanType() {
 		this->BaseType = LanTypeEnum::None;
@@ -107,6 +115,8 @@ public:
 		this->BaseType = baseType;
 		this->Archetype = archetype;
 	}
+
+	LanType(shared_ptr<LanClass> customClass);
 
 	bool IsArrayType() const {
 		return (this->BaseType & LanTypeEnum::TypeArray) == LanTypeEnum::TypeArray;

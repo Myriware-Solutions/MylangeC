@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Builtin Functions">
+      <UniqueIdentifier>{581e0103-a624-411c-805d-9c55ee8839fc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Mylange.cpp">
@@ -33,9 +36,6 @@
     <ClCompile Include="LanFunction.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="IncludableFunctions.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="LanArithmetic.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -47,6 +47,21 @@
     </ClCompile>
     <ClCompile Include="LanType.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LanClass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="builtin_std.cpp">
+      <Filter>Builtin Functions</Filter>
+    </ClCompile>
+    <ClCompile Include="builtin_io.cpp">
+      <Filter>Builtin Functions</Filter>
+    </ClCompile>
+    <ClCompile Include="MemoryManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ModuleRegistry.cpp">
+      <Filter>Builtin Functions</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -71,23 +86,24 @@
     <ClInclude Include="MylangeFileInterface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="LanFunction.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="IncludableFunctions.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="LanArithmetic.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="LanPackages.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="LanIterableEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="LanClass.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MemoryManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ModuleRegistry.h">
+      <Filter>Builtin Functions</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="todo" />
+    <None Include="example.myl" />
+    <None Include="todo.md" />
   </ItemGroup>
 </Project>

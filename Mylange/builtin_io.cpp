@@ -1,0 +1,89 @@
+// builtin_io.cpp
+#include "ModuleRegistry.h"
+#include "MylangeInterpreter.h"
+#include "LanVariable.h"
+#include "LanClass.h"
+#include <iostream>
+
+static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
+
+    // print (str)
+    mi.Memory.defineIn(scopeId, LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "print",
+            std::map<std::string, LanType>{ { "o", LanType(LanTypeEnum::TypeAny) } },
+            [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                if (args.empty()) throw std::runtime_error("print requires 1 argument.");
+                std::cout << args[0].ToString() << std::endl;
+                return std::nullopt;
+            }
+        )
+    ));
+
+	// input (str) -> str
+    mi.Memory.defineIn(scopeId, LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeString),
+            "input",
+            std::map<std::string, LanType>{ { "prompt", LanType(LanTypeEnum::TypeString) } },
+            [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                if (!args.empty())
+                    std::cout << std::get<std::string>(args[0].Value);
+                std::string line;
+                std::getline(std::cin, line);
+				CommandLineInterface::DebugPrint("Input received: " + line);
+                return LanVariable(LanType(LanTypeEnum::TypeString), line);
+            }
+        )
+    ));
+
+    // void dump
+    mi.Memory.defineIn(scopeId, LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "dump",
+            std::map<std::string, LanType>{ },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                mi.Memory.dump();
+                return std::nullopt;
+            }
+        )
+    ));
+
+    // class printout
+    mi.Memory.defineIn(scopeId, LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "dumpClass",
+            std::map<std::string, LanType>{ { "cls", LanType(LanTypeEnum::TypeClass) } },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                shared_ptr<LanClass> cls = std::get<shared_ptr<LanClass>>(args[0].Value);
+                std::cout << "Class: " << cls->Name << "\nMethods:\n";
+                for (auto& method : cls->Methods) {
+                    std::cout << "\t" << method.second->GetId() << "\n";
+                }
+                std::cout << "Defaulted Properties:\n";
+                for (auto& prop : cls->DefaultValues) {
+                    std::cout << "\t" << prop.first << " : " << prop.second.Type.ToString() << " => " << prop.second.ToString() << "\n";
+                }
+                std::cout << "Properties:\n";
+                for (auto& prop : cls->Properties) {
+                    std::cout << "\t" << prop.first << " : " << prop.second.ToString() << "\n";
+                }
+                return std::nullopt;
+            }
+        )
+    ));
+
+}
+
+// This runs at program startup — registers the factory, NOT the functions
+static bool _registered = [] {
+    ModuleRegistry::Register("io", RegisterIO);
+    return true;
+    }();

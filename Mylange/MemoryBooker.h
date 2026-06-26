@@ -1,3 +1,4 @@
+/*
 #pragma once
 #include <string>
 #include <unordered_map>
@@ -5,6 +6,7 @@
 #include "LanVariable.h"
 #include "LanType.h"
 #include "LanFunction.h"
+#include "LanClass.h"
 
 using namespace std;
 
@@ -19,8 +21,7 @@ public:
 	bool GetVariable(const string& scopeId, const string& name, unique_ptr<LanVariable>& var);
 	// Functions
 	void BookFunction(const string& scopeId, unique_ptr<LanFunction> function);
-	/*bool GetFunction(const string& scopeId, const string& name, 
-		vector<LanType> paramTypes, unique_ptr<LanFunction>& func);*/
+
 	vector<LanFunction*> GetFunctionOverloads(
 		const string& scopeId,
 		const string& name);
@@ -30,6 +31,11 @@ public:
 		const string& name,
 		const vector<LanType>& paramTypes);
 
+	// Classes
+
+	void BookClass(const string& scopeId, unique_ptr<LanClass> lanClass);
+	bool GetClass(const string& scopeId, const string& name, unique_ptr<LanClass>& lanClass);
+
 	// Clears
 	void ClearScope(const string& scopeId);
 
@@ -37,6 +43,7 @@ public:
 	//example: "global:x" or "global.0x001A2B3C:myArray"
 	unordered_map<string, LanVariable> Variables;
 	unordered_map<string, unique_ptr<LanFunction>> Functions;
+	unordered_map<string, unique_ptr<LanClass>> Classes;
 
 private:
 	bool GetLiteralVariable(
@@ -49,5 +56,8 @@ private:
 		const string& name,
 		const vector<LanType>& paramTypes);
 
+	bool GetClassLiteral(const string& scopeId, const string& name, unique_ptr<LanClass>& lanClass);
+
 };
 
+*/

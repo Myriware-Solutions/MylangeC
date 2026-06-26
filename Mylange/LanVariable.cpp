@@ -1,68 +1,37 @@
 #include "LanVariable.h"
 #include "LanIterableEngine.h"
+#include "LanClass.h"
 
-std::unique_ptr<LanVariable> LanVariable::Clone() const
-{
-	LanValue clonedValue = std::visit(
-		[](const auto& val) -> LanValue
-		{
-			using T = std::decay_t<decltype(val)>;
-
-			// Simple value types (cheap copy)
-			if constexpr (
-				std::is_same_v<T, bool> ||
-				std::is_same_v<T, int> ||
-				std::is_same_v<T, char> ||
-				std::is_same_v<T, std::string>
-				)
-			{
-				return val;
-			}
-			// Vector of unique_ptr<LanVariable> -> deep clone
-			else if constexpr (std::is_same_v<T, std::vector<std::unique_ptr<LanVariable>>>)
-			{
-				std::vector<std::unique_ptr<LanVariable>> result;
-				result.reserve(val.size());
-
-				for (const auto& elem : val)
-				{
-					if (elem)
-						result.push_back(elem->Clone());
-					else
-						result.push_back(nullptr);
-				}
-
-				return result;
-			}
-			// LanIterableEngine (ignored for now)
-			else if constexpr (std::is_same_v<T, std::unique_ptr<LanIterableEngine>>)
-			{
-				// Placeholder: deep cloning not implemented yet
-				return std::unique_ptr<LanIterableEngine>{};
-			}
-			else if constexpr (std::is_same_v<T, std::unordered_map<std::string, std::unique_ptr<LanVariable>>>)
-			{
-				std::unordered_map<std::string, std::unique_ptr<LanVariable>> result;
-
-				for (const auto& [k, v] : val)
-					result.emplace(k, v ? v->Clone() : nullptr);
-
-				return result;
-			}
-			else
-			{
-				static_assert(sizeof(T) == 0, "Unhandled LanValue type in Clone()");
-			}
-		},
-		this->Value
-	);
-
-	return std::make_unique<LanVariable>(
-		this->Type,
-		std::move(clonedValue)
-	);
+std::shared_ptr<LanVariable> LanVariable::Index(const std::string& key) const {
+	if (Type.IsSetType()) {
+		const auto& map = std::get<LanMap>(Value);
+		auto it = map.find(key);
+		if (it == map.end())
+			throw std::runtime_error("Key not found in set: " + key + " : " + this->ToString());
+		return it->second;
+	}
+	else if (Type == LanTypeEnum::TypeCasting) {
+		const auto& casting = std::get<shared_ptr<LanCasting>>(Value);
+		auto& mapc = casting->Properties;
+		auto it = mapc.find(key);
+		if (it == mapc.end())
+			throw std::runtime_error("Key not found in properties: " + key + " : " + this->ToString());
+		return it->second;
+	}
+	else throw std::runtime_error("Cannot index non-set type: " + Type.ToString());
 }
 
+std::shared_ptr<LanVariable> LanVariable::DotMethod(const std::string& name, LanArray params) const
+{
+	// User class castring, not implemented
+	if (this->Type == LanTypeEnum::TypeCasting) throw runtime_error("User-castring dot method, not implemented yet");
+	else
+	{
+		// Mylange Primitive Type
+		CommandLineInterface::DebugPrint("Looking for dot method '' on type '" + this->Type.ToString() + "'");
+	}
+	return std::shared_ptr<LanVariable>();
+}
 
 string LanVariable::ToString() const
 {
@@ -80,7 +49,7 @@ string LanVariable::ToString() const
 	case LanTypeEnum::TypeArray:
 	{
 		string result = "[";
-		const auto& arr = get<vector <unique_ptr< LanVariable >> > (this->Value);
+		const auto& arr = get<LanArray>(this->Value);
 		for (size_t i = 0; i < arr.size(); ++i) {
 			result += arr[i]->ToString();
 			if (i < arr.size() - 1)
@@ -92,19 +61,36 @@ string LanVariable::ToString() const
 	case LanTypeEnum::TypeSet:
 	{
 		string result = "(";
-		const auto& set = get<unordered_map<string, unique_ptr<LanVariable>>>(this->Value);
+		const auto& set = get<LanMap>(this->Value);
 		for (auto& pair : set) {
 			if (result.length() > 1) result += ", ";
 			result += pair.first + " => " + pair.second->ToString();
 		}
 		return result + ")";
 	}
+	case LanTypeEnum::TypeCasting:
+	{
+		string result = "{";
+		const auto& casting = get<shared_ptr<LanCasting>>(this->Value);
+		// Methods
+		for (auto& [name, _] : casting->ClassInfo->Methods) {
+			if (result.length() > 1) result += ", ";
+			result += name;
+		}
+		// Properties
+		result += "|";
+		for (auto& [name, prop] : casting->Properties) {
+			if (result.length() > 1) result += ", ";
+			result += "(" + casting->ClassInfo->Properties[name].ToString() + ")" + name + "=>(" + prop->Type.ToString() + ")" + prop->ToString();
+		}
+		return result + "}";
+	}
 	default:
 		return "<unrepresentable value>";
 	}
 }
 
-bool LanVariable::IsCompatable(const LanType& type, const LanVariable& var)
+bool LanVariable::IsCompatible(const LanType& type, const LanVariable& var)
 {
 	// Exact type match
 	if (type == var.Type)
@@ -124,7 +110,7 @@ bool LanVariable::IsCompatable(const LanType& type, const LanVariable& var)
 	if ((type.BaseType & LanTypeEnum::TypeArray) == LanTypeEnum::TypeArray &&
 		(var.Type.BaseType & LanTypeEnum::TypeArray) == LanTypeEnum::TypeArray)
 	{
-		auto* arr = get_if<vector<unique_ptr<LanVariable>>>(&var.Value);
+		auto* arr = get_if<LanArray>(&var.Value);
 		if (!arr) throw runtime_error("Uh no.");
 		for (auto& element : *arr)
 		{
@@ -143,6 +129,27 @@ bool LanVariable::IsCompatable(const LanType& type, const LanVariable& var)
 
 	return false;
 }
+
+//LanVariable LanVariable::DoTypeFunction(const string& scopeId, const std::string& name,
+//	MylangeInterpreter& mi, const vector<unique_ptr<LanVariable>>& parameters)
+//{
+//	std::visit(overloaded{
+//			[&](int arg) {},
+//			[&](bool arg) {},
+//			[&](char arg) {},
+//			[&](const std::string& arg) {},
+//			[&](const std::vector<std::unique_ptr<LanVariable>>& arg) {},
+//			[&](const std::unordered_map<std::string, std::unique_ptr<LanVariable>>& arg) {},
+//			[&](const std::unique_ptr<LanIterableEngine>& arg) {},
+//			[&](const std::unique_ptr<LanCasting>& arg) {
+//
+//				auto v = arg->RunMethod(mi, scopeId, name, parameters);
+//				return move(v);
+//		
+//			}
+//		}, this->Value);
+//	return LanVariable();
+//}
 
 LanVariable LanVariable::operator+(const LanVariable& other) const
 {

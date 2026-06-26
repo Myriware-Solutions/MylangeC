@@ -1,3 +1,4 @@
+/*
 #include <iostream>
 #include <unordered_map>
 #include "MemoryBooker.h"
@@ -11,6 +12,7 @@
 #include "LanType.h"
 #include "Utils.h"
 #include "LanIterableEngine.h"
+#include "LanClass.h"
 
 MemoryBooker::MemoryBooker()
 {
@@ -124,6 +126,48 @@ LanFunction* MemoryBooker::GetFunction(
 	return nullptr;
 }
 
+void MemoryBooker::BookClass(const string& scopeId, unique_ptr<LanClass> lanClass)
+{
+	string fullId = scopeId + ":" + lanClass->Name;
+	CommandLineInterface::DebugPrint("Booking Class " + fullId);
+	this->Classes.emplace(fullId, std::move(lanClass));
+}
+
+bool MemoryBooker::GetClass(const string& scopeId, const string& name, unique_ptr<LanClass>& lanClass)
+{
+	auto scopeParts = Utils::TopLevelSplit(scopeId, '.');
+	for (int i = scopeParts.size() - 1; i >= 0; --i)
+	{
+		string currentScopeId = "";
+		for (int j = 0; j <= i; ++j)
+		{
+			currentScopeId += (j == 0 ? "" : ".") + scopeParts[j];
+		}
+		if (this->GetClassLiteral(currentScopeId, name, lanClass))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool MemoryBooker::GetClassLiteral(const string& scopeId, const string& name, unique_ptr<LanClass>& lanClass)
+{
+	string fullId = scopeId + ":" + name;
+	CommandLineInterface::DebugPrint("Checking Class " + fullId);
+	auto it = this->Classes.find(fullId);
+	if (it != this->Classes.end())
+	{
+		lanClass = it->second->Clone();
+		return true;
+	}
+	else
+	{
+		CommandLineInterface::DebugPrint("Class " + fullId + " does not exist.");
+		return false;
+	}
+}
+
 void MemoryBooker::ClearScope(const string& scopeId)
 {
 	CommandLineInterface::DebugPrint("Clearing Scope " + scopeId);
@@ -177,5 +221,4 @@ LanFunction* MemoryBooker::GetLiteralFunction(const string& scopeId,
 	CommandLineInterface::DebugPrint("Function " + fullId + " exists.");
 	return it->second.get();  // non-owning pointer
 }
-
-
+*/

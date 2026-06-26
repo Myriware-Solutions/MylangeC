@@ -7,6 +7,9 @@
 #include "Utils.h"
 #include "MylangeInterpreter.h"
 #include "LanIterableEngine.h"
+#include "ModuleRegistry.h"
+#include <exception>
+//#include "builtin.h"
 
 using namespace std;
 
@@ -25,16 +28,26 @@ int FileInterface::InterpretFile(const string& filePath)
     // Remove all comments
 	fileContent = std::regex_replace(fileContent, single_line_comment_pattern, "");
 	fileContent = std::regex_replace(fileContent, multi_line_comment_pattern, "");
-	fileContent = std::regex_replace(fileContent, newline_whitespace_pattern, "");
+	fileContent = std::regex_replace(fileContent, newline_whitespace_pattern, " ");
 
 	// cout << "Content without comments:\n" << fileContent << std::endl;
 
 	// Pass in block runner
 
-	try {
+	auto fu = [&]() {
 		MylangeInterpreter mi = MylangeInterpreter();
-		auto result = mi.InterpretBlock("global", fileContent).value_or(make_unique<LanVariable>());
-		cout << "Program exited with value: (" + result->Type.ToString() + ") " + result->ToString();
+		ModuleRegistry::RegisterHardwires(mi);
+		auto result = mi.InterpretBlock(fileContent);
+		if (result.has_value())
+			cout << "Program exited with value: (" + result.value().Type.ToString() + ") " + result.value().ToString();
+		else
+			std::cout << "Program exited with no return value." << std::endl;
+	};
+
+	//fu();
+
+	try {
+		fu();
 	}
 	catch (const exception& e) {
 		cerr << "Error during interpretation: " << e.what() << endl;

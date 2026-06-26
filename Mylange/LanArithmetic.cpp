@@ -77,121 +77,62 @@ bool LanArithmetic::IsValidLogicString(const std::string& input) {
 
         // Else, its just a charactere
     }
-
-    //CommandLineInterface::DebugPrint("Found many top-level operators: " + to_string(topLevelOps));
     return topLevelOps > 0;
 }
 
-
-
-bool dummy(const std::string& input)
-{
-    std::string s = Utils::TrimString(input);
-    
-    if (s.empty())
-        return false;
-
-    int parenDepth = 0;
-    bool expectingValue = true;
-    bool foundTopLevelOperator = false;
-    bool inValueToken = false;
-
-    const auto& ops = LanArithmetic::Operators();
-
-    for (size_t i = 0; i < s.size(); ++i)
-    {
-        char c = s[i];
-
-        if (isspace(static_cast<unsigned char>(c))) {
-            inValueToken = false;
-            continue;
-        }
-
-        if (c == '(') {
-            if (!expectingValue) return false;
-            parenDepth++;
-            inValueToken = false;
-            continue;
-        }
-
-        if (c == ')') {
-            if (expectingValue) return false;
-            parenDepth--;
-            if (parenDepth < 0) return false;
-            expectingValue = false;
-            inValueToken = false;
-            continue;
-        }
-
-        //  operator matching ONLY at token boundary
-        if (parenDepth == 0 && !expectingValue && !inValueToken)
-        {
-            for (const auto& op : ops)
-            {
-                if (s.compare(i, op.size(), op) == 0)
-                {
-                    foundTopLevelOperator = true;
-                    expectingValue = true;
-                    i += op.size() - 1;
-                    goto next_char;
-                }
-            }
-        }
-
-        // value token
-        if (expectingValue) {
-            expectingValue = false;
-            inValueToken = true;
-            continue;
-        }
-
-        // continuation of value token
-        inValueToken = true;
-
-    next_char:
-        continue;
-    }
-
-    return parenDepth == 0
-        && !expectingValue
-        && foundTopLevelOperator;
-}
-
-
-unique_ptr<LanVariable> LanArithmetic::ApplyOperator(
+LanVariable LanArithmetic::ApplyOperator(
     const std::string& op,
-    const unique_ptr<LanVariable> lhs,
-    const unique_ptr<LanVariable> rhs)
+    const LanVariable& lhs,
+    const LanVariable& rhs)
 {
-    if (op == "+") return make_unique<LanVariable>(*lhs + *rhs);
-    if (op == "-") return make_unique<LanVariable>(*lhs - *rhs);
-    if (op == "*") return make_unique<LanVariable>(*lhs * *rhs);
-    if (op == "/") return make_unique<LanVariable>(*lhs / *rhs);
-    if (op == "==") return make_unique<LanVariable>(*lhs == *rhs);
+    if (op == "+") return lhs + rhs;
+    if (op == "-") return lhs - rhs;
+    if (op == "*") return lhs * rhs;
+    if (op == "/") return lhs / rhs;
+    if (op == "==") return lhs == rhs;
     if (op == "..") {
-        if (lhs->Type == LanTypeEnum::TypeString && rhs->Type == LanTypeEnum::TypeString) {
-            return make_unique<LanVariable>(LanType(LanTypeEnum::TypeString), get<string>(lhs->Value) + get<string>(rhs->Value));
+		// Two strings: concatenate
+        if (lhs.Type == LanTypeEnum::TypeString && rhs.Type == LanTypeEnum::TypeString) {
+            return LanVariable::String(get<string>(lhs.Value) + get<string>(rhs.Value));
         }
-        if (lhs->Type == LanTypeEnum::TypeString && rhs->Type == LanTypeEnum::TypeInt) {
+		// String and int: repeat string
+        if (lhs.Type == LanTypeEnum::TypeString && rhs.Type == LanTypeEnum::TypeInt) {
             string result = "";
-            for (int i = 0; i < get<int>(rhs->Value); i++) result += get<string>(lhs->Value);
-            return make_unique<LanVariable>(LanType(LanTypeEnum::TypeString), result);
+            for (int i = 0; i < std::get<int>(rhs.Value); i++)
+                result += std::get<string>(lhs.Value);
+            return LanVariable::String(result);
         }
+        // Array and string: concat with string/char delim
+        if (lhs.Type.IsArrayType() && (rhs.Type == LanTypeEnum::TypeString || rhs.Type == LanTypeEnum::TypeChar)) {
+			string result = "";
+			for (auto& item : std::get<LanArray>(lhs.Value)) {
+                result += item->ToString();
+                if (item != std::get<LanArray>(lhs.Value).back()) {
+                    if (rhs.Type == LanTypeEnum::TypeString) result += std::get<string>(rhs.Value);
+					else if (rhs.Type == LanTypeEnum::TypeChar) result += std::get<char>(rhs.Value);
+                }
+			}
+			return LanVariable::String(result);
+        }
+		// Two arrays: concatenate
+		if (lhs.Type.IsArrayType() && rhs.Type.IsArrayType()) {
+			LanArray result;
+			const auto& lhsArr = std::get<LanArray>(lhs.Value);
+			const auto& rhsArr = std::get<LanArray>(rhs.Value);
+			result.reserve(lhsArr.size() + rhsArr.size());
+			result.insert(result.end(), lhsArr.begin(), lhsArr.end());
+			result.insert(result.end(), rhsArr.begin(), rhsArr.end());
+			return LanVariable::Array(result);
+		}
     }
-    if (op == "<") return make_unique<LanVariable>(*lhs < *rhs);
-	if (op == ">") return make_unique<LanVariable>(*lhs > *rhs);
-	if (op == "<=") return make_unique<LanVariable>(*lhs <= *rhs);
-	if (op == ">=") return make_unique<LanVariable>(*lhs >= *rhs);
+    if (op == "<") return lhs < rhs;
+	if (op == ">") return lhs > rhs;
+	if (op == "<=") return lhs <= rhs;
+	if (op == ">=") return lhs >= rhs;
     if (op == "&&" || op == "and")
-        return make_unique<LanVariable>(
-            LanType(LanTypeEnum::TypeBool),
-            LanVariable::LanValue{ *lhs && *rhs }
-        );
+        return LanVariable::Bool(lhs && rhs);
     if (op == "||" || op == "or")
-        return make_unique<LanVariable>(
-            LanType(LanTypeEnum::TypeBool),
-            LanVariable::LanValue{ *lhs || *rhs }
-        );
+        return LanVariable::Bool(lhs || rhs);
 
-    throw std::runtime_error("Unknown operator: " + op);
+    throw std::runtime_error("Unknown operator: " + lhs.Type.ToString() + " " + op + " " + rhs.Type.ToString());
 }

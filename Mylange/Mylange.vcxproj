@@ -127,34 +127,39 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="builtin_io.cpp" />
+    <ClCompile Include="builtin_std.cpp" />
     <ClCompile Include="CommandLineInterface.cpp" />
-    <ClCompile Include="IncludableFunctions.cpp" />
     <ClCompile Include="LanArithmetic.cpp" />
+    <ClCompile Include="LanClass.cpp" />
     <ClCompile Include="LanFunction.cpp" />
     <ClCompile Include="LanIterableEngine.cpp" />
     <ClCompile Include="LanType.cpp" />
     <ClCompile Include="LanVariable.cpp" />
     <ClCompile Include="MemoryBooker.cpp" />
+    <ClCompile Include="MemoryManager.cpp" />
+    <ClCompile Include="ModuleRegistry.cpp" />
     <ClCompile Include="Mylange.cpp" />
     <ClCompile Include="MylangeFileInterface.cpp" />
     <ClCompile Include="MylangeInterpreter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommandLineInterface.h" />
-    <ClInclude Include="IncludableFunctions.h" />
     <ClInclude Include="LanArithmetic.h" />
-    <ClInclude Include="LanFunction.h" />
+    <ClInclude Include="LanClass.h" />
     <ClInclude Include="LanIterableEngine.h" />
-    <ClInclude Include="LanPackages.h" />
     <ClInclude Include="LanType.h" />
     <ClInclude Include="LanVariable.h" />
     <ClInclude Include="MemoryBooker.h" />
+    <ClInclude Include="MemoryManager.h" />
+    <ClInclude Include="ModuleRegistry.h" />
     <ClInclude Include="MylangeFileInterface.h" />
     <ClInclude Include="MylangeInterpreter.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="todo" />
+    <None Include="example.myl" />
+    <None Include="todo.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
