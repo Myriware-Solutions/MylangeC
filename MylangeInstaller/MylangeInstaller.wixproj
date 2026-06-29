@@ -1,0 +1,19 @@
+﻿<Project Sdk="WixToolset.Sdk/4.0.6">
+
+	<PropertyGroup>
+		<OutputType>Package</OutputType>
+		<TargetFramework>net6.0-windows</TargetFramework>
+		<Platforms>x64</Platforms>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Lets WiX build the app first and exposes its output directory -->
+		<ProjectReference Include="..\Mylange\Mylange.vcxproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Needed for WixUI_InstallDir -->
+		<PackageReference Include="WixToolset.UI.wixext" Version="4.0.6" />
+	</ItemGroup>
+
+</Project>

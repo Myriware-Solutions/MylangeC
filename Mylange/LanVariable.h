@@ -39,7 +39,8 @@ public:
         std::shared_ptr<LanIterableEngine>,
         std::shared_ptr<LanCasting>,
         std::shared_ptr<LanFunction>,           // user-defined or builtin function
-        std::shared_ptr<LanClass>               // class definition
+        std::shared_ptr<LanClass>,              // class definition
+        LanType 
     >;
 
     LanType Type;

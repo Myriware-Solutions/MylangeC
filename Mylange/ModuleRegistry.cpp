@@ -33,6 +33,63 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         )
     ));
 
+    // array<T> empty(type: T)
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeType),
+            "empty",
+            std::map<std::string, LanType>{ { "T", LanType(LanTypeEnum::TypeType) } },
+            [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                if (args.empty()) throw std::runtime_error("empty requires 1 argument.");
+                auto& t = std::get<LanType>(args[0].Value);
+                return LanVariable(t, {});
+            }
+        )
+    ));
+
+    // type ty(str: typeStr)
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeType),
+            "ty",
+            std::map<std::string, LanType>{ { "typeStr", LanType(LanTypeEnum::TypeString) } },
+            [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                if (args.empty()) throw std::runtime_error("ty requires 1 argument.");
+                auto t = LanType::FromString(std::get<std::string>(args[0].Value));
+                return LanVariable(LanType(LanTypeEnum::TypeType), t);
+            }
+        )
+    ));
+
+    // func f_find (str: name, arr<str> param_types)
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeFunction),
+            "f_find",
+            std::map<std::string, LanType>{
+                { "name", LanType(LanTypeEnum::TypeString) },
+                { "param_types", LanType(LanTypeEnum::TypeString | LanTypeEnum::TypeArray) } },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                if (args.empty()) throw std::runtime_error("f_find requires 2 arguments.");
+                std::vector<LanType> param_types = {};
+                try {
+                    for (auto& param_type_str : std::get<LanArray>(args[1].Value)) {
+                        if (param_type_str->Type != LanTypeEnum::TypeString) throw runtime_error("Expected string, got " + param_type_str->Type.ToString());
+                        param_types.push_back(LanType::FromString(std::get<std::string>(param_type_str->Value)));
+                    }
+                }
+                catch (exception& e) { }
+                
+                auto f = mi.FindFunction(std::get<std::string>(args[0].Value), param_types);
+
+                return LanVariable(LanType(LanTypeEnum::TypeFunction), LanVariable::LanValue{ f });
+            }
+        )
+    ));
+
     // str typeof (o: any)
     mi.Memory.define(LanVariable(
         LanType(LanTypeEnum::TypeFunction),
@@ -96,7 +153,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         )
     ));
 
-    // Strings
+    // Strings <str>
     mi.Memory.pushScope("str");
     mi.LoadedModules.insert("str");
 
@@ -152,7 +209,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
 
     mi.Memory.popScope(true);
 
-    // Char
+    // Char <char>
 
     mi.Memory.pushScope("char");
     mi.LoadedModules.insert("char");
@@ -179,6 +236,33 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
             std::map<std::string, LanType>{ { "self", LanType(LanTypeEnum::TypeChar) } },
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 return LanVariable::Char(std::tolower(static_cast<unsigned char>(std::get<char>(args[0].Value))));
+            }
+        )
+    ));
+
+    mi.Memory.popScope(true);
+
+    // Functions <function>
+
+    mi.Memory.pushScope("function");
+    mi.LoadedModules.insert("function");
+
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeAny),
+            "do",
+            std::map<std::string, LanType>{
+                { "self", LanType(LanTypeEnum::TypeFunction) },
+                { "args", LanType(LanTypeEnum::TypeArray) } },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                auto& func = std::get<shared_ptr<LanFunction>>(args[0].Value);
+                vector<LanVariable> fargs = {};
+                for (auto& u : std::get<LanArray>(args[1].Value)) {
+                    fargs.push_back(*u);
+                }
+
+                return func->Execute(mi, fargs);
             }
         )
     ));

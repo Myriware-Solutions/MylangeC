@@ -8,6 +8,7 @@
 #include "ModuleRegistry.h"
 #include "MylangeInterpreter.h"
 #include "Utils.h"
+#include <format>
 #include <algorithm>
 #include <cctype>
 #include <cstdint>
@@ -79,6 +80,18 @@ vector<Rule> rules = {
 
             mi.LoadedModules.insert(moduleName);
             CommandLineInterface::DebugPrint("Loaded module: " + moduleName + " into scope: " + moduleScopeId);
+            return std::nullopt;
+        }
+    },
+    // Include (Local file)
+    {
+        regex(R"(^#\s*include\s*(1x[0-9a-fA-F]{8})\s*(?:as\s*<(\w+)>)?$)"),
+        [](auto const& m, MylangeInterpreter& mi) {
+            std::string moduleName = mi.BlockMap[m[1].str()];
+            std::string asName = (m[2].matched) ? m[2].str() : moduleName;
+
+            CommandLineInterface::DebugPrint("Loading local module '" + moduleName + "' as '" + asName + "'");
+
             return std::nullopt;
         }
     },
@@ -743,7 +756,12 @@ std::vector<TokenItem> MylangeInterpreter::TokenizeComplexValue(std::string& val
                     std::string full_array = "[" + s + "]";
                     parts.push_back(TokenItem(TokenItem::TokenItem::Value, full_array));
                 }
-                else throw runtime_error("Odd array call found.");
+                else if (valid_extention && parts.size() == 0 && s.empty()) {
+                    // Empty array
+                    std::string full_array = "[]";
+                    parts.push_back(TokenItem(TokenItem::TokenItem::Value, full_array));
+                }
+                else throw runtime_error("Odd array call found: " + std::format("{}", valid_extention) + " " + std::format("{}", parts.size()) + " '" + s + "'");
             }
             // Check for colon extention
             else if (c == ':') {
@@ -1007,7 +1025,44 @@ pair<shared_ptr<LanFunction>, vector<LanVariable>> MylangeInterpreter::FindFunct
     }
 
     throw runtime_error("Coudl not resolve function: " + functionId);
-};
+}
+
+shared_ptr<LanFunction> MylangeInterpreter::FindFunction(const string& name, std::vector<LanType> paramTypes, const std::string path, bool excludeAny)
+{
+    string functionId = LanFunction::GetId(name, paramTypes);
+    auto any_vector = vector<LanType>(paramTypes.size(), LanType(LanTypeEnum::TypeAny));
+    string any_functionId = LanFunction::GetId(name, any_vector);
+    shared_ptr<LanVariable> resultContainer;
+    // Look for a package and function
+    if (path != "") {
+        if (this->LoadedModules.find(path) != this->LoadedModules.end()) {
+            // Find scope
+            auto scope = this->Memory.FindSiblingScope(path);
+            if (!scope) throw runtime_error("Package scope not found: " + path);
+            auto fv = scope->resolve(functionId);
+            if (!fv && !excludeAny) {
+                // Try to find an overload with any types
+                fv = scope->resolve(any_functionId);
+                if (!fv) throw runtime_error("Function not found in package: " + functionId);
+            }
+
+            return std::get<std::shared_ptr<LanFunction>>(fv->Value);
+        }
+        else throw runtime_error("Package not found: " + path);
+    }
+    // Find a user defined function
+    else if (this->Memory.resolve(functionId, resultContainer)) {
+        CommandLineInterface::DebugPrint("Found function: " + functionId);
+        return std::get<std::shared_ptr<LanFunction>>(resultContainer->Value);
+    }
+    // User function any overload
+    else if (this->Memory.resolve(any_functionId, resultContainer) && !excludeAny) {
+        CommandLineInterface::DebugPrint("Found function (any overload): " + functionId);
+        return std::get<std::shared_ptr<LanFunction>>(resultContainer->Value);
+    }
+    else throw runtime_error("Could not find function specified");
+}
+;
 
 void MylangeInterpreter::MakeParameters(string& paramString,
     vector<LanVariable>& paramsOut, vector<LanType>& paramTypesOut)

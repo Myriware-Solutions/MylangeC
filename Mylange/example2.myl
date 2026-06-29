@@ -1,0 +1,19 @@
+debug(true);
+#include <io>;
+io.dump();
+
+#include "example";
+
+#include "example" as <ex>;
+
+
+
+def int main() as {
+
+	return 42;
+
+};
+
+func f => f_find("main", empty(ty("array<str>")));
+
+io.print(f.do([]));

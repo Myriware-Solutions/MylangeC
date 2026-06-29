@@ -85,6 +85,16 @@ string LanVariable::ToString() const
 		}
 		return result + "}";
 	}
+	case LanTypeEnum::TypeFunction:
+	{
+		const auto& func = get<shared_ptr<LanFunction>>(this->Value);
+		std::string result = "func<" + func->ReturnType.ToString() + " " + func->Name + " (";
+		for (auto& [name, param] : func->Parameters) {
+			if (result.length() > 1) result += ", ";
+			result += param.ToString() + ": " + name;
+		}
+		return result + ")>";
+	}
 	default:
 		return "<unrepresentable value>";
 	}
