@@ -158,20 +158,23 @@ public:
 // -------------------------------------------------------
 class LanFunction {
 public:
-    LanType                        ReturnType;
-    std::string                    Name;
-    std::map<std::string, LanType> Parameters;
-    std::string                    Logic;
+    using ParamStruct = std::vector<std::pair<std::string, LanType>>;
+
+    LanType     ReturnType;
+    ParamStruct Parameters;
+    std::string Name;
+    std::string Logic;
 
     LanFunction() = default;
     virtual ~LanFunction() = default;
 
     LanFunction(const LanType& returnType,
         const std::string& name,
-        const std::map<std::string, LanType>& parameters,
+        const ParamStruct& parameters,
         const std::string& logic)
-        : ReturnType(returnType), Name(name),
-        Parameters(parameters), Logic(logic) {
+        : Parameters(parameters), ReturnType(returnType), 
+        Name(name), Logic(logic) {
+
     }
 
     LanFunction(const LanFunction&) = default;
@@ -179,18 +182,17 @@ public:
     LanFunction(LanFunction&&) = default;
     LanFunction& operator=(LanFunction&&) = default;
 
+
     // -------------------------------------------------------
     // ID generation
     // -------------------------------------------------------
     std::string GetId() const {
-        std::vector<LanType> types;
-        for (auto& [_, type] : Parameters)
-            types.push_back(type);
-        return GetId(Name, types);
+        return LanFunction::GetId(this->Name, this->Parameters);
+
     }
 
     static std::string GetId(const std::string& name,
-        const std::map<std::string, LanType>& parameters) {
+        const ParamStruct& parameters) {
         std::vector<LanType> types;
         for (auto& [_, type] : parameters)
             types.push_back(type);
@@ -226,6 +228,7 @@ public:
     // -------------------------------------------------------
     virtual std::optional<LanVariable> Execute(MylangeInterpreter& mi,
         std::vector<LanVariable> args) = 0;
+
 };
 
 // -------------------------------------------------------
@@ -237,7 +240,7 @@ public:
 
     ScriptFunction(const LanType& returnType,
         const std::string& name,
-        const std::map<std::string, LanType>& parameters,
+        const ParamStruct& parameters,
         const std::string& logic)
         : LanFunction(returnType, name, parameters, logic) {
     }
@@ -259,7 +262,7 @@ public:
 
     BuiltinFunction(const LanType& returnType,
         const std::string& name,
-        const std::map<std::string, LanType>& parameters,
+        const ParamStruct& parameters,
         BuiltinImpl impl)
         : LanFunction(returnType, name, parameters, ""),
         impl(std::move(impl)) {

@@ -1,12 +1,16 @@
-debug(true);
+debug(false);
 #include <io>;
 io.dump();
 
-#include "example";
+io.print( $array<string> );
+
+//#include "example";
 
 #include "example" as <ex>;
 
+debug(false);
 
+io.dump();
 
 def int main() as {
 
@@ -14,6 +18,19 @@ def int main() as {
 
 };
 
-func f => f_find("main", empty(ty("array<str>")));
+def int main(int some) as {
+	ex.main();
+	return main() + some;
+};
 
-io.print(f.do([]));
+arr<type> e_types => [$int];
+
+//func f => f_find("main", e_types );
+
+
+
+set ji => (fu => f_find("main", e_types ));
+
+debug(true);
+
+io.print(ji:fu.do([55]));

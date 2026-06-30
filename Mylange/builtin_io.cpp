@@ -13,7 +13,7 @@ static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeNil),
             "print",
-            std::map<std::string, LanType>{ { "o", LanType(LanTypeEnum::TypeAny) } },
+            LanFunction::ParamStruct{ { "o", LanType(LanTypeEnum::TypeAny) } },
             [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 if (args.empty()) throw std::runtime_error("print requires 1 argument.");
                 std::cout << args[0].ToString() << std::endl;
@@ -28,7 +28,7 @@ static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeString),
             "input",
-            std::map<std::string, LanType>{ { "prompt", LanType(LanTypeEnum::TypeString) } },
+            LanFunction::ParamStruct{ { "prompt", LanType(LanTypeEnum::TypeString) } },
             [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 if (!args.empty())
                     std::cout << std::get<std::string>(args[0].Value);
@@ -46,7 +46,7 @@ static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeNil),
             "dump",
-            std::map<std::string, LanType>{ },
+            LanFunction::ParamStruct{ },
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 mi.Memory.dump();
                 return std::nullopt;
@@ -60,7 +60,7 @@ static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeNil),
             "dumpClass",
-            std::map<std::string, LanType>{ { "cls", LanType(LanTypeEnum::TypeClass) } },
+            LanFunction::ParamStruct{ { "cls", LanType(LanTypeEnum::TypeClass) } },
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 shared_ptr<LanClass> cls = std::get<shared_ptr<LanClass>>(args[0].Value);
                 std::cout << "Class: " << cls->Name << "\nMethods:\n";

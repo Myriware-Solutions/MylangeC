@@ -12,7 +12,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeNil),
             "exit",
-            std::map<std::string, LanType>{ },
+            LanFunction::ParamStruct{ },
             [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 throw std::runtime_error("[exit]");
             }
@@ -25,7 +25,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeAny),
             "return",
-            std::map<std::string, LanType>{ { "o", LanType(LanTypeEnum::TypeAny) } },
+            LanFunction::ParamStruct{ { "o", LanType(LanTypeEnum::TypeAny) } },
             [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 if (args.empty()) throw std::runtime_error("print requires 1 argument.");
                 return args[0];
@@ -39,7 +39,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeType),
             "empty",
-            std::map<std::string, LanType>{ { "T", LanType(LanTypeEnum::TypeType) } },
+            LanFunction::ParamStruct{ { "T", LanType(LanTypeEnum::TypeType) } },
             [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 if (args.empty()) throw std::runtime_error("empty requires 1 argument.");
                 auto& t = std::get<LanType>(args[0].Value);
@@ -54,7 +54,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeType),
             "ty",
-            std::map<std::string, LanType>{ { "typeStr", LanType(LanTypeEnum::TypeString) } },
+            LanFunction::ParamStruct{ { "typeStr", LanType(LanTypeEnum::TypeString) } },
             [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 if (args.empty()) throw std::runtime_error("ty requires 1 argument.");
                 auto t = LanType::FromString(std::get<std::string>(args[0].Value));
@@ -69,20 +69,16 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeFunction),
             "f_find",
-            std::map<std::string, LanType>{
+            LanFunction::ParamStruct{
                 { "name", LanType(LanTypeEnum::TypeString) },
-                { "param_types", LanType(LanTypeEnum::TypeString | LanTypeEnum::TypeArray) } },
+                { "param_types", LanType(LanTypeEnum::TypeType | LanTypeEnum::TypeArray) } },
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 if (args.empty()) throw std::runtime_error("f_find requires 2 arguments.");
                 std::vector<LanType> param_types = {};
-                try {
-                    for (auto& param_type_str : std::get<LanArray>(args[1].Value)) {
-                        if (param_type_str->Type != LanTypeEnum::TypeString) throw runtime_error("Expected string, got " + param_type_str->Type.ToString());
-                        param_types.push_back(LanType::FromString(std::get<std::string>(param_type_str->Value)));
-                    }
+                for (auto& param_type_str : std::get<LanArray>(args[1].Value)) {
+                    if (param_type_str->Type != LanTypeEnum::TypeType) throw runtime_error("Expected Type, got " + param_type_str->Type.ToString());
+                    param_types.push_back(std::get<LanType>(param_type_str->Value));
                 }
-                catch (exception& e) { }
-                
                 auto f = mi.FindFunction(std::get<std::string>(args[0].Value), param_types);
 
                 return LanVariable(LanType(LanTypeEnum::TypeFunction), LanVariable::LanValue{ f });
@@ -96,7 +92,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeString),
             "typeof",
-            std::map<std::string, LanType>{ { "o", LanType(LanTypeEnum::TypeAny) } },
+            LanFunction::ParamStruct{ { "o", LanType(LanTypeEnum::TypeAny) } },
             [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 if (args.empty()) throw std::runtime_error("typeof requires 1 argument.");
                 return LanVariable(
@@ -113,7 +109,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeInt),
             "sizeof",
-            std::map<std::string, LanType>{ { "o", LanType(LanTypeEnum::TypeAny) } },
+            LanFunction::ParamStruct{ { "o", LanType(LanTypeEnum::TypeAny) } },
             [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 if (args.empty()) throw std::runtime_error("sizeof requires 1 argument.");
                 return LanVariable(
@@ -130,7 +126,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeNil),
             "debug",
-            std::map<std::string, LanType>{ },
+            LanFunction::ParamStruct{ },
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 CommandLineInterface::DebugEnabled = !CommandLineInterface::DebugEnabled;
                 return std::nullopt;
@@ -144,7 +140,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeNil),
             "debug",
-            std::map<std::string, LanType>{ { "o", LanType(LanTypeEnum::TypeBool) } },
+            LanFunction::ParamStruct{ { "o", LanType(LanTypeEnum::TypeBool) } },
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 if (!args.empty())
                     CommandLineInterface::DebugEnabled = std::get<bool>(args[0].Value);
@@ -163,7 +159,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeString),
             "toUpper",
-            std::map<std::string, LanType>{ { "self", LanType(LanTypeEnum::TypeString) } },
+            LanFunction::ParamStruct{ { "self", LanType(LanTypeEnum::TypeString) } },
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 string text = std::get<string>(args[0].Value);
                 for (char& c : text) {
@@ -180,7 +176,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeString),
             "toLower",
-            std::map<std::string, LanType>{ { "self", LanType(LanTypeEnum::TypeString) } },
+            LanFunction::ParamStruct{ { "self", LanType(LanTypeEnum::TypeString) } },
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 string text = std::get<string>(args[0].Value);
                 for (char& c : text) {
@@ -197,7 +193,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeChar),
             "at",
-            std::map<std::string, LanType>{
+            LanFunction::ParamStruct{
                 { "self", LanType(LanTypeEnum::TypeString) },
                 { "index", LanType(LanTypeEnum::TypeInt) }},
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
@@ -220,7 +216,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeChar),
             "toUpper",
-            std::map<std::string, LanType>{ { "self", LanType(LanTypeEnum::TypeChar) } },
+            LanFunction::ParamStruct{ { "self", LanType(LanTypeEnum::TypeChar) } },
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 return LanVariable::Char(std::toupper(static_cast<unsigned char>(std::get<char>(args[0].Value))));
             }
@@ -233,7 +229,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeChar),
             "toLower",
-            std::map<std::string, LanType>{ { "self", LanType(LanTypeEnum::TypeChar) } },
+            LanFunction::ParamStruct{ { "self", LanType(LanTypeEnum::TypeChar) } },
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 return LanVariable::Char(std::tolower(static_cast<unsigned char>(std::get<char>(args[0].Value))));
             }
@@ -252,7 +248,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeAny),
             "do",
-            std::map<std::string, LanType>{
+            LanFunction::ParamStruct {
                 { "self", LanType(LanTypeEnum::TypeFunction) },
                 { "args", LanType(LanTypeEnum::TypeArray) } },
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {

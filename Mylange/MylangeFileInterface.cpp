@@ -15,21 +15,27 @@ regex single_line_comment_pattern(R"(\/\/.*)", std::regex_constants::ECMAScript)
 regex multi_line_comment_pattern(R"(\/\[[\s\S]*?\]\/)", std::regex_constants::ECMAScript);
 regex newline_whitespace_pattern(R"(\s*\n\s*)", std::regex_constants::ECMAScript);
 
-int FileInterface::InterpretFile(const string& filePath)
-{
-    std::cout << "Running Mylange script: " << filePath << std::endl;
-
+std::string FileInterface::CleanFile(const string& filePath) {
 	string fileContent = Utils::ReadFileContents(filePath);
 
-    // Remove all comments
+	// Remove all comments
 	fileContent = std::regex_replace(fileContent, single_line_comment_pattern, "");
 	fileContent = std::regex_replace(fileContent, multi_line_comment_pattern, "");
 	fileContent = std::regex_replace(fileContent, newline_whitespace_pattern, " ");
 
+	return fileContent;
+}
+
+int FileInterface::InterpretFile(const string& filePath)
+{
+    std::cout << "Running Mylange script: " << filePath << std::endl;
+
+	
+
 	auto fu = [&]() {
 		MylangeInterpreter mi = MylangeInterpreter();
 		ModuleRegistry::RegisterHardwires(mi);
-		auto result = mi.InterpretBlock(fileContent);
+		auto result = mi.InterpretBlock(FileInterface::CleanFile(filePath));
 		if (result.has_value())
 			cout << "Program exited with value: (" + result.value().Type.ToString() + ") " + result.value().ToString();
 		else

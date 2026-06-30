@@ -35,6 +35,18 @@ std::shared_ptr<LanVariable> LanVariable::DotMethod(const std::string& name, Lan
 
 string LanVariable::ToString() const
 {
+	if (this->Type.IsArrayType()) {
+		string result = "[";
+		const auto& arr = get<LanArray>(this->Value);
+		for (size_t i = 0; i < arr.size(); ++i) {
+			result += arr[i]->ToString();
+			if (i < arr.size() - 1)
+				result += ", ";
+		}
+		result += "]";
+		return result;
+	}
+
 	switch (this->Type.BaseType) {
 	case LanTypeEnum::TypeNil:
 		return "nil";
@@ -46,18 +58,6 @@ string LanVariable::ToString() const
 		return string(1, get<char>(this->Value));
 	case LanTypeEnum::TypeString:
 		return get<string>(this->Value);
-	case LanTypeEnum::TypeArray:
-	{
-		string result = "[";
-		const auto& arr = get<LanArray>(this->Value);
-		for (size_t i = 0; i < arr.size(); ++i) {
-			result += arr[i]->ToString();
-			if (i < arr.size() - 1)
-				result += ", ";
-		}
-		result += "]";
-		return result;
-	}
 	case LanTypeEnum::TypeSet:
 	{
 		string result = "(";
@@ -88,12 +88,17 @@ string LanVariable::ToString() const
 	case LanTypeEnum::TypeFunction:
 	{
 		const auto& func = get<shared_ptr<LanFunction>>(this->Value);
-		std::string result = "func<" + func->ReturnType.ToString() + " " + func->Name + " (";
+		std::string result = "func " + func->ReturnType.ToString() + " " + func->Name + " (";
 		for (auto& [name, param] : func->Parameters) {
 			if (result.length() > 1) result += ", ";
 			result += param.ToString() + ": " + name;
 		}
-		return result + ")>";
+		return result + ")";
+	}
+	case LanTypeEnum::TypeType:
+	{
+		const auto& t = get<LanType>(this->Value);
+		return "type: " + t.ToString();
 	}
 	default:
 		return "<unrepresentable value>";
