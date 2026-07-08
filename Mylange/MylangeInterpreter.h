@@ -43,6 +43,7 @@ public:
 	MylangeInterpreter();
 	optional<LanVariable> Interpret(const string& code);
 	optional<LanVariable> InterpretBlock(const string& block, const bool SkipClearing = false);
+	LanType ResolveType(const string& typeStr);
 	std::vector<TokenItem> TokenizeComplexValue(std::string& value);
 	bool ParseParameter(const string& rawParamStr, std::shared_ptr<LanVariable>& var, bool assignVar = true);
 	LanVariable ForcedParseParameter(const string& rawParamStr);

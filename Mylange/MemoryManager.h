@@ -192,7 +192,6 @@ public:
         return nullptr;
     }
 
-private:
     // Walk the tree by splitting the dot-separated id
     Scope* resolveScope(const std::string& scopeId) {
         // Split on '.'

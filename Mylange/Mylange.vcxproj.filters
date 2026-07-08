@@ -54,6 +54,9 @@
     <ClCompile Include="ModuleRegistry.cpp">
       <Filter>Builtin Functions</Filter>
     </ClCompile>
+    <ClCompile Include="builtin_File.cpp">
+      <Filter>Builtin Functions</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommandLineInterface.h">

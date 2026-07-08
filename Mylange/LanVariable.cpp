@@ -78,7 +78,6 @@ string LanVariable::ToString() const
 			result += name;
 		}
 		// Properties
-		result += "|";
 		for (auto& [name, prop] : casting->Properties) {
 			if (result.length() > 1) result += ", ";
 			result += "(" + casting->ClassInfo->Properties[name].ToString() + ")" + name + "=>(" + prop->Type.ToString() + ")" + prop->ToString();
@@ -101,7 +100,7 @@ string LanVariable::ToString() const
 		return "type: " + t.ToString();
 	}
 	default:
-		return "<unrepresentable value>";
+		return std::format("<unrepresentable value: {}>", this->Type.ToString());
 	}
 }
 

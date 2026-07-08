@@ -194,8 +194,10 @@ public:
     static std::string GetId(const std::string& name,
         const ParamStruct& parameters) {
         std::vector<LanType> types;
-        for (auto& [_, type] : parameters)
+        for (auto& [_, type] : parameters) {
+			if (type == LanTypeEnum::TypeThis) continue; // skip "this" parameter in builtin class methods
             types.push_back(type);
+        }
         return GetId(name, types);
     }
 

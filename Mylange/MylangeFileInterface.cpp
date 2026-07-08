@@ -42,6 +42,8 @@ int FileInterface::InterpretFile(const string& filePath)
 			std::cout << "Program exited with no return value." << std::endl;
 	};
 
+	//fu();
+
 	try {
 		fu();
 	}

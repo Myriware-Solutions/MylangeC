@@ -42,7 +42,7 @@ const regex cachedBit(R"((\d)x([a-fA-F0-9]+))", std::regex_constants::ECMAScript
 // For Classes
 const regex classDefualtPropertyPatter(R"(^((?:@?\w+\s+)+)?\s*([a-zA-Z<>,|\s]+) +(\w+) *=> *(.*))", std::regex_constants::ECMAScript);
 const regex classPropertyPattern(R"(^((?:@?\w+\s+)+)?\s*([a-zA-Z<>,|\s]+) +(\w+))", std::regex_constants::ECMAScript);
-const regex castingCreationPattern(R"(^new\s+([\w]+)\((.*)\))", std::regex_constants::ECMAScript);
+const regex castingCreationPattern(R"(^new\s+([\w.]+)\((.*)\))", std::regex_constants::ECMAScript);
 const std::string overrideString = std::string("@override");
 
 struct Rule {
@@ -110,20 +110,10 @@ vector<Rule> rules = {
     },
     // Set Variable
     {
-        regex(R"(^\s*([a-zA-Z<>,|\s]+) +(\w+) *=> *(.*))"),
+        regex(R"(^\s*([a-zA-Z<>,|\s.]+) +(\w+) *=> *(.*))"),
         [](auto const& m, MylangeInterpreter& mi) {
             string expected_type_name = Utils::TrimString(m[1]);
-            LanType expectedType;
-            try {
-                expectedType = LanType::FromString(expected_type_name);
-            }
-            catch (exception& e) {
-                auto a = mi.Memory.resolve(expected_type_name);
-                if (a)
-                    expectedType = LanType(std::get<shared_ptr<LanClass>>(a->Value));
-                else throw runtime_error("Cannot resolve type: " + Utils::TrimString(m[1]) + " : " + e.what());
-            }
-
+            LanType expectedType = mi.ResolveType(expected_type_name);
 
             CommandLineInterface::DebugPrint("EXP TYPE:" + to_string(static_cast<uint32_t>(expectedType.BaseType)) + " / " + expectedType.ToString());
             auto lv = mi.ParseParameter(m[3]);
@@ -668,6 +658,32 @@ optional<LanVariable> MylangeInterpreter::InterpretBlock(const string& blockStri
     return nullopt;
 }
 
+LanType MylangeInterpreter::ResolveType(const string& typeStr)
+{
+    LanType result;
+    try {
+        result = LanType::FromString(typeStr);
+    }
+    catch (exception& e) {
+        auto a = this->Memory.resolve(typeStr);
+        if (a)
+            result = LanType(std::get<shared_ptr<LanClass>>(a->Value));
+        else {
+			auto sep = Utils::TopLevelSplit(typeStr, '.');
+			if (sep.size() != 2) throw runtime_error(std::format("[{}] Cannot resolve type (too many parts): {}\n\t{}", this->Memory.currentScope()->id, typeStr, e.what()));
+			
+			auto location = this->Memory.resolveScope(this->Memory.currentScope()->id + "." + sep[0]);
+			auto cls = location->resolve(sep[1]);
+            if (cls) {
+				if (cls->Type != LanTypeEnum::TypeClass) throw runtime_error(std::format("[{}] Resolved type is not a class: {}\n\t{}", this->Memory.currentScope()->id, typeStr, e.what()));
+				auto& cls_ptr = std::get<shared_ptr<LanClass>>(cls->Value);
+				return LanType(cls_ptr);
+            } else throw runtime_error(std::format("[{}] Cannot resolve type: {}\n\t{}", this->Memory.currentScope()->id, typeStr, e.what()));
+        }
+    };
+    return result;
+}
+
 
 const std::vector<std::string> protectedWords = {
     "true", "false", "nil"
@@ -750,6 +766,11 @@ std::vector<TokenItem> MylangeInterpreter::TokenizeComplexValue(std::string& val
                 if (LanArithmetic::IsOperator(op)) return {};
             }
 
+            // If a space is found, it could be a new statement, which should automatically
+            // fail this so that it gets forced
+			if (c == ' ' && to_append == "new") {
+                return {};
+			}
             // Check to see if it could be a bracket index
             // The only way to disqualify this is if it contains commas,
             // which indicates an array.
@@ -1226,6 +1247,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
     }   
     // casting
     else if (regex_match(trimmedValue, matchedMatch, castingCreationPattern)) {
+        CommandLineInterface::DebugPrint("Found new casting: " + trimmedValue);
 		string target_type_str = matchedMatch[1].str();
 		string param_str = matchedMatch[2].str();
 
@@ -1238,14 +1260,13 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
             else throw runtime_error("Failed to parse casting parameter: " + p);
         }
 
-        shared_ptr<LanVariable> customClassContainer;
-        if (!this->Memory.resolve(target_type_str, customClassContainer))
-			throw runtime_error("Cannot find type for casting: " + target_type_str);
+        CommandLineInterface::DebugPrint(std::format("Params: {}", params.size()));
 
-        LanType target_type = LanType(std::get<std::shared_ptr<LanClass>>(customClassContainer->Value));
-        shared_ptr<LanCasting> casting = std::make_shared<LanCasting>(std::get<std::shared_ptr<LanClass>>(customClassContainer->Value));
+        LanType target_type = this->ResolveType(target_type_str);
+        shared_ptr<LanCasting> casting = std::make_shared<LanCasting>(target_type.CustomClass);
 		
-        string func_id = LanFunction::GetId(target_type_str, params);
+        string func_id = LanFunction::GetId(target_type.CustomClass->Name, params);
+        CommandLineInterface::DebugPrint(std::format("Params for '{}': {}", func_id, params.size()));
 
         casting->RunMethod(*this, func_id, params); // Call the constructor
 
