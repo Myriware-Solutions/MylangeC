@@ -108,6 +108,18 @@ vector<Rule> rules = {
             return std::nullopt;
         }
     },
+	// Continue: loads a script into the current scope. Used to allow a file to "continue" to another file, then come back.
+    {
+        regex(R"(^#\s*continue\s*(1x[0-9a-fA-F]{8}))"),
+        [](auto const& m, MylangeInterpreter& mi) {
+            std::string moduleName = mi.BlockMap[m[1].str()];
+
+            auto content = FileInterface::CleanFile(moduleName + ".myl");
+            mi.InterpretBlock(content);
+
+            return std::nullopt;
+        }
+    },
     // Set Variable
     {
         regex(R"(^\s*([a-zA-Z<>,|\s.]+) +(\w+) *=> *(.*))"),

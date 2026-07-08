@@ -1,0 +1,5 @@
+/[continued-from: cont]/
+
+io.print("Should work as a continuation of the previous file");
+
+int num => 42;

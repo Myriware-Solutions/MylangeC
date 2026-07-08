@@ -155,6 +155,8 @@
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="cont.myl" />
+    <None Include="cont2.myl" />
     <None Include="example.myl" />
     <None Include="example2.myl" />
     <None Include="example3.myl" />

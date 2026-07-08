@@ -1,0 +1,11 @@
+#include <io>;
+
+io.print("Starting main script");
+
+#continue "cont2";
+
+io.print("Finished main script: %".format([num]));
+
+io.dump();
+
+return num;
