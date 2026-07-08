@@ -38,7 +38,11 @@ int main(int argc, char* argv[])
     }
 
     if (argc > 1 && !std::regex_match(argv[1], valid_arg_pattern)) {
-		FileInterface::InterpretFile(argv[1]);
+		auto result = FileInterface::InterpretFile(argv[1]);
+        if (result.has_value())
+            cout << "Program exited with value: (" + result.value().Type.ToString() + ") " + result.value().ToString();
+        else
+            std::cout << "Program exited with no return value." << std::endl;
     }
     else {
         CommandLineInterface::RunCLI();

@@ -203,6 +203,31 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         )
     ));
 
+    // str <str>.format(array<any> values)
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeChar),
+            "format",
+            LanFunction::ParamStruct{
+                { "self", LanType(LanTypeEnum::TypeString) },
+                { "index", LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny) } },
+            [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                string text = std::get<string>(args[0].Value);
+				auto& values = std::get<LanArray>(args[1].Value);
+                // get position of all % (without \) in the string
+				size_t pos = 0;
+				for (int i = 0; i < values.size(); ++i) {
+					pos = text.find("%", pos);
+					if (pos == string::npos) break;
+					text.replace(pos, 1, values[i]->ToString());
+					pos += values[i]->ToString().length();
+				}
+				return LanVariable::String(text);
+            }
+        )
+    ));
+
     mi.Memory.popScope(true);
 
     // Char <char>

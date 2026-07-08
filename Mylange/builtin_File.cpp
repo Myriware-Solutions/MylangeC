@@ -3,6 +3,7 @@
 #include "LanVariable.h"
 #include "ModuleRegistry.h"
 #include "MylangeInterpreter.h"
+#include "MylangeFileInterface.h"
 #include <iostream>
 
 static void RegisterFile(MylangeInterpreter& mi, const std::string& scopeId) {
@@ -55,6 +56,25 @@ static void RegisterFile(MylangeInterpreter& mi, const std::string& scopeId) {
 				std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 				file.close();
 				return LanVariable(LanType(LanTypeEnum::TypeString), content);
+			}
+		),
+		
+		// Execute method: executes the file at the given path as a Mylange script.
+		std::make_shared<BuiltinFunction>(
+			LanType(LanTypeEnum::TypeAny),
+			"exe",
+			LanFunction::ParamStruct{
+				{ "self", LanType(LanTypeEnum::TypeThis) } },
+			[](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+				if (args.empty()) throw std::runtime_error("read requires 1 argument (self).");
+				auto& self = args[0];
+				auto pathVar = self.Index("path");
+				if (!pathVar) throw std::runtime_error("File object has no 'path' property.");
+				auto& path = std::get<std::string>(pathVar->Value);
+
+				auto u = FileInterface::InterpretFile(path);
+
+				return u;
 			}
 		)
 	};

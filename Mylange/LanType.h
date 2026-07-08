@@ -120,6 +120,18 @@ public:
 
 	LanType(shared_ptr<LanClass> customClass);
 
+	void AddArchetype(const LanType& type) {
+		if (type.IsComplex()) {
+			if (!this->Archetype.has_value()) {
+				this->Archetype = vector<LanType>{};
+			}
+			this->Archetype->push_back(type);
+		}
+		else {
+			this->BaseType |= type.BaseType;
+		}
+	}
+
 	bool IsArrayType() const {
 		return (this->BaseType & LanTypeEnum::TypeArray) == LanTypeEnum::TypeArray;
 	}

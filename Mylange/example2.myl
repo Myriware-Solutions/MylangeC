@@ -5,6 +5,16 @@ debug(true);
 #include <std>;
 
 
+
+file.File f => new file.File("example3.myl", "r");
+int result => f.exe();
+
+io.print("Result of example3.myl: %".format([result]));
+
+
+
+return 0;
+
 class Dumb has {
 
     public int Age => 0;

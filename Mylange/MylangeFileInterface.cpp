@@ -26,9 +26,9 @@ std::string FileInterface::CleanFile(const string& filePath) {
 	return fileContent;
 }
 
-int FileInterface::InterpretFile(const string& filePath)
+std::optional<LanVariable> FileInterface::InterpretFile(const string& filePath, bool ignoreMessage)
 {
-    std::cout << "Running Mylange script: " << filePath << std::endl;
+    if (!ignoreMessage) std::cout << "Running Mylange script: " << filePath << std::endl;
 
 	
 
@@ -36,20 +36,17 @@ int FileInterface::InterpretFile(const string& filePath)
 		MylangeInterpreter mi = MylangeInterpreter();
 		ModuleRegistry::RegisterHardwires(mi);
 		auto result = mi.InterpretBlock(FileInterface::CleanFile(filePath));
-		if (result.has_value())
-			cout << "Program exited with value: (" + result.value().Type.ToString() + ") " + result.value().ToString();
-		else
-			std::cout << "Program exited with no return value." << std::endl;
+		return result;
 	};
 
-	//fu();
+	//return fu();
 
 	try {
-		fu();
+		return fu();
 	}
 	catch (const exception& e) {
 		cerr << "Error during interpretation: " << e.what() << endl;
-		return 1;
+		return nullopt;
 	}
-    return 0;
+    return nullopt;
 }

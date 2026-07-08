@@ -1,0 +1,8 @@
+#include <io>;
+io.dump();
+
+int num => 42;
+
+io.print("I am just returning a number, %%".format([num,'!']) );
+
+return num;

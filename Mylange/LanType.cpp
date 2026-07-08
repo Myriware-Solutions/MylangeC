@@ -44,6 +44,7 @@ string LanType::ToString(const LanType& type)
 		return result + ">";
 	}
 	else if ((type.BaseType & LanTypeEnum::TypeAny) == LanTypeEnum::TypeAny) {
+		if (type.BaseType == LanTypeEnum::TypeAny && !type.Archetype.has_value()) return "any";
 		string result = "any<";
 		auto others = type.BaseType & ~LanTypeEnum::TypeAny;
 		if (others != LanTypeEnum::None) result += ToString(others);

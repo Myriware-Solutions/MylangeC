@@ -1038,76 +1038,67 @@ pair<shared_ptr<LanFunction>, vector<LanVariable>> MylangeInterpreter::FindFunct
     string functionId = LanFunction::GetId(function_name, function_parameters_types);
     CommandLineInterface::DebugPrint("Looking for function with id: " + functionId, 1);
 
-    auto any_vector = vector<LanType>(function_parameters_types.size(), LanType(LanTypeEnum::TypeAny));
-    string any_functionId = LanFunction::GetId(function_name, any_vector);
+	auto function = this->FindFunction(function_name, function_parameters_types, packagePath);
+	return { function, function_parameters };
 
-    shared_ptr<LanVariable> resultContainer;
-
-    // Look for a package and function
-    if (packagePath != "") {
-        if (this->LoadedModules.find(packagePath) != this->LoadedModules.end()) {
-            // Find scope
-            auto scope = this->Memory.FindSiblingScope(packagePath);
-            if (!scope) throw runtime_error("Package scope not found: " + packagePath);
-            auto fv = scope->resolve(functionId);
-            if (!fv) {
-                // Try to find an overload with any types
-                fv = scope->resolve(any_functionId);
-                if (!fv) throw runtime_error("Function not found in package: " + functionId);
-            }
-
-            return { std::get<std::shared_ptr<LanFunction>>(fv->Value), function_parameters };
-        }
-        else throw runtime_error("Package not found: " + packagePath);
-    }
-    // Find a user defined function
-    else if (this->Memory.resolve(functionId, resultContainer)) {
-        CommandLineInterface::DebugPrint("Found function: " + functionId);
-        return { std::get<std::shared_ptr<LanFunction>>(resultContainer->Value), function_parameters };
-    }
-    // User function any overload
-    else if (this->Memory.resolve(any_functionId, resultContainer)) {
-        CommandLineInterface::DebugPrint("Found function (any overload): " + functionId);
-        return { std::get<std::shared_ptr<LanFunction>>(resultContainer->Value), function_parameters };
-    }
-
-    throw runtime_error("Coudl not resolve function: " + functionId);
 }
 
 shared_ptr<LanFunction> MylangeInterpreter::FindFunction(const string& name, std::vector<LanType> paramTypes, const std::string path, bool excludeAny)
 {
-    string functionId = LanFunction::GetId(name, paramTypes);
-    auto any_vector = vector<LanType>(paramTypes.size(), LanType(LanTypeEnum::TypeAny));
-    string any_functionId = LanFunction::GetId(name, any_vector);
-    shared_ptr<LanVariable> resultContainer;
+    // Overload param vectors
+    std::vector<LanType> complxed_any_vector = {};
+    for (auto& p : paramTypes) {
+        if (p.IsArrayType()) complxed_any_vector.push_back(LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny));
+        else if (p.IsSetType()) complxed_any_vector.push_back(LanType(LanTypeEnum::TypeSet));
+        else complxed_any_vector.push_back(p);
+    }
+    std::vector<LanType> full_any_vector = std::vector<LanType>(paramTypes.size(), LanType(LanTypeEnum::TypeAny));
+    
+	// Generate IDs to look for (normal, complex any, full any)
+	auto ids = std::vector<std::string>{
+        LanFunction::GetId(name, paramTypes),
+		LanFunction::GetId(name, complxed_any_vector),
+		LanFunction::GetId(name, full_any_vector)
+	};
+	// Remove the possible duplicates, as they are not needed
+    auto [first, last] = std::ranges::unique(ids);
+    ids.erase(first, last);
+    
     // Look for a package and function
     if (path != "") {
         if (this->LoadedModules.find(path) != this->LoadedModules.end()) {
             // Find scope
             auto scope = this->Memory.FindSiblingScope(path);
             if (!scope) throw runtime_error("Package scope not found: " + path);
-            auto fv = scope->resolve(functionId);
-            if (!fv && !excludeAny) {
-                // Try to find an overload with any types
-                fv = scope->resolve(any_functionId);
-                if (!fv) throw runtime_error("Function not found in package: " + functionId);
-            }
 
-            return std::get<std::shared_ptr<LanFunction>>(fv->Value);
+			for (auto& id : ids) {
+				auto fv = scope->resolve(id);
+				if (fv) 
+                {
+                    CommandLineInterface::DebugPrint(std::format("Overload found [{}]: {}", path, id), 2);
+                    return std::get<std::shared_ptr<LanFunction>>(fv->Value);
+                }
+				else CommandLineInterface::DebugPrint(std::format("Overload not found [{}]: {}", path, id), 2);
+			}
+
+            throw runtime_error(std::format("Function not found in package [{}]: {}/{}/{}", path, ids[0], ids[1], ids[2]));
         }
         else throw runtime_error("Package not found: " + path);
     }
-    // Find a user defined function
-    else if (this->Memory.resolve(functionId, resultContainer)) {
-        CommandLineInterface::DebugPrint("Found function: " + functionId);
-        return std::get<std::shared_ptr<LanFunction>>(resultContainer->Value);
+    else {
+		for (auto& id : ids) {
+			shared_ptr<LanVariable> resultContainer;
+			if (this->Memory.resolve(id, resultContainer)) {
+				CommandLineInterface::DebugPrint("Found function: " + id);
+				return std::get<std::shared_ptr<LanFunction>>(resultContainer->Value);
+			}
+			else CommandLineInterface::DebugPrint("Function not found: " + id, 2);
+		}
+
+        throw runtime_error(std::format("Function not found: {}/{}/{}", ids[0], ids[1], ids[2]));
     }
-    // User function any overload
-    else if (this->Memory.resolve(any_functionId, resultContainer) && !excludeAny) {
-        CommandLineInterface::DebugPrint("Found function (any overload): " + functionId);
-        return std::get<std::shared_ptr<LanFunction>>(resultContainer->Value);
-    }
-    else throw runtime_error("Could not find function specified");
+
+    throw runtime_error(std::format("Function not specified: {}/{}/{}", ids[0], ids[1], ids[2]));
 }
 ;
 
@@ -1207,11 +1198,13 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
             trimmedValue.substr(1, trimmedValue.length() - 2), ','
         );
         vector <std::shared_ptr< LanVariable >> elements;
+        LanType type = LanType(LanTypeEnum::TypeArray);
         for (auto& elemStr : elementStrings) {
             string trimmedElemStr = Utils::TrimString(elemStr);
             CommandLineInterface::DebugPrint("Array element string: " + trimmedElemStr, 1);
             optional <LanVariable> elemVar = this->ParseParameter(trimmedElemStr);
             if (elemVar.has_value()) {
+				type.AddArchetype(elemVar.value().Type);
                 elements.push_back(make_shared<LanVariable>(elemVar.value()));
             }
             else {
@@ -1219,7 +1212,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
             }
         }
         return LanVariable(
-            LanType(LanTypeEnum::TypeArray),
+            type,
             LanVariable::LanValue{ elements }
         );
     }
