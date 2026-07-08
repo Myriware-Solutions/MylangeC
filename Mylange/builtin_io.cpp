@@ -40,6 +40,25 @@ static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
         )
     ));
 
+    // array<str> args ()
+    mi.Memory.defineIn(scopeId, LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeString),
+            "args",
+            LanFunction::ParamStruct{ },
+            [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+				std::vector<shared_ptr<LanVariable>> argVars;
+                for (auto& arg : CommandLineInterface::Args)
+                    argVars.push_back(make_shared<LanVariable>(LanType(LanTypeEnum::TypeString), arg));
+				return LanVariable(
+					LanType(LanTypeEnum::TypeArray, { LanType(LanTypeEnum::TypeString) }),
+					LanVariable::LanValue{ argVars }
+				);
+            }
+        )
+    ));
+
     // nil dump ()
     mi.Memory.defineIn(scopeId, LanVariable(
         LanType(LanTypeEnum::TypeFunction),

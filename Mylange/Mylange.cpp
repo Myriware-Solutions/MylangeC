@@ -33,7 +33,8 @@ bool find_a(const std::vector<std::string>& haystack, const std::string& needle)
 int main(int argc, char* argv[])
 {
     std::vector<std::string> args(argv, argv + argc);
-    for (auto& arg : args) {
+	CommandLineInterface::Args = args;
+    for (auto& arg : CommandLineInterface::Args) {
         if (arg == "--debug") CommandLineInterface::DebugEnabled = true;
     }
 

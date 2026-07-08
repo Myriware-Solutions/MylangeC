@@ -3,6 +3,8 @@ io.dump();
 
 int num => 42;
 
-io.print("I am just returning a number, %%".format([num,'!']) );
+io.print("I am just returning a number, %%".format([num,'.']) );
+
+io.print(io.args());
 
 return num;
