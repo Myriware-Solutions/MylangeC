@@ -23,7 +23,7 @@ public:
     std::unordered_map<std::string, std::shared_ptr<LanFunction>> Methods;
 
     LanClass() = default;
-    ~LanClass() = default;
+    virtual ~LanClass() = default;
 
     // Copy & move — both work, no manual Clone() needed
     LanClass(const LanClass&) = default;
@@ -38,6 +38,23 @@ public:
         : Name(name), Properties(properties),
         DefaultValues(defaultValues), Methods(methods) {
     }
+};
+
+class BuiltinClass : public LanClass {
+public:
+    BuiltinClass(const std::string& name,
+        const std::unordered_map<std::string, LanType>& properties,
+        const std::unordered_map<std::string, LanVariable>& defaultValues,
+        std::vector<std::shared_ptr<LanFunction>>& methods)
+        {
+            this->Name = name;
+		    this->Properties = properties;
+		    this->DefaultValues = defaultValues;
+		    for (auto& method : methods) {
+                this->Methods[method->GetId()] = method;
+		    }
+        }
+
 };
 
 // -------------------------------------------------------
@@ -67,37 +84,74 @@ public:
             Properties[name] = make_shared<LanVariable>(value);
     }
 
+	void EditProperty(const std::string& name, const LanVariable& value) {
+		auto it = Properties.find(name);
+		if (it == Properties.end())
+			throw std::runtime_error("Property not found: " + name);
+		if (!value.IsCompatible(ClassInfo->Properties[name]))
+			throw std::runtime_error("Type mismatch for property: " + name);
+		it->second = make_shared<LanVariable>(value);
+	}
+
     // Run a method — scope managed by interpreter, args by value
     std::optional<LanVariable> RunMethod(MylangeInterpreter& mi,
         const std::string& methodId,
         std::vector<LanVariable> args) {
+
+        std::optional<LanVariable> res;
+
         auto it = ClassInfo->Methods.find(methodId);
+		for (auto& [name, _] : ClassInfo->Methods) {
+			CommandLineInterface::DebugPrint("Available method: " + name);
+		}
         if (it == ClassInfo->Methods.end())
             throw std::runtime_error("Method not found: " + methodId);
         auto& method = it->second;
-        CommandLineInterface::DebugPrint("Executing method on class (" + this->ClassInfo->Name + ") : " + method->Name + " with " + std::to_string(args.size()) + " arguments.");
-        if (method->Parameters.size() != args.size())
-        {
-            throw runtime_error("Method " + method->Name + " expected "
-                + to_string(method->Parameters.size()) + " arguments, but got "
-                + to_string(args.size()) + ".");
+
+		if (BuiltinClass* builtin = dynamic_cast<BuiltinClass*>(ClassInfo.get())) {
+			
+			auto combined_args = std::vector<LanVariable>{ LanVariable(LanType(LanTypeEnum::TypeCasting), shared_from_this()) };
+			combined_args.insert(combined_args.end(), args.begin(), args.end());
+			auto y = method->Execute(mi, combined_args);
+
+			if (y.has_value()) {
+				CommandLineInterface::DebugPrint("Method returned: " + y->ToString());
+                return std::move(y);
+			}
+			else {
+				CommandLineInterface::DebugPrint("Method returned no value.");
+                return nullopt;
+			}
+
+            throw std::runtime_error("Cannot run methods on built-in classes directly.");
         }
-        // Create Function Runtime Scope
-        mi.Memory.pushScope(this->ClassInfo->Name + "::"+ method->Name + "()");
-        auto uiu = LanVariable::LanValue{ shared_from_this() };
-        auto l = LanVariable(LanType(LanTypeEnum::TypeCasting), uiu);
-        std::string this_label("this");
-        mi.Memory.define(this_label, l);
-        // Define parameters
-        size_t idx = 0;
-        for (const auto& [paramName, paramType] : method->Parameters)
-        {
-            mi.Memory.define(paramName, args[idx]);
-            ++idx;
+        else {
+            
+            CommandLineInterface::DebugPrint("Executing method on class (" + this->ClassInfo->Name + ") : " + method->Name + " with " + std::to_string(args.size()) + " arguments.");
+            if (method->Parameters.size() != args.size())
+            {
+                throw runtime_error("Method " + method->Name + " expected "
+                    + to_string(method->Parameters.size()) + " arguments, but got "
+                    + to_string(args.size()) + ".");
+            }
+            // Create Function Runtime Scope
+            mi.Memory.pushScope(this->ClassInfo->Name + "::" + method->Name + "()");
+            auto uiu = LanVariable::LanValue{ shared_from_this() };
+            auto l = LanVariable(LanType(LanTypeEnum::TypeCasting), uiu);
+            std::string this_label("this");
+            mi.Memory.define(this_label, l);
+            // Define parameters
+            size_t idx = 0;
+            for (const auto& [paramName, paramType] : method->Parameters)
+            {
+                mi.Memory.define(paramName, args[idx]);
+                ++idx;
+            }
+            res = mi.InterpretBlock(method->Logic);
+            // Destroy function runtime
+            mi.Memory.popScope();
         }
-        auto res = mi.InterpretBlock(method->Logic);
-        // Destroy function runtime
-        mi.Memory.popScope();
         return res;
     }
+
 };

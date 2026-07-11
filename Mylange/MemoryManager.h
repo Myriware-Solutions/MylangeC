@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <vector>
 #include <iostream>
+#include <format>
 #include "LanVariable.h"
 #include "CommandLineInterface.h"
 
@@ -25,7 +26,7 @@ public:
     void define(const std::string& name, LanVariable value) {
         // prevent overriding values
         if (symbols.contains(name)) { throw runtime_error("Cannot rewrite data: " + name); }
-        CommandLineInterface::DebugPrint("Define: name '" + name+ "' type '" + value.Type.ToString() + "' as value '" + value.ToString() + "'", CommandLineInterface::DebugColor::Cyan);
+        CommandLineInterface::DebugPrint(std::format("Define: {} {} => {}", value.Type.ToString(), name, value.ToString()), CommandLineInterface::DebugColor::Cyan);
         symbols[name] = std::move(value);
     }
 
@@ -191,7 +192,6 @@ public:
         return nullptr;
     }
 
-private:
     // Walk the tree by splitting the dot-separated id
     Scope* resolveScope(const std::string& scopeId) {
         // Split on '.'

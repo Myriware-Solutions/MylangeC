@@ -1,7 +1,11 @@
 <Solution>
   <Configurations>
+    <Platform Name="ARM64" />
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="Mylange/Mylange.vcxproj" Id="6382bc7a-e51f-447c-9113-089f7ecff377" />
+  <Project Path="Mylange/Mylange.vcxproj" Id="6382bc7a-e51f-447c-9113-089f7ecff377">
+    <Platform Solution="*|ARM64" Project="x64" />
+  </Project>
+  <Project Path="MylangeInstaller/MylangeInstaller.wixproj" Type="b7dd6f7e-def8-4e67-b5b7-07ef123db6f0" Id="5566d5d8-bb51-40f3-b0ab-2b6919aee5df" />
 </Solution>

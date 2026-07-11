@@ -1,4 +1,4 @@
-//debug(true);
+debug(true);
 #include<std>;
 #include<io>;
 
@@ -33,6 +33,8 @@ arr ExampleArray => [1, 2, 3, 4, 5];
 str Index => "name";
 
 io.print("Name: " .. ExampleSet[Index] .. ExampleArray[2]);
+
+return true;
 
 while (true) do {
     set ExampleSet => (

@@ -15,7 +15,7 @@ using namespace std;
 
 void CommandLineInterface::RunCLI() {
 	cout << "Mylange Linear Interface Running..." << endl;
-	cout << "(c) Myriware Solutions. Version Pre-Orange 0.9.1" << endl;
+	cout << "(c) Myriware Solutions. Version " << CommandLineInterface::Version << endl;
 	cout << "To exit, enter 'exit' or 'quit'." << endl;
 
 	MylangeInterpreter mi = MylangeInterpreter();

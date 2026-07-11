@@ -15,33 +15,38 @@ regex single_line_comment_pattern(R"(\/\/.*)", std::regex_constants::ECMAScript)
 regex multi_line_comment_pattern(R"(\/\[[\s\S]*?\]\/)", std::regex_constants::ECMAScript);
 regex newline_whitespace_pattern(R"(\s*\n\s*)", std::regex_constants::ECMAScript);
 
-int FileInterface::InterpretFile(const string& filePath)
-{
-    std::cout << "Running Mylange script: " << filePath << std::endl;
-
+std::string FileInterface::CleanFile(const string& filePath) {
 	string fileContent = Utils::ReadFileContents(filePath);
 
-    // Remove all comments
+	// Remove all comments
 	fileContent = std::regex_replace(fileContent, single_line_comment_pattern, "");
 	fileContent = std::regex_replace(fileContent, multi_line_comment_pattern, "");
 	fileContent = std::regex_replace(fileContent, newline_whitespace_pattern, " ");
 
+	return fileContent;
+}
+
+std::optional<LanVariable> FileInterface::InterpretFile(const string& filePath, bool ignoreMessage)
+{
+    if (!ignoreMessage) std::cout << "Running Mylange script: " << filePath << std::endl;
+
+	
+
 	auto fu = [&]() {
 		MylangeInterpreter mi = MylangeInterpreter();
 		ModuleRegistry::RegisterHardwires(mi);
-		auto result = mi.InterpretBlock(fileContent);
-		if (result.has_value())
-			cout << "Program exited with value: (" + result.value().Type.ToString() + ") " + result.value().ToString();
-		else
-			std::cout << "Program exited with no return value." << std::endl;
+		auto result = mi.InterpretBlock(FileInterface::CleanFile(filePath));
+		return result;
 	};
 
+	//return fu();
+
 	try {
-		fu();
+		return fu();
 	}
 	catch (const exception& e) {
 		cerr << "Error during interpretation: " << e.what() << endl;
-		return 1;
+		return nullopt;
 	}
-    return 0;
+    return nullopt;
 }

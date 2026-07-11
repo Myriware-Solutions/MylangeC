@@ -36,6 +36,8 @@ enum class LanTypeEnum : uint32_t
 	TypeInterable = 1 << 11,
 	TypeFunction = 1 << 12,
 	TypeClass = 1 << 13,
+	TypeType = 1 << 14,
+	TypeThis = 1 << 15
 	// Unions are not their own types, rather, they are
 	// represented if more than 1 bit is set.
 	// Arrays and sets have the Array or Set bit set,
@@ -92,7 +94,8 @@ protected:
 		{ LanTypeEnum::TypeAny, {"any"}},
 		{ LanTypeEnum::TypeInterable, {"iterable"} },
 		{ LanTypeEnum::TypeFunction, {"function", "func"} },
-		{ LanTypeEnum::TypeClass, {"class"} }
+		{ LanTypeEnum::TypeClass, {"class"} },
+		{ LanTypeEnum::TypeType, {"type"} }
 	};
 
 	inline static const regex TypeMatchPattern = regex(R"((\w+)(?:\s*<(.*)>)?)");
@@ -116,6 +119,18 @@ public:
 	}
 
 	LanType(shared_ptr<LanClass> customClass);
+
+	void AddArchetype(const LanType& type) {
+		if (type.IsComplex()) {
+			if (!this->Archetype.has_value()) {
+				this->Archetype = vector<LanType>{};
+			}
+			this->Archetype->push_back(type);
+		}
+		else {
+			this->BaseType |= type.BaseType;
+		}
+	}
 
 	bool IsArrayType() const {
 		return (this->BaseType & LanTypeEnum::TypeArray) == LanTypeEnum::TypeArray;

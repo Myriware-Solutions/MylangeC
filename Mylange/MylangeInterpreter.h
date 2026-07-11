@@ -43,16 +43,17 @@ public:
 	MylangeInterpreter();
 	optional<LanVariable> Interpret(const string& code);
 	optional<LanVariable> InterpretBlock(const string& block, const bool SkipClearing = false);
+	LanType ResolveType(const string& typeStr);
 	std::vector<TokenItem> TokenizeComplexValue(std::string& value);
 	bool ParseParameter(const string& rawParamStr, std::shared_ptr<LanVariable>& var, bool assignVar = true);
 	LanVariable ForcedParseParameter(const string& rawParamStr);
 	optional<LanVariable> ParseParameter(const string& rawParamStr);
 	std::pair<std::string, std::vector<LanVariable>> GetFunctionParts(const string& functionCallStr);
 	pair<shared_ptr<LanFunction>, vector<LanVariable>> FindFunction(const string& functionCallStr, std::string packagePath = "", vector<LanVariable> self = {});
+	shared_ptr<LanFunction> FindFunction(const string& name, std::vector<LanType> paramTypes, const std::string path = "", bool excludeAny = false);
 	void MakeParameters(string& paramString, vector<LanVariable>& paramsOut, vector<LanType>& paramTypesOut);
 	bool RandomTypeConversion(const string& value, std::shared_ptr<LanVariable>& var);
 	optional<LanVariable> RandomTypeConversion(const string& value);
-	optional<LanVariable> RunFunctionStack(const string& functionStackStr);
 	struct FunctionParts {
 		string Name;
 		vector<LanVariable> Params;

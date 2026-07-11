@@ -12,7 +12,7 @@ static void Registerstd(MylangeInterpreter& mi, const std::string& scopeId) {
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeString),
             "to_int",
-            std::map<std::string, LanType>{ { "o", LanType(LanTypeEnum::TypeString) } },
+            LanFunction::ParamStruct{ { "o", LanType(LanTypeEnum::TypeString) } },
             [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 if (args.empty()) throw std::runtime_error("print requires 1 argument.");
                 return LanVariable(
@@ -29,7 +29,7 @@ static void Registerstd(MylangeInterpreter& mi, const std::string& scopeId) {
         std::make_shared<BuiltinFunction>(
             LanType(LanTypeEnum::TypeString),
             "to_string",
-            std::map<std::string, LanType>{ { "o", LanType(LanTypeEnum::TypeAny) } },
+            LanFunction::ParamStruct{ { "o", LanType(LanTypeEnum::TypeAny) } },
             [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 if (args.empty()) throw std::runtime_error("to_string requires 1 argument.");
                 return LanVariable(

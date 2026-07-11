@@ -33,12 +33,17 @@ bool find_a(const std::vector<std::string>& haystack, const std::string& needle)
 int main(int argc, char* argv[])
 {
     std::vector<std::string> args(argv, argv + argc);
-    for (auto& arg : args) {
+	CommandLineInterface::Args = args;
+    for (auto& arg : CommandLineInterface::Args) {
         if (arg == "--debug") CommandLineInterface::DebugEnabled = true;
     }
 
     if (argc > 1 && !std::regex_match(argv[1], valid_arg_pattern)) {
-		FileInterface::InterpretFile(argv[1]);
+		auto result = FileInterface::InterpretFile(argv[1]);
+        if (result.has_value())
+            cout << "Program exited with value: (" + result.value().Type.ToString() + ") " + result.value().ToString();
+        else
+            std::cout << "Program exited with no return value." << std::endl;
     }
     else {
         CommandLineInterface::RunCLI();

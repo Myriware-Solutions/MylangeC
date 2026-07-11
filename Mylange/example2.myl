@@ -1,0 +1,82 @@
+debug(true);
+
+#include <io>;
+#include <file>;
+#include <std>;
+
+
+
+file.File f => new file.File("example3.myl", "r");
+int result => f.exe();
+
+io.print("Result of example3.myl: %".format([result]));
+
+
+
+return 0;
+
+class Dumb has {
+
+    public int Age => 0;
+
+    public def nil Dumb(int age, str something) as {
+        io.print("Constructor called" .. age);
+
+    };
+
+    public def nil Anything() as {
+        io.print("Anything called from Dumb: 0" .. this:Age);
+    };
+
+};
+
+io.dump();
+io.dumpClass("file.File");
+io.dumpClass(Dumb);
+
+Dumb bob => new Dumb(3, "Something");
+bob.Anything();
+
+
+
+
+file.File f => new file.File("todo.md", "r");
+io.print("F:path is " .. f:path);
+io.print("Contents: \n" .. f.read());
+io.print(std.to_string(f));
+
+return 0;
+
+#include <io>;
+io.dump();
+
+io.print( $array<string> );
+
+#include "example" as <ex>;
+
+debug(false);
+
+io.dump();
+
+def int main() as {
+
+	return 42;
+
+};
+
+def int main(int some) as {
+	ex.main();
+	return main() + some;
+};
+
+arr<type> e_types => [$int];
+
+//func f => f_find("main", e_types );
+
+
+
+set ji => (fu => f_find("main", e_types ));
+
+debug(true);
+
+io.print(ji:fu.do([55]));

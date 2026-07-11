@@ -8,6 +8,8 @@
 #include "ModuleRegistry.h"
 #include "MylangeInterpreter.h"
 #include "Utils.h"
+#include "MylangeFileInterface.h"
+#include <format>
 #include <algorithm>
 #include <cctype>
 #include <cstdint>
@@ -40,7 +42,7 @@ const regex cachedBit(R"((\d)x([a-fA-F0-9]+))", std::regex_constants::ECMAScript
 // For Classes
 const regex classDefualtPropertyPatter(R"(^((?:@?\w+\s+)+)?\s*([a-zA-Z<>,|\s]+) +(\w+) *=> *(.*))", std::regex_constants::ECMAScript);
 const regex classPropertyPattern(R"(^((?:@?\w+\s+)+)?\s*([a-zA-Z<>,|\s]+) +(\w+))", std::regex_constants::ECMAScript);
-const regex castingCreationPattern(R"(^new\s+([\w]+)\((.*)\))", std::regex_constants::ECMAScript);
+const regex castingCreationPattern(R"(^new\s+([\w.]+)\((.*)\))", std::regex_constants::ECMAScript);
 const std::string overrideString = std::string("@override");
 
 struct Rule {
@@ -82,22 +84,48 @@ vector<Rule> rules = {
             return std::nullopt;
         }
     },
+    // Include (Local file)
+    {
+        regex(R"(^#\s*include\s*(1x[0-9a-fA-F]{8})\s*(?:as\s*<(\w+)>)?$)"),
+        [](auto const& m, MylangeInterpreter& mi) {
+            std::string moduleName = mi.BlockMap[m[1].str()];
+            std::string asName = (m[2].matched) ? m[2].str() : moduleName;
+
+            CommandLineInterface::DebugPrint("Loading local module '" + moduleName + "' as '" + asName + "'");
+
+            if (mi.LoadedModules.contains(asName)) throw runtime_error("Cannot import module, already exists: " + moduleName + " as " + asName);
+            mi.LoadedModules.insert(asName);
+
+            mi.Memory.pushScope(asName);
+
+            auto content = FileInterface::CleanFile(moduleName + ".myl");
+            mi.InterpretBlock(content);
+
+            mi.Memory.popScope(true);
+
+            
+
+            return std::nullopt;
+        }
+    },
+	// Continue: loads a script into the current scope. Used to allow a file to "continue" to another file, then come back.
+    {
+        regex(R"(^#\s*continue\s*(1x[0-9a-fA-F]{8}))"),
+        [](auto const& m, MylangeInterpreter& mi) {
+            std::string moduleName = mi.BlockMap[m[1].str()];
+
+            auto content = FileInterface::CleanFile(moduleName + ".myl");
+            mi.InterpretBlock(content);
+
+            return std::nullopt;
+        }
+    },
     // Set Variable
     {
-        regex(R"(^\s*([a-zA-Z<>,|\s]+) +(\w+) *=> *(.*))"),
+        regex(R"(^\s*([a-zA-Z<>,|\s.]+) +(\w+) *=> *(.*))"),
         [](auto const& m, MylangeInterpreter& mi) {
             string expected_type_name = Utils::TrimString(m[1]);
-            LanType expectedType;
-            try {
-                expectedType = LanType::FromString(expected_type_name);
-            }
-            catch (exception& e) {
-                auto a = mi.Memory.resolve(expected_type_name);
-                if (a)
-                    expectedType = LanType(std::get<shared_ptr<LanClass>>(a->Value));
-                else throw runtime_error("Cannot resolve type: " + Utils::TrimString(m[1]) + " : " + e.what());
-            }
-
+            LanType expectedType = mi.ResolveType(expected_type_name);
 
             CommandLineInterface::DebugPrint("EXP TYPE:" + to_string(static_cast<uint32_t>(expectedType.BaseType)) + " / " + expectedType.ToString());
             auto lv = mi.ParseParameter(m[3]);
@@ -105,8 +133,16 @@ vector<Rule> rules = {
                 throw runtime_error("Failed to parse variable value.");
             CommandLineInterface::DebugPrint("Setting variable " + m[2].str() + " of type " + expectedType.ToString()
                 + "/" + lv.value().Type.ToString() + " to value " + lv.value().ToString());
-            if (lv.value().IsCompatible(expectedType))
+            if (lv.value().IsCompatible(expectedType)) {
+
+                if (expectedType.IsArrayType() && lv.value().Type == LanTypeEnum::TypeArray) {
+                    // Override empty arrays
+                    lv.value().Type = expectedType;
+                }
+
                 mi.Memory.define(m[2].str(), lv.value());
+            }
+                
             else throw runtime_error("Type mismatch in variable assignment. Expected "
                 + expectedType.ToString() + ", got " + lv.value().Type.ToString()
                 + " (with " + lv.value().ToString() + ")");
@@ -129,6 +165,7 @@ vector<Rule> rules = {
                     working = mi.Memory.resolve(token.value);
                     break;
                 case TokenItem::ColonExtention:
+					if (!working) throw runtime_error("Cannot use colon extention on non-variable.");
                     working = working->Index(token.value).get();
                     break;
                 case TokenItem::BracketExtention:
@@ -278,11 +315,11 @@ vector<Rule> rules = {
                     // Method
                     string method_name = match[3].str();
                     LanType return_type = LanType::FromString(Utils::TrimString(match[2].str()));
-                    map<string, LanType> parameter_map;
+                    LanFunction::ParamStruct parameter_map;
                     for (const auto& param_str : Utils::TopLevelSplit(match[4], ',')) {
                         auto parts = Utils::TopLevelSplit(Utils::TrimString(param_str), ' ');
                         if (parts.size() != 2) throw runtime_error("Each param must have 2 parts. Found " + to_string(parts.size()));
-                        parameter_map[parts[1]] = LanType::FromString(parts[0]);
+                        parameter_map.push_back({ parts[1], LanType::FromString(parts[0]) });
                     }
                     string logic = match[5].str();
                     unique_ptr<LanFunction> method =
@@ -305,12 +342,12 @@ vector<Rule> rules = {
         functionMethodDeclaration,
         [](auto const& m, MylangeInterpreter& mi) {
             // Settup params
-            map<string, LanType> parameter_map;
+            LanFunction::ParamStruct parameter_map;
             for (const auto& param_str : Utils::TopLevelSplit(m[4], ','))
             {
                 auto parts = Utils::TopLevelSplit(Utils::TrimString(param_str), ' ');
                 if (parts.size() != 2) throw runtime_error("Each param must have 2 parts. Found " + to_string(parts.size()));
-                parameter_map[parts[1]] = LanType::FromString(parts[0]);
+                parameter_map.push_back({ parts[1] , LanType::FromString(parts[0]) });
             }
             const LanType return_type = LanType::FromString(m[2]);
             std::shared_ptr<LanFunction> function =
@@ -634,6 +671,32 @@ optional<LanVariable> MylangeInterpreter::InterpretBlock(const string& blockStri
     return nullopt;
 }
 
+LanType MylangeInterpreter::ResolveType(const string& typeStr)
+{
+    LanType result;
+    try {
+        result = LanType::FromString(typeStr);
+    }
+    catch (exception& e) {
+        auto a = this->Memory.resolve(typeStr);
+        if (a)
+            result = LanType(std::get<shared_ptr<LanClass>>(a->Value));
+        else {
+			auto sep = Utils::TopLevelSplit(typeStr, '.');
+			if (sep.size() != 2) throw runtime_error(std::format("[{}] Cannot resolve type (too many parts): {}\n\t{}", this->Memory.currentScope()->id, typeStr, e.what()));
+			
+			auto location = this->Memory.resolveScope(this->Memory.currentScope()->id + "." + sep[0]);
+			auto cls = location->resolve(sep[1]);
+            if (cls) {
+				if (cls->Type != LanTypeEnum::TypeClass) throw runtime_error(std::format("[{}] Resolved type is not a class: {}\n\t{}", this->Memory.currentScope()->id, typeStr, e.what()));
+				auto& cls_ptr = std::get<shared_ptr<LanClass>>(cls->Value);
+				return LanType(cls_ptr);
+            } else throw runtime_error(std::format("[{}] Cannot resolve type: {}\n\t{}", this->Memory.currentScope()->id, typeStr, e.what()));
+        }
+    };
+    return result;
+}
+
 
 const std::vector<std::string> protectedWords = {
     "true", "false", "nil"
@@ -691,7 +754,7 @@ std::vector<TokenItem> MylangeInterpreter::TokenizeComplexValue(std::string& val
     auto place_back = [&]() {
         if (to_append.length() == 0) return;
         if (parts.size() > 0) throw runtime_error("Should not be unhandled");
-        if (ModuleRegistry::Has(to_append)) {
+        if (ModuleRegistry::Has(to_append) || this->LoadedModules.contains(to_append)) {
             possible_package_method = true;
             parts.push_back(TokenItem(TokenItem::TokenItem::PackageName, to_append));
         }
@@ -713,10 +776,14 @@ std::vector<TokenItem> MylangeInterpreter::TokenizeComplexValue(std::string& val
                     if (!Utils::Find(LanArithmetic::OperatorCharacters(), k)) break;
                     op += k;
                 }
-                CommandLineInterface::DebugPrint("Possible operator found: " + op);
                 if (LanArithmetic::IsOperator(op)) return {};
             }
 
+            // If a space is found, it could be a new statement, which should automatically
+            // fail this so that it gets forced
+			if (c == ' ' && to_append == "new") {
+                return {};
+			}
             // Check to see if it could be a bracket index
             // The only way to disqualify this is if it contains commas,
             // which indicates an array.
@@ -738,12 +805,17 @@ std::vector<TokenItem> MylangeInterpreter::TokenizeComplexValue(std::string& val
                     // It looks like a valid extention, and it is not the first array-like thing.
                     parts.push_back(TokenItem(TokenItem::TokenItem::BracketExtention, s));
                 }
-                else if (!valid_extention && parts.size() == 0) {
+                else if (parts.size() == 0) {
                     // Not a valid extention (is array), but being first, it can be allowed
                     std::string full_array = "[" + s + "]";
                     parts.push_back(TokenItem(TokenItem::TokenItem::Value, full_array));
                 }
-                else throw runtime_error("Odd array call found.");
+                //else if (valid_extention && parts.size() == 0 && s.empty()) {
+                //    // Empty array
+                //    std::string full_array = "[]";
+                //    parts.push_back(TokenItem(TokenItem::TokenItem::Value, full_array));
+                //}
+                else throw runtime_error("Odd array call found: " + std::format("{}", valid_extention) + " " + std::format("{}", parts.size()) + " '" + s + "'");
             }
             // Check for colon extention
             else if (c == ':') {
@@ -789,7 +861,7 @@ std::vector<TokenItem> MylangeInterpreter::TokenizeComplexValue(std::string& val
     }
 
     for (auto& p : parts) {
-        CommandLineInterface::DebugPrint("Part '" + p.value + "', type " + p.type_string());
+        CommandLineInterface::DebugPrint("Part '" + p.value + "', type " + p.type_string(), 1);
     }
     return parts;
 }
@@ -847,6 +919,12 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& rawParamS
                 return *result;
             }
             else throw runtime_error("Variable not found: " + paramStr);
+        }
+        // Type
+        else if (regex_match(paramStr, match, regex(R"(^\$([\w<>| ]+)$)"))) {
+            CommandLineInterface::DebugPrint("Type found: " + paramStr, 1);
+            auto t = LanType::FromString(match[1].str());
+            return LanVariable(LanType(LanTypeEnum::TypeType), t);
         }
         // Failsafe Random Type Conversion
         else if (this->RandomTypeConversion(paramStr, result))
@@ -973,41 +1051,69 @@ pair<shared_ptr<LanFunction>, vector<LanVariable>> MylangeInterpreter::FindFunct
     string functionId = LanFunction::GetId(function_name, function_parameters_types);
     CommandLineInterface::DebugPrint("Looking for function with id: " + functionId, 1);
 
-    auto any_vector = vector<LanType>(function_parameters_types.size(), LanType(LanTypeEnum::TypeAny));
-    string any_functionId = LanFunction::GetId(function_name, any_vector);
+	auto function = this->FindFunction(function_name, function_parameters_types, packagePath);
+	return { function, function_parameters };
 
-    shared_ptr<LanVariable> resultContainer;
+}
 
+shared_ptr<LanFunction> MylangeInterpreter::FindFunction(const string& name, std::vector<LanType> paramTypes, const std::string path, bool excludeAny)
+{
+    // Overload param vectors
+    std::vector<LanType> complxed_any_vector = {};
+    for (auto& p : paramTypes) {
+        if (p.IsArrayType()) complxed_any_vector.push_back(LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny));
+        else if (p.IsSetType()) complxed_any_vector.push_back(LanType(LanTypeEnum::TypeSet));
+        else complxed_any_vector.push_back(p);
+    }
+    std::vector<LanType> full_any_vector = std::vector<LanType>(paramTypes.size(), LanType(LanTypeEnum::TypeAny));
+    
+	// Generate IDs to look for (normal, complex any, full any)
+	auto ids = std::vector<std::string>{
+        LanFunction::GetId(name, paramTypes),
+		LanFunction::GetId(name, complxed_any_vector),
+		LanFunction::GetId(name, full_any_vector)
+	};
+	// Remove the possible duplicates, as they are not needed
+    auto [first, last] = std::ranges::unique(ids);
+    ids.erase(first, last);
+    
     // Look for a package and function
-    if (packagePath != "") {
-        if (this->LoadedModules.find(packagePath) != this->LoadedModules.end()) {
+    if (path != "") {
+        if (this->LoadedModules.find(path) != this->LoadedModules.end()) {
             // Find scope
-            auto scope = this->Memory.FindSiblingScope(packagePath);
-            if (!scope) throw runtime_error("Package scope not found: " + packagePath);
-            auto fv = scope->resolve(functionId);
-            if (!fv) {
-                // Try to find an overload with any types
-                fv = scope->resolve(any_functionId);
-                if (!fv) throw runtime_error("Function not found in package: " + functionId);
-            }
+            auto scope = this->Memory.FindSiblingScope(path);
+            if (!scope) throw runtime_error("Package scope not found: " + path);
 
-            return { std::get<std::shared_ptr<LanFunction>>(fv->Value), function_parameters };
+			for (auto& id : ids) {
+				auto fv = scope->resolve(id);
+				if (fv) 
+                {
+                    CommandLineInterface::DebugPrint(std::format("Overload found [{}]: {}", path, id), 2);
+                    return std::get<std::shared_ptr<LanFunction>>(fv->Value);
+                }
+				else CommandLineInterface::DebugPrint(std::format("Overload not found [{}]: {}", path, id), 2);
+			}
+
+            throw runtime_error(std::format("Function not found in package [{}]: {}/{}/{}", path, ids[0], ids[1], ids[2]));
         }
-        else throw runtime_error("Package not found: " + packagePath);
+        else throw runtime_error("Package not found: " + path);
     }
-    // Find a user defined function
-    else if (this->Memory.resolve(functionId, resultContainer)) {
-        CommandLineInterface::DebugPrint("Found function: " + functionId);
-        return { std::get<std::shared_ptr<LanFunction>>(resultContainer->Value), function_parameters };
-    }
-    // User function any overload
-    else if (this->Memory.resolve(any_functionId, resultContainer)) {
-        CommandLineInterface::DebugPrint("Found function (any overload): " + functionId);
-        return { std::get<std::shared_ptr<LanFunction>>(resultContainer->Value), function_parameters };
+    else {
+		for (auto& id : ids) {
+			shared_ptr<LanVariable> resultContainer;
+			if (this->Memory.resolve(id, resultContainer)) {
+				CommandLineInterface::DebugPrint("Found function: " + id);
+				return std::get<std::shared_ptr<LanFunction>>(resultContainer->Value);
+			}
+			else CommandLineInterface::DebugPrint("Function not found: " + id, 2);
+		}
+
+        throw runtime_error(std::format("Function not found: {}/{}/{}", ids[0], ids[1], ids[2]));
     }
 
-    throw runtime_error("Coudl not resolve function: " + functionId);
-};
+    throw runtime_error(std::format("Function not specified: {}/{}/{}", ids[0], ids[1], ids[2]));
+}
+;
 
 void MylangeInterpreter::MakeParameters(string& paramString,
     vector<LanVariable>& paramsOut, vector<LanType>& paramTypesOut)
@@ -1105,11 +1211,13 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
             trimmedValue.substr(1, trimmedValue.length() - 2), ','
         );
         vector <std::shared_ptr< LanVariable >> elements;
+        LanType type = LanType(LanTypeEnum::TypeArray);
         for (auto& elemStr : elementStrings) {
             string trimmedElemStr = Utils::TrimString(elemStr);
             CommandLineInterface::DebugPrint("Array element string: " + trimmedElemStr, 1);
             optional <LanVariable> elemVar = this->ParseParameter(trimmedElemStr);
             if (elemVar.has_value()) {
+				type.AddArchetype(elemVar.value().Type);
                 elements.push_back(make_shared<LanVariable>(elemVar.value()));
             }
             else {
@@ -1117,7 +1225,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
             }
         }
         return LanVariable(
-            LanType(LanTypeEnum::TypeArray),
+            type,
             LanVariable::LanValue{ elements }
         );
     }
@@ -1145,6 +1253,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
     }   
     // casting
     else if (regex_match(trimmedValue, matchedMatch, castingCreationPattern)) {
+        CommandLineInterface::DebugPrint("Found new casting: " + trimmedValue);
 		string target_type_str = matchedMatch[1].str();
 		string param_str = matchedMatch[2].str();
 
@@ -1157,14 +1266,13 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
             else throw runtime_error("Failed to parse casting parameter: " + p);
         }
 
-        shared_ptr<LanVariable> customClassContainer;
-        if (!this->Memory.resolve(target_type_str, customClassContainer))
-			throw runtime_error("Cannot find type for casting: " + target_type_str);
+        CommandLineInterface::DebugPrint(std::format("Params: {}", params.size()));
 
-        LanType target_type = LanType(std::get<std::shared_ptr<LanClass>>(customClassContainer->Value));
-        shared_ptr<LanCasting> casting = std::make_shared<LanCasting>(std::get<std::shared_ptr<LanClass>>(customClassContainer->Value));
+        LanType target_type = this->ResolveType(target_type_str);
+        shared_ptr<LanCasting> casting = std::make_shared<LanCasting>(target_type.CustomClass);
 		
-        string func_id = LanFunction::GetId(target_type_str, params);
+        string func_id = LanFunction::GetId(target_type.CustomClass->Name, params);
+        CommandLineInterface::DebugPrint(std::format("Params for '{}': {}", func_id, params.size()));
 
         casting->RunMethod(*this, func_id, params); // Call the constructor
 

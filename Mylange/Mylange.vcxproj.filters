@@ -16,6 +16,9 @@
     <Filter Include="Builtin Functions">
       <UniqueIdentifier>{581e0103-a624-411c-805d-9c55ee8839fc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="zExamples">
+      <UniqueIdentifier>{ee6135e7-c126-431e-81d1-83a532f46c87}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Mylange.cpp">
@@ -52,6 +55,9 @@
       <Filter>Builtin Functions</Filter>
     </ClCompile>
     <ClCompile Include="ModuleRegistry.cpp">
+      <Filter>Builtin Functions</Filter>
+    </ClCompile>
+    <ClCompile Include="builtin_File.cpp">
       <Filter>Builtin Functions</Filter>
     </ClCompile>
   </ItemGroup>
@@ -91,7 +97,22 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="example.myl" />
     <None Include="todo.md" />
+    <None Include="example.myl">
+      <Filter>zExamples</Filter>
+    </None>
+    <None Include="example2.myl">
+      <Filter>zExamples</Filter>
+    </None>
+    <None Include="example3.myl">
+      <Filter>zExamples</Filter>
+    </None>
+    <None Include="cont.myl">
+      <Filter>zExamples</Filter>
+    </None>
+    <None Include="cont2.myl">
+      <Filter>zExamples</Filter>
+    </None>
+    <None Include="license.md" />
   </ItemGroup>
 </Project>
