@@ -40,7 +40,7 @@
 
 	<Fragment>
 		<ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
-			<Component Id="MainExecutable" Guid="*">
+			<Component Id="MainExecutable" Guid="E95B6197-42CE-437F-930A-774BDC548823">
 				<!-- With the project reference, this can usually be just the file name -->
 				<File Id="MylangeExe" Source="Mylange.exe" KeyPath="yes">
 					<Shortcut

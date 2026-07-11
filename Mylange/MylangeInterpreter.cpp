@@ -165,6 +165,7 @@ vector<Rule> rules = {
                     working = mi.Memory.resolve(token.value);
                     break;
                 case TokenItem::ColonExtention:
+					if (!working) throw runtime_error("Cannot use colon extention on non-variable.");
                     working = working->Index(token.value).get();
                     break;
                 case TokenItem::BracketExtention:

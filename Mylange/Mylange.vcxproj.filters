@@ -113,5 +113,6 @@
     <None Include="cont2.myl">
       <Filter>zExamples</Filter>
     </None>
+    <None Include="license.md" />
   </ItemGroup>
 </Project>
