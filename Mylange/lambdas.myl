@@ -1,0 +1,17 @@
+debug(true);
+#include<io>;
+io.dump();
+io.print("Start script.");
+
+
+def int ul() as {
+	io.print("SOME");
+};
+
+ul();
+
+
+
+func f => <bool>(int x) -> { return x > 0; };
+
+f.do([1]);

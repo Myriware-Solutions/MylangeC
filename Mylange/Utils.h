@@ -473,4 +473,22 @@ public:
         }
         return depth == 0;
     };
+
+	static std::string CondenseSpaces(const std::string& input) {
+		std::string output;
+		bool inSpace = false;
+		for (char c : input) {
+			if (std::isspace(static_cast<unsigned char>(c))) {
+				if (!inSpace) {
+					output += ' ';
+					inSpace = true;
+				}
+			}
+			else {
+				output += c;
+				inSpace = false;
+			}
+		}
+		return output;
+	}
 };

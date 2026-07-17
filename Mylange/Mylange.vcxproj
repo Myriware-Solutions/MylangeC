@@ -160,6 +160,7 @@
     <None Include="example.myl" />
     <None Include="example2.myl" />
     <None Include="example3.myl" />
+    <None Include="lambdas.myl" />
     <None Include="license.md" />
     <None Include="todo.md" />
   </ItemGroup>

@@ -275,7 +275,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
             "do",
             LanFunction::ParamStruct {
                 { "self", LanType(LanTypeEnum::TypeFunction) },
-                { "args", LanType(LanTypeEnum::TypeArray) } },
+                { "args", LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny) } },
             [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 auto& func = std::get<shared_ptr<LanFunction>>(args[0].Value);
                 vector<LanVariable> fargs = {};
@@ -284,6 +284,19 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
                 }
 
                 return func->Execute(mi, fargs);
+            }
+        )
+    ));
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeAny),
+            "do",
+            LanFunction::ParamStruct{
+                { "self", LanType(LanTypeEnum::TypeFunction) } },
+                [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                auto& func = std::get<shared_ptr<LanFunction>>(args[0].Value);
+                return func->Execute(mi, {});
             }
         )
     ));

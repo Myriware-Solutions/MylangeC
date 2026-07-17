@@ -114,5 +114,8 @@
       <Filter>zExamples</Filter>
     </None>
     <None Include="license.md" />
+    <None Include="lambdas.myl">
+      <Filter>zExamples</Filter>
+    </None>
   </ItemGroup>
 </Project>

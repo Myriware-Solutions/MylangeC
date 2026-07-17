@@ -33,11 +33,12 @@ const regex singleFunctionPartPattern(R"(^(\w+)\s*\((.*)\)$)", std::regex_consta
 const regex functionCallStack(R"(^(?:\w+\.?)+(?:\w+\(.*\))+)", std::regex_constants::ECMAScript);
 const regex functionDotExtention(R"((\)\.))", std::regex_constants::ECMAScript);
 const regex ifElseThenPattern(R"(^if\s*\((.*?)\)\s*then\s*(.*))", std::regex_constants::ECMAScript);
-const regex paramStringPattern(R"((?:(const)\s+)?([\w<|,>]+)\s+(\w+))", std::regex_constants::ECMAScript);
+const regex paramStringPattern(R"((?:(const)\s+)?([\w<|>.]+)\s+(\w+))", std::regex_constants::ECMAScript);
 const regex functionMethodDeclaration(R"(^((?:@?\w+\s+)+)?def\s+(\w+)\s+(\w+)\s*\((.*)\)\s*as\s*(.*))", std::regex_constants::ECMAScript);
 const regex classDeclarationPatter(R"(^class\s+(\w+)\s+(?:extends\s+(\w+))?\s*has\s*(.*))", std::regex_constants::ECMAScript);
 const regex wordCharsOnly(R"(^[a-zA-Z]\w*$)", std::regex_constants::ECMAScript);
 const regex cachedBit(R"((\d)x([a-fA-F0-9]+))", std::regex_constants::ECMAScript);
+const regex lambdaPattern(R"(^<([\w<|>.]+)>\s*\(([\w<|>. ,]+)\)\s*(?:->|as)\s*(.*))", std::regex_constants::ECMAScript);
 
 // For Classes
 const regex classDefualtPropertyPatter(R"(^((?:@?\w+\s+)+)?\s*([a-zA-Z<>,|\s]+) +(\w+) *=> *(.*))", std::regex_constants::ECMAScript);
@@ -1094,7 +1095,7 @@ shared_ptr<LanFunction> MylangeInterpreter::FindFunction(const string& name, std
 				else CommandLineInterface::DebugPrint(std::format("Overload not found [{}]: {}", path, id), 2);
 			}
 
-            throw runtime_error(std::format("Function not found in package [{}]: {}/{}/{}", path, ids[0], ids[1], ids[2]));
+            throw runtime_error(std::format("Function not found in package [{}]: {}", path, Utils::JoinStrings(ids, "/")));
         }
         else throw runtime_error("Package not found: " + path);
     }
@@ -1108,10 +1109,10 @@ shared_ptr<LanFunction> MylangeInterpreter::FindFunction(const string& name, std
 			else CommandLineInterface::DebugPrint("Function not found: " + id, 2);
 		}
 
-        throw runtime_error(std::format("Function not found: {}/{}/{}", ids[0], ids[1], ids[2]));
+        throw runtime_error(std::format("Function not found: {}", Utils::JoinStrings(ids, "/")));
     }
 
-    throw runtime_error(std::format("Function not specified: {}/{}/{}", ids[0], ids[1], ids[2]));
+    throw runtime_error(std::format("Function not specified: {}", Utils::JoinStrings(ids, "/")));
 }
 ;
 
@@ -1144,10 +1145,12 @@ bool MylangeInterpreter::RandomTypeConversion(const string& value, std::shared_p
     return false;
 }
 
+
+
 optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& value)
 {
-    CommandLineInterface::DebugPrint("Attempting to convert value: " + value);
     string trimmedValue = Utils::TrimString(value);
+    CommandLineInterface::DebugPrint(std::format("Attempting to convert value: '{}'", trimmedValue));
     smatch matchedMatch;
     // nil
     if (trimmedValue == "nil")
@@ -1312,6 +1315,28 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
             );
         }
         else throw runtime_error("Tried to obtain a null value for Iterable."); 
+    }
+    // Lambda
+    else if (regex_match(trimmedValue, matchedMatch, lambdaPattern)) {
+		// 1: return, 2: params types, 3: body
+        LanType return_type = this->ResolveType(matchedMatch[1]);
+        LanFunction::ParamStruct params = {};
+
+		for (auto& p : Utils::TopLevelSplit(matchedMatch[2].str(), ',')) {
+			smatch key_parts;
+			regex_search(p, key_parts, paramStringPattern);
+			string name = key_parts[3].str();
+			LanType type = this->ResolveType(key_parts[2].str());
+			params.push_back({ name, type });
+		}
+
+        shared_ptr<ScriptFunction> lf = make_shared<ScriptFunction>(return_type, "Lambda", params, matchedMatch[3]);
+
+		return LanVariable(
+			LanType(LanTypeEnum::TypeFunction),
+			LanVariable::LanValue{ lf }
+		);
+
     }
     // Unknown
     else return nullopt;
