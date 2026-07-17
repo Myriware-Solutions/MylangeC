@@ -39,6 +39,7 @@ const regex classDeclarationPatter(R"(^class\s+(\w+)\s+(?:extends\s+(\w+))?\s*ha
 const regex wordCharsOnly(R"(^[a-zA-Z]\w*$)", std::regex_constants::ECMAScript);
 const regex cachedBit(R"((\d)x([a-fA-F0-9]+))", std::regex_constants::ECMAScript);
 const regex lambdaPattern(R"(^<([\w<|>.]+)>\s*\(([\w<|>. ,]+)\)\s*(?:->|as)\s*(.*))", std::regex_constants::ECMAScript);
+const regex setVariable(R"(^\s*([a-zA-Z<>,|\s.]+) +(\w+) *=> *(.*))");
 
 // For Classes
 const regex classDefualtPropertyPatter(R"(^((?:@?\w+\s+)+)?\s*([a-zA-Z<>,|\s]+) +(\w+) *=> *(.*))", std::regex_constants::ECMAScript);
@@ -949,7 +950,7 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& rawParamS
         std::string pack_path;
         for (int i = 0; i < tokens.size(); i++) {
             auto& token = tokens[i];
-            CommandLineInterface::DebugPrint("Working on token [" + to_string(i) + "/" + to_string(tokens.size()) + "]: " + token.value + " | " + token.type_string());
+            CommandLineInterface::DebugPrint("Working on token [" + to_string(i + 1) + "/" + to_string(tokens.size()) + "]: " + token.value + " | " + token.type_string());
             switch (token.type) {
             case TokenItem::Value:
                 working = this->ForcedParseParameter(token.value);
@@ -987,7 +988,7 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& rawParamS
                         return self_casting->RunMethod(*this, y.first, y.second);
                     }
                     else {
-                        auto res = this->FindFunction(token.value, working.value().Type.ToString(), { working.value() });
+                        auto res = this->FindFunction(token.value, working.value().Type.ToPackageString(), { working.value() });
                         working = res.first->Execute(*this, res.second);
                     }
                 }

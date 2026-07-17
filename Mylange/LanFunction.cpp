@@ -33,5 +33,12 @@ std::optional<LanVariable> ScriptFunction::Execute(MylangeInterpreter& mi, std::
 	// Destroy function runtime
 	mi.Memory.popScope();
 
+	if (res.has_value() && !res->IsCompatible(this->ReturnType))
+	{
+		throw runtime_error("Function " + this->Name + " returned value of type "
+			+ res->Type.ToString() + ", but expected "
+			+ this->ReturnType.ToString() + ".");
+	}
+
 	return res;
 }

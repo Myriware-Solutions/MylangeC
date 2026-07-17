@@ -104,44 +104,39 @@ string LanVariable::ToString() const
 	}
 }
 
-bool LanVariable::IsCompatible(const LanType& type, const LanVariable& var)
+bool LanVariable::IsCompatible(const LanType& onType, const LanType& type)
 {
 	// Exact type match
-	if (type == var.Type)
+	if (onType == type)
 		return true;
 
 	// Any or any<...>
-	if ((type.BaseType & LanTypeEnum::TypeAny) == LanTypeEnum::TypeAny)
+	if (onType == LanTypeEnum::TypeAny)
 	{
 		// Truly any
-		if (std::popcount(static_cast<uint32_t>(type.BaseType)) == 1)
+		if (std::popcount(static_cast<uint32_t>(onType.BaseType)) == 1)
 			return true;
 
-		return type.ContainsArchetype(var.Type);
+		return onType.ContainsArchetype(type);
 	}
 
 	// Array types
-	if ((type.BaseType & LanTypeEnum::TypeArray) == LanTypeEnum::TypeArray &&
-		(var.Type.BaseType & LanTypeEnum::TypeArray) == LanTypeEnum::TypeArray)
+	if (onType.IsArrayType() && type.IsArrayType())
 	{
-		auto* arr = get_if<LanArray>(&var.Value);
-		if (!arr) throw runtime_error("Uh no.");
-		for (auto& element : *arr)
-		{
-			if (!type.ContainsArchetype(element->Type))
-			{
-				throw std::runtime_error(
-					"Element type not allowed: " +
-					element->Type.ToString() +
-					" in " +
-					type.ToString()
-				);
-			}
-		}
-		return true;
+		// Check if base var is an array<any>
+		if (onType.BaseType == (LanTypeEnum::TypeArray | LanTypeEnum::TypeAny))
+			return true;
+
 	}
 
+	CommandLineInterface::DebugPrint("Type compatibility check failed: " + onType.ToString() + " vs " + type.ToString(), CommandLineInterface::DebugColor::Yellow);
+
 	return false;
+}
+
+bool LanVariable::IsCompatible(const LanType& type, const LanVariable& var)
+{
+	return LanVariable::IsCompatible(var.Type, type);
 }
 
 LanVariable LanVariable::operator+(const LanVariable& other) const

@@ -12,6 +12,13 @@ ul();
 
 
 
-func f => <bool>(int x) -> { return x > 0; };
+func f => <bool>(int x) -> return x > 0;
 
-f.do([1]);
+array<int> a => [1, 2, 3, 4, 5].where(<bool>(int x) -> { return x > 3; });
+
+array<int> b => [1, 2, 3, 4, 5].for(<int>(int x) -> return x * 10);
+
+io.print(a);
+io.print(b);
+
+io.print(f.do([-1]));

@@ -93,6 +93,7 @@ public:
 
     // -- Utilities --
     std::string ToString() const;
+    static bool IsCompatible(const LanType& onType, const LanType& type);
     static bool IsCompatible(const LanType& type, const LanVariable& var);
     bool IsCompatible(const LanType& type) const {
         return LanVariable::IsCompatible(type, *this);
@@ -145,7 +146,9 @@ public:
 	}
 
     static LanVariable Array(LanArray value) {
-        return LanVariable(LanType(LanTypeEnum::TypeArray), LanValue{ value });
+		LanType arrayType(LanTypeEnum::TypeArray);
+		for (auto& item : value) arrayType.AddArchetype(item->Type);
+        return LanVariable(arrayType, LanValue{ value });
     }
 
     static LanVariable Set(LanMap value) {
@@ -279,6 +282,13 @@ public:
 		    CommandLineInterface::DebugPrint("Builtin function " + Name + " executed." + res->ToString());
 		else
 			CommandLineInterface::DebugPrint("Builtin function " + Name + " executed with no return value.");
+
+		if (res.has_value() && !LanVariable::IsCompatible(this->ReturnType, res.value().Type)) {
+			throw std::runtime_error("Builtin function " + this->Name + " returned value of type "
+				+ res->Type.ToString() + ", but expected "
+				+ this->ReturnType.ToString() + ".");
+		}
+
         return res;
     }
 };

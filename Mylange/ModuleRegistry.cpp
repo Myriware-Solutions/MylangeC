@@ -271,7 +271,7 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
     mi.Memory.define(LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
-            LanType(LanTypeEnum::TypeAny),
+            LanTypeEnum::TypeAny,
             "do",
             LanFunction::ParamStruct {
                 { "self", LanType(LanTypeEnum::TypeFunction) },
@@ -290,13 +290,74 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
     mi.Memory.define(LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
-            LanType(LanTypeEnum::TypeAny),
+            LanTypeEnum::TypeAny,
             "do",
             LanFunction::ParamStruct{
                 { "self", LanType(LanTypeEnum::TypeFunction) } },
                 [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 auto& func = std::get<shared_ptr<LanFunction>>(args[0].Value);
                 return func->Execute(mi, {});
+            }
+        )
+    ));
+
+    mi.Memory.popScope(true);
+
+	// Arrays <array>
+
+    mi.Memory.pushScope("array");
+    mi.LoadedModules.insert("array");
+
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny),
+            "where",
+            LanFunction::ParamStruct{
+                { "self", LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny) },
+                { "func", LanType(LanTypeEnum::TypeFunction) } },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+
+				std::vector<std::shared_ptr<LanVariable>> result;
+
+				auto& array = std::get<LanArray>(args[0].Value);
+				auto& func = std::get<shared_ptr<LanFunction>>(args[1].Value);
+
+				for (auto& item : array) {
+					auto res = func->Execute(mi, { *item });
+					if (res.has_value() && res->Type == LanTypeEnum::TypeBool && std::get<bool>(res->Value)) {
+						result.push_back(item);
+					}
+				}
+
+				return LanVariable::Array(result);
+            }
+        )
+    ));
+
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny),
+            "for",
+            LanFunction::ParamStruct{
+                { "self", LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny) },
+                { "func", LanType(LanTypeEnum::TypeFunction) } },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+
+                std::vector<std::shared_ptr<LanVariable>> result;
+
+                auto& array = std::get<LanArray>(args[0].Value);
+                auto& func = std::get<shared_ptr<LanFunction>>(args[1].Value);
+
+                for (auto& item : array) {
+                    auto res = func->Execute(mi, { *item });
+                    if (res.has_value()) {
+                        result.push_back(std::make_shared<LanVariable>(res.value()));
+                    }
+                }
+
+                return LanVariable::Array(result);
             }
         )
     ));
