@@ -38,7 +38,7 @@ const regex functionMethodDeclaration(R"(^((?:@?\w+\s+)+)?def\s+(\w+)\s+(\w+)\s*
 const regex classDeclarationPatter(R"(^class\s+(\w+)\s+(?:extends\s+(\w+))?\s*has\s*(.*))", std::regex_constants::ECMAScript);
 const regex wordCharsOnly(R"(^[a-zA-Z]\w*$)", std::regex_constants::ECMAScript);
 const regex cachedBit(R"((\d)x([a-fA-F0-9]+))", std::regex_constants::ECMAScript);
-const regex lambdaPattern(R"(^\[([\w<|>.]+)\]\s*\(([\w<|>. ,]+)\)\s*(?:->|as)\s*(.*))", std::regex_constants::ECMAScript);
+const regex lambdaPattern(R"(^\[([\w<|>.]+)\]\s*\(([\w<|>. ,]*)\)\s*(?:->|as)\s*(.*))", std::regex_constants::ECMAScript);
 const regex setVariable(R"(^\s*([a-zA-Z<>,|\s.]+) +(\w+) *=> *(.*))");
 
 // For Classes

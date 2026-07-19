@@ -87,12 +87,17 @@ string LanVariable::ToString() const
 	case LanTypeEnum::TypeFunction:
 	{
 		const auto& func = get<shared_ptr<LanFunction>>(this->Value);
-		std::string result = "func " + func->ReturnType.ToString() + " " + func->Name + " (";
+
+		std::string param_list = "";
 		for (auto& [name, param] : func->Parameters) {
-			if (result.length() > 1) result += ", ";
-			result += param.ToString() + ": " + name;
+			if (param_list.length() > 1) param_list += ", ";
+			param_list += param.ToString() + ": " + name;
 		}
-		return result + ")";
+
+		std::string result = std::format("[{}]({}) {}", func->ReturnType.ToString(), param_list, func->Name);
+
+		
+		return result;
 	}
 	case LanTypeEnum::TypeType:
 	{
