@@ -94,10 +94,13 @@ public:
     // -- Utilities --
     std::string ToString() const;
     static bool IsCompatible(const LanType& onType, const LanType& type);
-    static bool IsCompatible(const LanType& type, const LanVariable& var);
+    static bool IsCompatible(const LanType& type, const LanVariable& var)
+    {
+        return LanVariable::IsCompatible(type, var.Type);
+    };
     bool IsCompatible(const LanType& type) const {
         return LanVariable::IsCompatible(type, *this);
-    }
+    };
 
     // -- Operators --
     LanVariable operator+(const LanVariable& other) const;

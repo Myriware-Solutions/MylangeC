@@ -711,37 +711,7 @@ const regex colonExtention(R"(:(\w+)$)", std::regex_constants::ECMAScript);
 const regex bracketExtention(R"(\[(\d+)\]$)", std::regex_constants::ECMAScript);
 
 
-struct DepthEngine
-{
-    std::unordered_map<char, int> depth;
 
-    bool Place(char c) {
-        bool result = true;
-        for (auto& b : Utils::BracketPairs) {
-            if (c == b.first) {
-                depth[b.first]++;
-                result = true;
-            }
-            else if (c == b.second) {
-                if (b.second == '>' && last == '=') result = false;
-                else {
-                    depth[b.first]--;
-                    result = true;
-                }
-            }
-        }
-        if (!std::isspace(c)) last = c;
-        return result;
-    }
-
-    int Get() {
-        int u = 0;
-        for (auto o : depth) u += o.second;
-        return u;
-    }
-private:
-    char last;
-};
 
 std::vector<TokenItem> MylangeInterpreter::TokenizeComplexValue(std::string& value)
 {

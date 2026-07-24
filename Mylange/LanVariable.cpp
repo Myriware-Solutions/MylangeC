@@ -139,10 +139,7 @@ bool LanVariable::IsCompatible(const LanType& onType, const LanType& type)
 	return false;
 }
 
-bool LanVariable::IsCompatible(const LanType& type, const LanVariable& var)
-{
-	return LanVariable::IsCompatible(var.Type, type);
-}
+
 
 LanVariable LanVariable::operator+(const LanVariable& other) const
 {
