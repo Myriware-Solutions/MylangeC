@@ -33,11 +33,13 @@ const regex singleFunctionPartPattern(R"(^(\w+)\s*\((.*)\)$)", std::regex_consta
 const regex functionCallStack(R"(^(?:\w+\.?)+(?:\w+\(.*\))+)", std::regex_constants::ECMAScript);
 const regex functionDotExtention(R"((\)\.))", std::regex_constants::ECMAScript);
 const regex ifElseThenPattern(R"(^if\s*\((.*?)\)\s*then\s*(.*))", std::regex_constants::ECMAScript);
-const regex paramStringPattern(R"((?:(const)\s+)?([\w<|,>]+)\s+(\w+))", std::regex_constants::ECMAScript);
+const regex paramStringPattern(R"((?:(const)\s+)?([\w<|>.]+)\s+(\w+))", std::regex_constants::ECMAScript);
 const regex functionMethodDeclaration(R"(^((?:@?\w+\s+)+)?def\s+(\w+)\s+(\w+)\s*\((.*)\)\s*as\s*(.*))", std::regex_constants::ECMAScript);
 const regex classDeclarationPatter(R"(^class\s+(\w+)\s+(?:extends\s+(\w+))?\s*has\s*(.*))", std::regex_constants::ECMAScript);
 const regex wordCharsOnly(R"(^[a-zA-Z]\w*$)", std::regex_constants::ECMAScript);
 const regex cachedBit(R"((\d)x([a-fA-F0-9]+))", std::regex_constants::ECMAScript);
+const regex lambdaPattern(R"(^\[([\w<|>.]+)\]\s*\(([\w<|>. ,]*)\)\s*(?:->|as)\s*(.*))", std::regex_constants::ECMAScript);
+const regex setVariable(R"(^\s*([a-zA-Z<>,|\s.]+) +(\w+) *=> *(.*))");
 
 // For Classes
 const regex classDefualtPropertyPatter(R"(^((?:@?\w+\s+)+)?\s*([a-zA-Z<>,|\s]+) +(\w+) *=> *(.*))", std::regex_constants::ECMAScript);
@@ -709,37 +711,7 @@ const regex colonExtention(R"(:(\w+)$)", std::regex_constants::ECMAScript);
 const regex bracketExtention(R"(\[(\d+)\]$)", std::regex_constants::ECMAScript);
 
 
-struct DepthEngine
-{
-    std::unordered_map<char, int> depth;
 
-    bool Place(char c) {
-        bool result = true;
-        for (auto& b : Utils::BracketPairs) {
-            if (c == b.first) {
-                depth[b.first]++;
-                result = true;
-            }
-            else if (c == b.second) {
-                if (b.second == '>' && last == '=') result = false;
-                else {
-                    depth[b.first]--;
-                    result = true;
-                }
-            }
-        }
-        if (!std::isspace(c)) last = c;
-        return result;
-    }
-
-    int Get() {
-        int u = 0;
-        for (auto o : depth) u += o.second;
-        return u;
-    }
-private:
-    char last;
-};
 
 std::vector<TokenItem> MylangeInterpreter::TokenizeComplexValue(std::string& value)
 {
@@ -948,7 +920,7 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& rawParamS
         std::string pack_path;
         for (int i = 0; i < tokens.size(); i++) {
             auto& token = tokens[i];
-            CommandLineInterface::DebugPrint("Working on token [" + to_string(i) + "/" + to_string(tokens.size()) + "]: " + token.value + " | " + token.type_string());
+            CommandLineInterface::DebugPrint("Working on token [" + to_string(i + 1) + "/" + to_string(tokens.size()) + "]: " + token.value + " | " + token.type_string());
             switch (token.type) {
             case TokenItem::Value:
                 working = this->ForcedParseParameter(token.value);
@@ -986,7 +958,7 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& rawParamS
                         return self_casting->RunMethod(*this, y.first, y.second);
                     }
                     else {
-                        auto res = this->FindFunction(token.value, working.value().Type.ToString(), { working.value() });
+                        auto res = this->FindFunction(token.value, working.value().Type.ToPackageString(), { working.value() });
                         working = res.first->Execute(*this, res.second);
                     }
                 }
@@ -1094,7 +1066,7 @@ shared_ptr<LanFunction> MylangeInterpreter::FindFunction(const string& name, std
 				else CommandLineInterface::DebugPrint(std::format("Overload not found [{}]: {}", path, id), 2);
 			}
 
-            throw runtime_error(std::format("Function not found in package [{}]: {}/{}/{}", path, ids[0], ids[1], ids[2]));
+            throw runtime_error(std::format("Function not found in package [{}]: {}", path, Utils::JoinStrings(ids, "/")));
         }
         else throw runtime_error("Package not found: " + path);
     }
@@ -1108,10 +1080,10 @@ shared_ptr<LanFunction> MylangeInterpreter::FindFunction(const string& name, std
 			else CommandLineInterface::DebugPrint("Function not found: " + id, 2);
 		}
 
-        throw runtime_error(std::format("Function not found: {}/{}/{}", ids[0], ids[1], ids[2]));
+        throw runtime_error(std::format("Function not found: {}", Utils::JoinStrings(ids, "/")));
     }
 
-    throw runtime_error(std::format("Function not specified: {}/{}/{}", ids[0], ids[1], ids[2]));
+    throw runtime_error(std::format("Function not specified: {}", Utils::JoinStrings(ids, "/")));
 }
 ;
 
@@ -1144,10 +1116,12 @@ bool MylangeInterpreter::RandomTypeConversion(const string& value, std::shared_p
     return false;
 }
 
+
+
 optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& value)
 {
-    CommandLineInterface::DebugPrint("Attempting to convert value: " + value);
     string trimmedValue = Utils::TrimString(value);
+    CommandLineInterface::DebugPrint(std::format("Attempting to convert value: '{}'", trimmedValue));
     smatch matchedMatch;
     // nil
     if (trimmedValue == "nil")
@@ -1312,6 +1286,28 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
             );
         }
         else throw runtime_error("Tried to obtain a null value for Iterable."); 
+    }
+    // Lambda
+    else if (regex_match(trimmedValue, matchedMatch, lambdaPattern)) {
+		// 1: return, 2: params types, 3: body
+        LanType return_type = this->ResolveType(matchedMatch[1]);
+        LanFunction::ParamStruct params = {};
+
+		for (auto& p : Utils::TopLevelSplit(matchedMatch[2].str(), ',')) {
+			smatch key_parts;
+			regex_search(p, key_parts, paramStringPattern);
+			string name = key_parts[3].str();
+			LanType type = this->ResolveType(key_parts[2].str());
+			params.push_back({ name, type });
+		}
+
+        shared_ptr<ScriptFunction> lf = make_shared<ScriptFunction>(return_type, "Lambda", params, matchedMatch[3]);
+
+		return LanVariable(
+			LanType(LanTypeEnum::TypeFunction),
+			LanVariable::LanValue{ lf }
+		);
+
     }
     // Unknown
     else return nullopt;

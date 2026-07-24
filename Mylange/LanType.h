@@ -150,6 +150,25 @@ public:
 	string ToString() const {
 		return LanType::ToString(*this);
 	}
+
+	inline static std::string ToPackageString(const LanType& type) {
+		if (type.IsArrayType()) {
+			return "array";
+		}
+		else if (type.IsSetType()) {
+			return "set";
+		}
+		else if ((type.BaseType & LanTypeEnum::TypeAny) == LanTypeEnum::TypeAny) {
+			return "any";
+		}
+		else {
+			return BaseTypeToString(type.BaseType);
+		}
+	};
+	std::string ToPackageString() const {
+		return LanType::ToPackageString(*this);
+	}
+
 	bool ContainsArchetype(const LanType& type) const;
 	bool operator==(const LanType& other) const;
 	static LanType FromString(const std::string& typeStringRaw);

@@ -37,6 +37,47 @@ struct TokenItem
 	}
 };
 
+struct DepthEngine
+{
+	std::unordered_map<char, int> depth;
+
+	void Clear() {
+		depth.clear();
+	}
+
+	bool Place(char c) {
+		bool result = true;
+		for (auto& b : Utils::BracketPairs) {
+			if (c == b.first) {
+				depth[b.first]++;
+				result = true;
+			}
+			else if (c == b.second) {
+				if (b.second == '>' && last == '=') result = false;
+				else {
+					depth[b.first]--;
+					result = true;
+				}
+			}
+		}
+		if (!std::isspace(c)) last = c;
+		return result;
+	}
+
+	void Place(std::string& str) {
+		for (auto c : str) Place(c);
+	}
+
+	int Get() {
+		int u = 0;
+		for (auto o : depth) u += o.second;
+		return u;
+	}
+private:
+	char last = 0;
+
+};
+
 class MylangeInterpreter
 {
 public:
