@@ -31,13 +31,14 @@ enum class LanTypeEnum : uint32_t
 
 	TypeArray = 1 << 8,
 	TypeSet = 1 << 9,
-	TypeCasting = 1 << 10,
+	TypeTable = 1 << 10,
+	TypeCasting = 1 << 11,
 
-	TypeInterable = 1 << 11,
-	TypeFunction = 1 << 12,
-	TypeClass = 1 << 13,
-	TypeType = 1 << 14,
-	TypeThis = 1 << 15
+	TypeInterable = 1 << 12,
+	TypeFunction = 1 << 13,
+	TypeClass = 1 << 14,
+	TypeType = 1 << 15,
+	TypeThis = 1 << 16
 	// Unions are not their own types, rather, they are
 	// represented if more than 1 bit is set.
 	// Arrays and sets have the Array or Set bit set,
@@ -89,6 +90,7 @@ protected:
 		{ LanTypeEnum::TypeString, {"str", "string"}},
 		{ LanTypeEnum::TypeArray, {"arr", "array"}},
 		{ LanTypeEnum::TypeSet, {"set"}},
+		{ LanTypeEnum::TypeTable, {"table"}},
 		{ LanTypeEnum::TypeCasting, {"casting"}},
 		{ LanTypeEnum::TypeUnknown, {"unknown"}},
 		{ LanTypeEnum::TypeAny, {"any"}},
@@ -138,6 +140,10 @@ public:
 
 	bool IsSetType() const {
 		return (this->BaseType & LanTypeEnum::TypeSet) == LanTypeEnum::TypeSet;
+	}
+
+	bool IsTable() const {
+		return this->BaseType == LanTypeEnum::TypeTable;
 	}
 
 	bool IsComplex() const {

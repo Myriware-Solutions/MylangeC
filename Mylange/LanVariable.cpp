@@ -2,13 +2,34 @@
 #include "LanIterableEngine.h"
 #include "LanClass.h"
 
+bool LanVariable::HasIndex(const std::string& key) const
+{
+	if (Type.IsSetType()) {
+		const auto& set = std::get<LanSet>(Value);
+		return set.contains(key);
+	}
+	else if (Type.IsTable()) {
+		const auto& table = std::get<LanTable>(Value);
+		return table.contains(key);
+	}
+	else if (Type == LanTypeEnum::TypeCasting) {
+		const auto& casting = std::get<shared_ptr<LanCasting>>(Value);
+		auto& mapc = casting->Properties;
+		auto it = mapc.find(key);
+		if (it == mapc.end()) return false;
+		else return true;
+	}
+	else throw std::runtime_error("Cannot index non-set type: " + Type.ToString());
+}
+
 std::shared_ptr<LanVariable> LanVariable::Index(const std::string& key) const {
 	if (Type.IsSetType()) {
-		const auto& map = std::get<LanMap>(Value);
-		auto it = map.find(key);
-		if (it == map.end())
-			throw std::runtime_error("Key not found in set: " + key + " : " + this->ToString());
-		return it->second;
+		const auto& set = std::get<LanSet>(Value);
+		return set.Index(key);
+	}
+	else if (Type.IsTable()) {
+		const auto& table = std::get<LanTable>(Value);
+		return table.Index(key);
 	}
 	else if (Type == LanTypeEnum::TypeCasting) {
 		const auto& casting = std::get<shared_ptr<LanCasting>>(Value);
@@ -59,15 +80,9 @@ string LanVariable::ToString() const
 	case LanTypeEnum::TypeString:
 		return get<string>(this->Value);
 	case LanTypeEnum::TypeSet:
-	{
-		string result = "(";
-		const auto& set = get<LanMap>(this->Value);
-		for (auto& pair : set) {
-			if (result.length() > 1) result += ", ";
-			result += pair.first + " => " + pair.second->ToString();
-		}
-		return result + ")";
-	}
+		return std::get<LanSet>(this->Value).ToString();
+	case LanTypeEnum::TypeTable:
+		return std::get<LanTable>(this->Value).ToString();
 	case LanTypeEnum::TypeCasting:
 	{
 		string result = "{";
@@ -358,4 +373,78 @@ bool LanVariable::operator||(const LanVariable& other) const
 		throw runtime_error("Unsupported types for or comparison: "
 			+ this->Type.ToString() + " || " + other.Type.ToString());
 	}
+}
+
+//
+
+
+
+std::shared_ptr<LanVariable> LanSet::Index(std::string k) const {
+	size_t slot = find_slot(k);
+	if (slot == npos()) {
+		throw std::out_of_range("Set::Index: key not present: " + k);
+	}
+	return values_[slot];
+}
+
+// Sets cannot grow: writing a key that wasn't present at construction
+// is a hard error. Writing an existing key just updates its value.
+void LanSet::Place(std::string k, std::shared_ptr<LanVariable> v) {
+	size_t slot = find_slot(k);
+	if (slot == npos()) {
+		throw std::out_of_range(
+			"Set::Place: cannot add new key to a fixed Set: " + k);
+	}
+	values_[slot] = std::move(v);
+}
+
+
+std::shared_ptr<LanVariable> LanTable::Index(std::string k) const {
+	size_t slot = find_slot(k);
+	if (slot == npos()) {
+		throw std::out_of_range("Table::Index: key not present: " + k);
+	}
+	return values_[slot];
+}
+
+std::string LanSet::ToString() const {
+	std::string result = "(";
+	bool first = true;
+	for (size_t i = 0; i < keys_.size(); ++i) {
+		if (occupied_[i]) {
+			if (!first) result += ", ";
+			result += keys_[i] + "=> " +
+				(values_[i] ? values_[i]->ToString() : "null");
+			first = false;
+		}
+	}
+	result += ")";
+	return result;
+}
+
+// Existing key: update value in place. New key: grow (if needed),
+// then insert. This is where Table differs fundamentally from Set.
+void LanTable::Place(std::string k, std::shared_ptr<LanVariable> v) {
+	size_t slot = find_slot(k);
+	if (slot != npos()) {
+		values_[slot] = std::move(v);
+		return;
+	}
+	if (needs_grow()) grow();
+	insert_new(k, std::move(v));
+}
+
+std::string LanTable::ToString() const {
+	std::string result = "{";
+	bool first = true;
+	for (size_t i = 0; i < keys_.size(); ++i) {
+		if (occupied_[i]) {
+			if (!first) result += ", ";
+			result += keys_[i] + " => " +
+				(values_[i] ? values_[i]->ToString() : "null");
+			first = false;
+		}
+	}
+	result += "}";
+	return result;
 }

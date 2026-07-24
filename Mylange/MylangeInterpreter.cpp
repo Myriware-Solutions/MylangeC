@@ -154,38 +154,74 @@ vector<Rule> rules = {
     },
     // Reset variable
     {
-        regex(R"(^\s*(\w[\w :\[\]]+?)\s*=>\s*(.*)$)"),
-        [](auto const& m, MylangeInterpreter& mi) { 
+        regex(R"(^\s*(\w[\w :\[\]]*?)\s*=>\s*(.*)$)"),
+        [](auto const& m, MylangeInterpreter& mi) {
             string place_to_write = m[1].str();
             auto tokens = mi.TokenizeComplexValue(place_to_write);
 
+
             LanVariable* working = nullptr;
             for (auto& token : tokens) {
+                CommandLineInterface::DebugPrint(std::format("Working on token: '{}': {}", token.value, token.type_string()), 1);
                 switch (token.type) {
                 case TokenItem::Value:
                     // Resolve first what variable is being called
                     working = mi.Memory.resolve(token.value);
                     break;
                 case TokenItem::ColonExtention:
-					if (!working) throw runtime_error("Cannot use colon extention on non-variable.");
-                    working = working->Index(token.value).get();
+					if (!working) throw runtime_error("Cannot use colon extension on non-variable.");
+
+
+                    if (working->HasIndex(token.value)) {
+                        working = working->Index(token.value).get();
+                    }
+                    else if (working->Type.IsTable()) {
+                        auto& table = std::get<LanTable>(working->Value);
+                        table.Place(token.value, std::make_shared<LanVariable>(LanVariable::Nil()));
+                        working = working->Index(token.value).get();
+                    }
+                    else if (working->Type.IsSetType()) {
+                        throw out_of_range("Cannot add key to set.");
+                    }
+                    else throw runtime_error("HERE");
+
+
                     break;
                 case TokenItem::BracketExtention:
-                    auto indexValue = mi.ParseParameter(token.value);
-                    if (indexValue.has_value() && working) {
-                        if (working->Type.IsArrayType())
-                            working = working->Index(std::get<int>(indexValue.value().Value)).get();
-                        else if (working->Type.IsSetType())
-                            working = working->Index(std::get<std::string>(indexValue.value().Value)).get();
-                        else throw runtime_error("Cannot assign on bracket extention to non-bracket indexable type");
+                    if (!working) throw runtime_error("Cannot use bracket extension on non-variable.");
+                    auto indexValueOpt = mi.ParseParameter(token.value);
+                    if (!indexValueOpt.has_value()) throw runtime_error("No value for bracket-extension.");
+                    auto& indexValue = indexValueOpt.value();
+                    if (indexValue.Type == LanTypeEnum::TypeInt) {
+                        working = working->Index(std::get<int>(indexValue.Value)).get();
                     }
-                    else throw runtime_error("Something does not hold value that should.");
+                    else if (indexValue.Type == LanTypeEnum::TypeString) {
+
+
+                        if (working->HasIndex(token.value)) {
+                            working = working->Index(token.value).get();
+                        }
+                        else if (working->Type.IsTable()) {
+                            auto& table = std::get<LanTable>(working->Value);
+                            table.Place(token.value, std::make_shared<LanVariable>(LanVariable::Nil()));
+                            working = working->Index(token.value).get();
+                        }
+                        else if (working->Type.IsSetType()) {
+                            throw out_of_range("Cannot add key to set.");
+                        }
+                        else throw runtime_error("HERE");
+
+
+                    }
+                    else throw runtime_error(std::format("Cannot bracket-index with type: {} [WIP]", indexValue.Type.ToString()));
+
                     break;
                 }
             }
             // Now that the pointer is found, we can re-assign the value
+            if (!working) throw runtime_error("Failed to resolve pointer path.");
             auto new_value = mi.ParseParameter(m[2].str());
-            if (new_value.has_value() && working) {
+            if (new_value.has_value()) {
                 *working = new_value.value();
             }
             else throw runtime_error("Missing value in reset.");
@@ -584,6 +620,22 @@ static std::string CondenseQuotedBlocks(
     return output;
 }
 
+const regex tablePairPattern(R"(^\s*\w+\s*=>.*$)", std::regex_constants::ECMAScript);
+
+static std::pair<bool, std::string> IsTableBlock(const std::string& inner) {
+	// If the inner block is empty, it should be interpeted as a table block.
+	if (inner.empty()) return { true, inner };
+	// First, check for the "Force code block" prefix, {^ ... }
+	if (inner[0] == '^') return { false, inner.substr(1) };
+    // Then, slip top level ';', auto fails the check
+    if (Utils::TopLevelSplit(inner, ';').size() > 1) return { false, inner };
+    // Check all comma seperated parts (or the sole part)
+	for (const auto& part : Utils::TopLevelSplit(inner, ',')) {
+		// If any part is not a valid variable name, it is a code block
+		if (!regex_match(Utils::TrimString(part), tablePairPattern)) return { false, inner };
+	}
+	return { true, inner };
+}
 
 static string CondenseBlocks(
     const std::string& input,
@@ -622,8 +674,10 @@ static string CondenseBlocks(
             );
 
             // Generate code and store mapping
-            std::string code = Utils::MakeHexCode("0x", counter++);
-            (*map)[code] = inner;
+            // Determine if it is a code block or a table
+			auto [isTable, innerContent] = IsTableBlock(inner);
+            std::string code = Utils::MakeHexCode(isTable?"3x":"0x", counter++);
+            (*map)[code] = innerContent;
 
             // Replace block with code
             output += code;
@@ -832,6 +886,8 @@ std::vector<TokenItem> MylangeInterpreter::TokenizeComplexValue(std::string& val
         }
     }
 
+    if (parts.size() == 0 && !to_append.empty()) place_back();
+
     for (auto& p : parts) {
         CommandLineInterface::DebugPrint("Part '" + p.value + "', type " + p.type_string(), 1);
     }
@@ -881,6 +937,9 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& rawParamS
                 return LanVariable::String(this->BlockMap[match[0].str()]);
             else if (match[1].str() == "2")
                 return LanVariable::Char(this->BlockMap[match[0].str()].at(0));
+            else if (match[1].str() == "3")
+                return this->ParseParameter('{' + this->BlockMap[match[0].str()] + '}');
+			else throw runtime_error("Unknown cached block type: " + match[1].str());
         }
         // Possible variable reference (soley word chars)
         else if (regex_match(paramStr, match, wordCharsOnly) && !Utils::Find(protectedWords, paramStr))
@@ -1203,28 +1262,41 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
             LanVariable::LanValue{ elements }
         );
     }
-    // set
-    else if (Utils::IsWrappedByParens(trimmedValue, '(', ')') && regex_match(trimmedValue, regex(R"(^\((?:\s*\w+\s*=>.*)\))"))) {
-        CommandLineInterface::DebugPrint("Found set: " + trimmedValue);
+    // set || table
+    else if (
+        (Utils::IsWrappedByParens(trimmedValue, '(', ')') && regex_match(trimmedValue, regex(R"(^\((?:\s*\w+\s*=>.*)*\))")))
+        || (Utils::IsWrappedByParens(trimmedValue, '{', '}') && regex_match(trimmedValue, regex(R"(^\{(?:\s*\w+\s*=>.*)*\})")))
+        ) {
+        bool isSetOverTable = Utils::IsWrappedByParens(trimmedValue, '(', ')');
+
+
+        CommandLineInterface::DebugPrint(std::format("Found {}: {}", isSetOverTable?"set":"table", trimmedValue));
+
         vector<string> elementStrings = Utils::TopLevelSplit(
             trimmedValue.substr(1, trimmedValue.length() - 2), ','
         );
-        unordered_map<string, shared_ptr<LanVariable>> set_map;
+
+        std::vector<std::string> keys = {};
+		std::vector<std::shared_ptr<LanVariable>> values = {};
+
         for (auto& part : elementStrings) {
             vector<string> parts = Utils::TopLevelSplit(part, "=>");
-            if (parts.size() != 2) throw runtime_error("Cannot have mulitple => in set.");
-            string name = Utils::TrimString(parts[0]);
+            if (parts.size() != 2) throw runtime_error("Cannot have mulitple => in set/table.");
+            string key = Utils::TrimString(parts[0]);
             auto value = this->ParseParameter(Utils::TrimString(parts[1]));
-            if (value.has_value())
-                set_map.emplace(name, make_shared<LanVariable>(value.value()));
-            else throw runtime_error("Could not parse value for set: " + Utils::TrimString(parts[1]));
+            if (value.has_value()) {
+				keys.push_back(key);
+				values.push_back(make_shared<LanVariable>(value.value()));
+            }
+            else throw runtime_error("Could not parse value for set/table: " + Utils::TrimString(parts[1]));
         }
 
-        return LanVariable(
-            LanType(LanTypeEnum::TypeSet),
-            LanVariable::LanValue{ set_map }
-        );
-    }   
+        return isSetOverTable
+            ? LanVariable::MakeDict<LanSet>(LanTypeEnum::TypeSet, keys, values)
+            : LanVariable::MakeDict<LanTable>(LanTypeEnum::TypeTable, keys, values);
+
+        
+    }
     // casting
     else if (regex_match(trimmedValue, matchedMatch, castingCreationPattern)) {
         CommandLineInterface::DebugPrint("Found new casting: " + trimmedValue);

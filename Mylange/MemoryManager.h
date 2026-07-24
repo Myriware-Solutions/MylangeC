@@ -37,6 +37,7 @@ public:
             it->second = std::move(value);
             return true;
         }
+        CommandLineInterface::DebugPrint(std::format("Assign: {} {} => {}", value.Type.ToString(), name, value.ToString()), CommandLineInterface::DebugColor::Yellow);
         return parent ? parent->assign(name, std::move(value)) : false;
     }
 

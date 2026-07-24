@@ -46,16 +46,17 @@ LanIterableEngine::LanIterableEngine(std::vector<std::pair<std::string, LanType>
 		}
 	}
 	else if (matrixVar.Type.IsSetType()) {
-		for (auto& pair : std::get<LanMap>(matrixVar.Value)) {
-			LanArray p;
-			// First one is string, the second one is the variable
-			auto key_string = std::make_shared<LanVariable>(
-				LanType(LanTypeEnum::TypeString), 
-				LanVariable::LanValue{ pair.first }
-			);
-			p.push_back(move(key_string)); p.push_back(pair.second);
-			this->Values.push_back(move(p));
-		}
+		throw std::runtime_error("Not Implemented Yet. LanIterableEngine.cpp:49");
+		//for (auto& pair : std::get<LanSet>(matrixVar.Value)) {
+		//	LanArray p;
+		//	// First one is string, the second one is the variable
+		//	auto key_string = std::make_shared<LanVariable>(
+		//		LanType(LanTypeEnum::TypeString), 
+		//		LanVariable::LanValue{ pair.first }
+		//	);
+		//	p.push_back(move(key_string)); p.push_back(pair.second);
+		//	this->Values.push_back(move(p));
+		//}
 	}
 	else throw std::runtime_error("Variable value needs to be an array for iter.");
 }
