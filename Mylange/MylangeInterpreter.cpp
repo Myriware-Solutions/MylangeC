@@ -196,15 +196,15 @@ vector<Rule> rules = {
                         working = working->Index(std::get<int>(indexValue.Value)).get();
                     }
                     else if (indexValue.Type == LanTypeEnum::TypeString) {
+                        auto& key = std::get<std::string>(indexValue.Value);
 
-
-                        if (working->HasIndex(token.value)) {
-                            working = working->Index(token.value).get();
+                        if (working->HasIndex(key)) {
+                            working = working->Index(key).get();
                         }
                         else if (working->Type.IsTable()) {
                             auto& table = std::get<LanTable>(working->Value);
-                            table.Place(token.value, std::make_shared<LanVariable>(LanVariable::Nil()));
-                            working = working->Index(token.value).get();
+                            table.Place(key, std::make_shared<LanVariable>(LanVariable::Nil()));
+                            working = working->Index(key).get();
                         }
                         else if (working->Type.IsSetType()) {
                             throw out_of_range("Cannot add key to set.");
