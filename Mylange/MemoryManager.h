@@ -34,6 +34,7 @@ public:
     bool assign(const std::string& name, LanVariable value) {
         auto it = symbols.find(name);
         if (it != symbols.end()) {
+            if (!it->second.IsCompatible(value.Type)) throw runtime_error("Cannot override value type.");
             it->second = std::move(value);
             return true;
         }

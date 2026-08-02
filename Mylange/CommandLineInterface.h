@@ -24,9 +24,8 @@ public:
 		Cyan
 	};
 
-	static void Print(const std::string& msg, const DebugColor color = DebugColor::White, const int& indent = 0)
+	static void PrintOut(const std::string& msg, const DebugColor color = DebugColor::White)
 	{
-		std::string indent_str = std::string(indent * 4, ' ');
 		const char* colorCode;
 		switch (color) {
 		case DebugColor::Red:     colorCode = "\033[31m"; break;
@@ -39,12 +38,13 @@ public:
 		default:                  colorCode = "\033[37m"; break;
 		}
 		const char* reset = "\033[0m";
-		try {
-			std::cout << indent_str << colorCode << msg << reset << std::endl;
-		}
-		catch (const std::exception& e) {
-			std::cout << "[OUTERR] error outputting: " << e.what() << std::endl;
-		};
+		std::cout << colorCode << msg << reset;
+	}
+
+	static void Print(const std::string& msg, const DebugColor color = DebugColor::White, const int& indent = 0)
+	{
+		std::string indent_str = std::string(indent * 4, ' ');
+		CommandLineInterface::PrintOut(indent_str + msg + '\n', color);
 	};
 
 	static void DebugPrint(const std::string& message, const int& indent = 0)

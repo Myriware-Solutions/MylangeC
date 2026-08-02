@@ -27,7 +27,7 @@ enum class LanTypeEnum : uint32_t
 	TypeString = 1 << 5,
 
 	TypeAny = 1 << 6,
-	TypeUnknown = 1 << 7,
+	TypeUnion = 1 << 7,
 
 	TypeArray = 1 << 8,
 	TypeSet = 1 << 9,
@@ -38,7 +38,9 @@ enum class LanTypeEnum : uint32_t
 	TypeFunction = 1 << 13,
 	TypeClass = 1 << 14,
 	TypeType = 1 << 15,
-	TypeThis = 1 << 16
+	TypeThis = 1 << 16,
+
+	TypeUnknown = 1 << 17,
 	// Unions are not their own types, rather, they are
 	// represented if more than 1 bit is set.
 	// Arrays and sets have the Array or Set bit set,
@@ -92,6 +94,7 @@ protected:
 		{ LanTypeEnum::TypeSet, {"set"}},
 		{ LanTypeEnum::TypeTable, {"table"}},
 		{ LanTypeEnum::TypeCasting, {"casting"}},
+		{ LanTypeEnum::TypeUnion, {"union", "u"}},
 		{ LanTypeEnum::TypeUnknown, {"unknown"}},
 		{ LanTypeEnum::TypeAny, {"any"}},
 		{ LanTypeEnum::TypeInterable, {"iterable"} },
@@ -107,6 +110,11 @@ public:
 	optional<vector<LanType>> Archetype;
 	shared_ptr<LanClass> CustomClass;
 
+	LanType(const LanType&) = default;
+	LanType& operator=(const LanType&) = default;
+	LanType(LanType&&) = default;
+	LanType& operator=(LanType&&) = default;
+
 	LanType() {
 		this->BaseType = LanTypeEnum::None;
 		this->Archetype = nullopt;
@@ -120,7 +128,9 @@ public:
 		this->Archetype = archetype;
 	}
 
-	LanType(shared_ptr<LanClass> customClass);
+	//LanType(shared_ptr<LanClass> customClass);
+
+	LanType(LanTypeEnum classOrObjectType, std::shared_ptr<LanClass>& customClass);
 
 	void AddArchetype(const LanType& type) {
 		if (type.IsComplex()) {
@@ -147,7 +157,7 @@ public:
 	}
 
 	bool IsComplex() const {
-		return this->IsArrayType() || this->IsSetType() || this->Archetype.has_value();
+		return this->IsArrayType() || this->IsSetType() || this->Archetype.has_value() || this->CustomClass;
 	}
 
 	static string BaseTypeToString(LanTypeEnum flag);

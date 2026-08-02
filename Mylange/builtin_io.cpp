@@ -73,6 +73,43 @@ static void RegisterIO(MylangeInterpreter& mi, const std::string& scopeId) {
         )
     ));
 
+    // nil dumpCache ()
+    mi.Memory.defineIn(scopeId, LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "dumpCache",
+            LanFunction::ParamStruct{ },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                for (auto& [code, content] : mi.BlockMap) {
+                    std::cout << std::format("{}[{}]: {}", code, content.length(), content) << std::endl;
+                }
+                return std::nullopt;
+            }
+        )
+    ));
+
+    // nil dumpType (type T)
+    mi.Memory.defineIn(scopeId, LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "dumpType",
+            LanFunction::ParamStruct{ { "T", LanTypeEnum::TypeType }},
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                LanType t = std::get<LanType>(args[0].Value);
+                uint32_t value = static_cast<uint32_t>(t.BaseType);
+                std::cout << std::bitset<32>(value) << std::endl;
+                std::cout << LanType::BaseTypeToString(t.BaseType) << std::endl;
+                if (t.Archetype.has_value())
+                for (auto& ar : t.Archetype.value()) {
+                    std::cout << '\t' << ar.ToString() << std::endl;
+                }
+                return std::nullopt;
+            }
+        )
+    ));
+
     // nil dumpClass (class: cls)
     mi.Memory.defineIn(scopeId, LanVariable(
         LanType(LanTypeEnum::TypeFunction),

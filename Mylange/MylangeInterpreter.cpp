@@ -135,8 +135,8 @@ vector<Rule> rules = {
                 throw runtime_error("Failed to parse variable value.");
             CommandLineInterface::DebugPrint("Setting variable " + m[2].str() + " of type " + expectedType.ToString()
                 + "/" + lv.value().Type.ToString() + " to value " + lv.value().ToString());
-            if (lv.value().IsCompatible(expectedType)) {
-
+            if (LanVariable::IsCompatible(expectedType, lv.value())) {
+                // exp lv.value()
                 if (expectedType.IsArrayType() && lv.value().Type == LanTypeEnum::TypeArray) {
                     // Override empty arrays
                     lv.value().Type = expectedType;
@@ -177,7 +177,7 @@ vector<Rule> rules = {
                     }
                     else if (working->Type.IsTable()) {
                         auto& table = std::get<LanTable>(working->Value);
-                        table.Place(token.value, std::make_shared<LanVariable>(LanVariable::Nil()));
+                        table.Place(token.value, std::make_shared<LanVariable>(LanVariable::Any()));
                         working = working->Index(token.value).get();
                     }
                     else if (working->Type.IsSetType()) {
@@ -203,7 +203,7 @@ vector<Rule> rules = {
                         }
                         else if (working->Type.IsTable()) {
                             auto& table = std::get<LanTable>(working->Value);
-                            table.Place(key, std::make_shared<LanVariable>(LanVariable::Nil()));
+                            table.Place(key, std::make_shared<LanVariable>(LanVariable::Any()));
                             working = working->Index(key).get();
                         }
                         else if (working->Type.IsSetType()) {
@@ -222,6 +222,9 @@ vector<Rule> rules = {
             if (!working) throw runtime_error("Failed to resolve pointer path.");
             auto new_value = mi.ParseParameter(m[2].str());
             if (new_value.has_value()) {
+                if (!new_value.value().IsCompatible((*working).Type))
+                    throw runtime_error(std::format("Cannot override value type: {}/{} are not compatible",
+                        (*working).Type.ToString(), new_value.value().Type.ToString()));
                 *working = new_value.value();
             }
             else throw runtime_error("Missing value in reset.");
@@ -242,14 +245,23 @@ vector<Rule> rules = {
     },
     // Cached Block
     {
-        regex(R"(^0x([a-fA-F0-9]+))"),
+        regex(R"(^([0-9])x([a-fA-F0-9]+))"),
         [](auto const& m, MylangeInterpreter& mi) {
-            CommandLineInterface::DebugPrint("Found cached block: " + m[0].str());
-            string cached_block = mi.BlockMap[m[0]];
-            mi.Memory.pushScope(m[0]);
-            auto res = mi.InterpretBlock(cached_block);
-            mi.Memory.popScope();
-            return res;
+            switch (m[1].str()[0]) {
+            case '0': {
+                CommandLineInterface::DebugPrint("Found cached block: " + m[0].str());
+                string cached_block = mi.BlockMap[m[0]];
+                mi.Memory.pushScope(m[0]);
+                auto res = mi.InterpretBlock(cached_block);
+                mi.Memory.popScope();
+                return res;
+            }
+            case '3': {
+                if (mi.BlockMap[m[0]].empty()) return optional<LanVariable>(nullopt);
+                else throw runtime_error("Cannot call on a table block: " + m[0].str());
+            }
+            default: throw runtime_error("Cannot call on a block: " + m[0].str());
+            }
         }
     },
     // Class
@@ -370,7 +382,7 @@ vector<Rule> rules = {
 				else throw runtime_error("Invalid class body line: '" + line + "'");
             }
 
-			mi.Memory.define(name, LanVariable(LanType(LanTypeEnum::TypeClass), make_shared<LanClass>(name, properties, defaultValues, methods)));
+			mi.Memory.define(name, LanVariable::Class(std::make_shared<LanClass>(name, properties, defaultValues, methods)));
 
             return nullopt;
         }
@@ -513,7 +525,7 @@ vector<Rule> rules = {
     },
     // Return
     {
-        regex(R"(return\s+(.*))"),
+        regex(R"(^(?:return\s+|\:\s*)(.*))"),
         [](auto const& m, MylangeInterpreter& mi) {
             auto it = mi.ParseParameter(m[1].str());
             if (it.has_value())
@@ -531,19 +543,19 @@ MylangeInterpreter::MylangeInterpreter()
 
 
 
-optional<LanVariable> MylangeInterpreter::Interpret(const string & code)
+std::optional<LanVariable> MylangeInterpreter::Interpret(const std::string& code)
 {
-    smatch match;
-    string clean_code = Utils::TrimString(code);
+    std::smatch match;
+    std::string clean_code = Utils::TrimString(code);
     for (const auto& rule : rules) {
-        if (regex_search(clean_code, match, rule.pattern)) {
+        if (std::regex_search(clean_code, match, rule.pattern)) {
             auto res = rule.action(match, *this);
             if (res.has_value())
                 CommandLineInterface::DebugPrint("Line looker returned: " + res.value().Type.ToString() + " / " + res.value().ToString() + " from " + code);
             return res;
         }
     }
-    return nullopt;
+    throw runtime_error(std::format("Could not match line to anything: '{}'", clean_code));
 }
 
 
@@ -727,30 +739,56 @@ optional<LanVariable> MylangeInterpreter::InterpretBlock(const string& blockStri
     return nullopt;
 }
 
+const std::regex BracketsAroundTypePattern(R"(^([a-zA-Z0-9.]+)(?:<(.*)>)?$)");
+
 LanType MylangeInterpreter::ResolveType(const string& typeStr)
 {
-    LanType result;
-    try {
-        result = LanType::FromString(typeStr);
-    }
-    catch (exception& e) {
-        auto a = this->Memory.resolve(typeStr);
-        if (a)
-            result = LanType(std::get<shared_ptr<LanClass>>(a->Value));
-        else {
-			auto sep = Utils::TopLevelSplit(typeStr, '.');
-			if (sep.size() != 2) throw runtime_error(std::format("[{}] Cannot resolve type (too many parts): {}\n\t{}", this->Memory.currentScope()->id, typeStr, e.what()));
-			
-			auto location = this->Memory.resolveScope(this->Memory.currentScope()->id + "." + sep[0]);
-			auto cls = location->resolve(sep[1]);
+    // TODO:
+    // This needs to be more complex, it needs to accept archetypes
+    // and process them from the inside out, seperatly (if the default does not work).
+    // This way, archetypes can contain user-defined classes.
+    
+    std::smatch m;
+    if (std::regex_match(typeStr, m, BracketsAroundTypePattern)) {
+        std::string typeBase = m[1].str();
+        LanType result;
+        // Process the base
+        if (typeBase.find('.') != std::string::npos) {
+            auto sep = Utils::TopLevelSplit(typeBase, '.');
+            // TODO: In future cases, this should be able to handle nested packages and classes
+            if (sep.size() != 2) throw runtime_error(std::format("[{}] Cannot resolve type (too many parts, {}): {}", this->Memory.currentScope()->id, sep.size(), typeBase));
+            auto location = this->Memory.resolveScope(this->Memory.currentScope()->id + "." + sep[0]);
+            auto cls = location->resolve(sep[1]);
             if (cls) {
-				if (cls->Type != LanTypeEnum::TypeClass) throw runtime_error(std::format("[{}] Resolved type is not a class: {}\n\t{}", this->Memory.currentScope()->id, typeStr, e.what()));
-				auto& cls_ptr = std::get<shared_ptr<LanClass>>(cls->Value);
-				return LanType(cls_ptr);
-            } else throw runtime_error(std::format("[{}] Cannot resolve type: {}\n\t{}", this->Memory.currentScope()->id, typeStr, e.what()));
+                if (cls->Type != LanTypeEnum::TypeClass) throw runtime_error(std::format("[{}] Resolved type is not a class: {}", this->Memory.currentScope()->id, typeBase));
+                auto& cls_ptr = std::get<shared_ptr<LanClass>>(cls->Value);
+                result = LanType(LanTypeEnum::TypeClass, cls_ptr);
+            }
+            else throw runtime_error(std::format("[{}] Cannot resolve type: {}", this->Memory.currentScope()->id, typeBase));
         }
-    };
-    return result;
+        else {
+            auto a = this->Memory.resolve(typeBase);
+            if (a) result = LanType(LanTypeEnum::TypeClass, std::get<shared_ptr<LanClass>>(a->Value));
+            result = (a)
+                ? LanType(LanTypeEnum::TypeClass, std::get<shared_ptr<LanClass>>(a->Value))
+                : LanType::FromString(typeBase);
+        }
+        CommandLineInterface::DebugPrint("Resovled Base Type: " + result.ToString());
+        // Process the archetypes
+        if (m[2].matched) {
+            std::string archetype_str = m[2].str();
+            auto archetypes = Utils::TopLevelSplit(archetype_str, '|');
+            for (auto& archetype : archetypes) {
+                LanType arche = this->ResolveType(archetype);
+                CommandLineInterface::DebugPrint("Resovled Archetype: " + arche.ToString(), 1);
+                result.AddArchetype(arche);
+            }
+        }
+        // Return
+        result.BaseType &= ~LanTypeEnum::TypeUnion;
+        return result;
+    }
+    else throw runtime_error("Type definition does not match.");
 }
 
 
@@ -954,7 +992,7 @@ optional<LanVariable> MylangeInterpreter::ParseParameter(const string& rawParamS
         // Type
         else if (regex_match(paramStr, match, regex(R"(^\$([\w<>| ]+)$)"))) {
             CommandLineInterface::DebugPrint("Type found: " + paramStr, 1);
-            auto t = LanType::FromString(match[1].str());
+            auto t = this->ResolveType(match[1].str());
             return LanVariable(LanType(LanTypeEnum::TypeType), t);
         }
         // Failsafe Random Type Conversion
@@ -1091,10 +1129,20 @@ shared_ptr<LanFunction> MylangeInterpreter::FindFunction(const string& name, std
 {
     // Overload param vectors
     std::vector<LanType> complxed_any_vector = {};
+	std::vector<LanType> hybrid_any_vector = {};
     for (auto& p : paramTypes) {
-        if (p.IsArrayType()) complxed_any_vector.push_back(LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny));
-        else if (p.IsSetType()) complxed_any_vector.push_back(LanType(LanTypeEnum::TypeSet));
-        else complxed_any_vector.push_back(p);
+        if (p.IsArrayType()) {
+            complxed_any_vector.push_back(LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny));
+            hybrid_any_vector.push_back(LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny));
+        }
+        else if (p.IsSetType()) {
+            complxed_any_vector.push_back(LanType(LanTypeEnum::TypeSet));
+            hybrid_any_vector.push_back(LanType(LanTypeEnum::TypeSet));
+        }
+        else {
+            complxed_any_vector.push_back(p);
+			hybrid_any_vector.push_back(LanType(LanTypeEnum::TypeAny));
+        }
     }
     std::vector<LanType> full_any_vector = std::vector<LanType>(paramTypes.size(), LanType(LanTypeEnum::TypeAny));
     
@@ -1102,6 +1150,7 @@ shared_ptr<LanFunction> MylangeInterpreter::FindFunction(const string& name, std
 	auto ids = std::vector<std::string>{
         LanFunction::GetId(name, paramTypes),
 		LanFunction::GetId(name, complxed_any_vector),
+        LanFunction::GetId(name, hybrid_any_vector),
 		LanFunction::GetId(name, full_any_vector)
 	};
 	// Remove the possible duplicates, as they are not needed

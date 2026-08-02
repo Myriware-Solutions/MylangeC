@@ -117,7 +117,7 @@ string LanVariable::ToString() const
 	case LanTypeEnum::TypeType:
 	{
 		const auto& t = get<LanType>(this->Value);
-		return "type: " + t.ToString();
+		return "Type[" + t.ToString() + "]";
 	}
 	default:
 		return std::format("<unrepresentable value: {}>", this->Type.ToString());
@@ -131,18 +131,20 @@ bool LanVariable::IsCompatible(const LanType& onType, const LanType& type)
 		return true;
 
 	// Any or any<...>
-	if (onType == LanTypeEnum::TypeAny)
+	if ((onType.BaseType & LanTypeEnum::TypeAny) == LanTypeEnum::TypeAny)
 	{
 		// Truly any
-		if (std::popcount(static_cast<uint32_t>(onType.BaseType)) == 1)
-			return true;
-
+		if (onType.BaseType == LanTypeEnum::TypeAny) return true;
+		// Could be in Archetype
 		return onType.ContainsArchetype(type);
 	}
 
 	// Array types
 	if (onType.IsArrayType() && type.IsArrayType())
 	{
+		// Check is type is empty (fulfills any array), array<Empty>
+		if (((type.BaseType & ~LanTypeEnum::TypeArray) == LanTypeEnum::None) && !type.Archetype.has_value())
+			return true;
 		// Check if base var is an array<any>
 		if (onType.BaseType == (LanTypeEnum::TypeArray | LanTypeEnum::TypeAny))
 			return true;

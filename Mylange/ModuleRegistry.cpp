@@ -86,18 +86,18 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         )
     ));
 
-    // str typeof (o: any)
+    // type typeof (o: any)
     mi.Memory.define(LanVariable(
         LanType(LanTypeEnum::TypeFunction),
         std::make_shared<BuiltinFunction>(
-            LanType(LanTypeEnum::TypeString),
+            LanType(LanTypeEnum::TypeType),
             "typeof",
             LanFunction::ParamStruct{ { "o", LanType(LanTypeEnum::TypeAny) } },
             [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
                 if (args.empty()) throw std::runtime_error("typeof requires 1 argument.");
                 return LanVariable(
-                    LanType(LanTypeEnum::TypeString),
-                    LanVariable::LanValue{ args[0].Type.ToString() }
+                    LanType(LanTypeEnum::TypeType),
+                    LanVariable::LanValue{ args[0].Type }
                 );
             }
         )
@@ -224,6 +224,22 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
 					pos += values[i]->ToString().length();
 				}
 				return LanVariable::String(text);
+            }
+        )
+    ));
+
+    // contains
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeBool),
+            "contains",
+            LanFunction::ParamStruct{
+                { "self", LanType(LanTypeEnum::TypeString) },
+                { "querry", LanType(LanTypeEnum::TypeString) } },
+            [](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                return LanVariable::Bool(std::get<string>(args[0].Value)
+                    .find(std::get<string>(args[1].Value)) != std::string::npos);
             }
         )
     ));
@@ -358,6 +374,60 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
                 }
 
                 return LanVariable::Array(result);
+            }
+        )
+    ));
+
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny),
+            "range",
+            LanFunction::ParamStruct{
+                { "self", LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny) },
+                { "start", LanType(LanTypeEnum::TypeInt) },
+                { "end", LanType(LanTypeEnum::TypeInt) } },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+                if (args[0].Type != LanType(LanTypeEnum::TypeArray) &&
+                    args[0].Type != LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny) &&
+                    args[0].Type != LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeInt)) {
+                    throw runtime_error("Array needs to accept 'int' for range function.");
+                }
+                auto& array = std::get<LanArray>(args[0].Value);
+
+                auto& start = std::get<int>(args[1].Value);
+                auto& end   = std::get<int>(args[2].Value);
+
+                if (start >= end) throw runtime_error(std::format("Start must be less than the end: {} >= {}", start, end));
+
+                for (int i = start; i < end; i++) {
+                    array.push_back(std::make_shared<LanVariable>(LanVariable::Int(i)));
+                }
+
+                return args[0];
+            }
+        )
+    ));
+
+    mi.Memory.define(LanVariable(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "append",
+            LanFunction::ParamStruct{
+                { "self", LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny) },
+                { "item", LanType(LanTypeEnum::TypeAny) } },
+            [&](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+
+                auto& array = std::get<LanArray>(args[0].Value);
+                auto item = std::make_shared<LanVariable>(args[1]);
+
+				if (!LanVariable::IsAppendable(args[0].Type, item->Type))
+					throw runtime_error("Cannot append item of type " + args[1].Type.ToString() + " to array of type " + args[0].Type.ToString());
+
+				array.push_back(item);
+
+                return nullopt;
             }
         )
     ));

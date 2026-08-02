@@ -3,13 +3,11 @@
 #include "LanType.h"
 #include "LanVariable.h"
 
-LanType::LanType(shared_ptr<LanClass> customClass)
+LanType::LanType(LanTypeEnum classOrObjectType, std::shared_ptr<LanClass>& customClass)
 {
-	{
-		this->BaseType = LanTypeEnum::TypeCasting;
-		this->CustomClass = customClass;
-		this->Archetype = nullopt;
-	}
+	this->BaseType = classOrObjectType;
+	this->CustomClass = customClass;
+	this->Archetype = nullopt;
 }
 
 string LanType::BaseTypeToString(LanTypeEnum flag)
@@ -37,10 +35,14 @@ string LanType::ToString(const LanType& type)
 {
 	if (type.IsArrayType()) {
 		string result = "array<";
-		result += ToString(type.BaseType & ~LanTypeEnum::TypeArray);
-		if (type.Archetype) {
-			result += "_adv";
-		}
+		if (type.Archetype.has_value()) {
+			auto extra = ToString(type.BaseType & ~LanTypeEnum::TypeArray);
+			if (extra != "Empty") result += extra + "|";
+			for (auto& ar : type.Archetype.value()) {
+				if (type.Archetype.value().front() != ar) result += "|";
+				result += ar.ToString();
+			}
+		} else result += ToString(type.BaseType & ~LanTypeEnum::TypeArray);
 		return result + ">";
 	}
 	else if ((type.BaseType & LanTypeEnum::TypeAny) == LanTypeEnum::TypeAny) {
@@ -55,6 +57,13 @@ string LanType::ToString(const LanType& type)
 	}
 	else if (type.IsSetType()) {
 		return "set";
+	}
+	else if ((type.BaseType == LanTypeEnum::TypeCasting) || (type.BaseType == LanTypeEnum::TypeClass)) {
+		std::string s = (type.BaseType == LanTypeEnum::TypeCasting) ? "casting" : "class";
+		if (type.CustomClass != nullptr) 
+			s += "[" + type.CustomClass->Name + "]";
+		else s += "[error]";
+		return s;
 	}
 	else {
 		return ToStringFromBits(type.BaseType);
@@ -92,6 +101,8 @@ bool LanType::operator==(const LanType& other) const
 
 LanType LanType::FromString(const std::string& typeStringRaw)
 {
+	CommandLineInterface::DebugPrint("FromString:" + typeStringRaw);
+	//TODO: It is possible to remove this from being anymore than just the primitive types
 	string typeString = Utils::TrimString(typeStringRaw);
 	smatch match;
 	regex_match(typeString, match, TypeMatchPattern);

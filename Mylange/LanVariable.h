@@ -331,6 +331,24 @@ public:
 
     // -- Utilities --
     std::string ToString() const;
+
+    static bool IsAppendable(const LanType& baseType, const LanType& toAppend) {
+        auto base_archetype = (baseType.BaseType & ~LanTypeEnum::TypeArray);
+		if (base_archetype == LanTypeEnum::None) {
+			return true; // base type is just an array, can append anything
+		}
+		else {
+			if ((toAppend.BaseType & base_archetype) == toAppend.BaseType)
+				return true; // toAppend is compatible with base archetype
+			if (baseType.Archetype.has_value()) {
+				for (const auto& archetype : baseType.Archetype.value()) {
+					if (archetype == toAppend) return true; // toAppend matches one of the archetypes
+				}
+			}
+		}
+        return false;
+    }
+
     static bool IsCompatible(const LanType& onType, const LanType& type);
     static bool IsCompatible(const LanType& type, const LanVariable& var)
     {
@@ -364,6 +382,10 @@ public:
 	// Static, quick convience functions for creating LanVariable instances of specific types
     static LanVariable Nil() {
         return LanVariable(LanType(LanTypeEnum::TypeNil), LanValue{ });
+    }
+
+    static LanVariable Any() {
+        return LanVariable(LanType(LanTypeEnum::TypeAny), LanValue{ });
     }
 
     static LanVariable Bool(bool value) {
@@ -400,6 +422,12 @@ public:
         for (size_t i = 0; i < keys.size(); i++)
             c.Place(keys[i], values[i]);
         return LanVariable(LanType(typeEnum), LanVariable::LanValue{ std::move(c) });
+    }
+
+    static LanVariable Class(std::shared_ptr<LanClass> cls) {
+        LanType cls_type(LanTypeEnum::TypeClass);
+        cls_type.CustomClass = cls;
+        return LanVariable(cls_type, cls);
     }
 };
 
