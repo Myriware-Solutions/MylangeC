@@ -45,7 +45,7 @@ public:
 
     struct ExprNode {
         virtual ~ExprNode() = default;
-        virtual LanVariable Evaluate(MylangeInterpreter& mi) = 0;
+        virtual std::shared_ptr<LanVariable> Evaluate(MylangeInterpreter& mi) = 0;
     };
 
     struct ValueNode : ExprNode {
@@ -55,7 +55,7 @@ public:
             : text(std::move(t)) {
         }
 
-        LanVariable Evaluate(MylangeInterpreter& mi) override
+        std::shared_ptr<LanVariable> Evaluate(MylangeInterpreter& mi) override
         {
             auto it = mi.ParseParameter(text);
 			if (it.has_value()) return it.value();
@@ -74,20 +74,20 @@ public:
             : op(std::move(o)), left(std::move(l)), right(std::move(r)) {
         }
 
-        LanVariable Evaluate(MylangeInterpreter& mi) override
+        std::shared_ptr<LanVariable> Evaluate(MylangeInterpreter& mi) override
         {
             // Recursively evaluate children
-            LanVariable lhs = left->Evaluate(mi);
-            LanVariable rhs = right->Evaluate(mi);
+            auto lhs = left->Evaluate(mi);
+            auto rhs = right->Evaluate(mi);
             // Apply operator logic
             return ApplyOperator(op, lhs, rhs);
         }
     };
 
-    static LanVariable ApplyOperator(
+    static std::shared_ptr<LanVariable> ApplyOperator(
         const std::string& op,
-        const LanVariable& lhs,
-		const LanVariable& rhs);
+        const std::shared_ptr<LanVariable> lhs,
+		const std::shared_ptr<LanVariable> rhs);
 
     static unique_ptr<LanArithmetic::ExprNode> BuildAST(const string& expr)
     {
@@ -99,6 +99,33 @@ public:
         while (Utils::IsWrappedByParens(s, '(', ')')) {
             s = Utils::TrimString(s.substr(1, s.size() - 2));
         }
+
+        // Returns true if c is a character that can be part of an identifier/word
+        auto IsWordChar = [](char c) {
+            return std::isalnum(static_cast<unsigned char>(c)) || c == '_';
+            };
+
+        // Checks that matching `op` at s[pos..pos+op.size()) doesn't land
+        // inside a larger identifier/word (e.g. "or" inside "for",
+        // "and" inside "operand", etc.)
+        auto HasWordBoundary = [&](const std::string& str, size_t pos, const std::string& op) {
+            // Only word-like operators need boundary checks ("and", "or", "not", "mod", ...).
+            // Symbolic operators ("+", "-", "==", ...) don't suffer from this ambiguity.
+            bool isWordOp = !op.empty() && (std::isalpha(static_cast<unsigned char>(op.front())) || op.front() == '_');
+            if (!isWordOp)
+                return true;
+
+            // Character immediately before the match must not be a word char
+            if (pos > 0 && IsWordChar(str[pos - 1]))
+                return false;
+
+            // Character immediately after the match must not be a word char
+            size_t endPos = pos + op.size();
+            if (endPos < str.size() && IsWordChar(str[endPos]))
+                return false;
+
+            return true;
+            };
 
         int depth = 0;
         int bestPos = -1;
@@ -119,6 +146,9 @@ public:
             {
                 if (s.compare(i, op.size(), op) == 0)
                 {
+                    if (!HasWordBoundary(s, i, op))
+                        continue; // matched inside a larger word — skip it
+
                     if (prec <= bestPrec) {
                         bestPrec = prec;
                         bestPos = (int)i;

@@ -15,7 +15,7 @@ public:
     std::string id;                                              // e.g. "global.myFunc.ifBlock"
     Scope* parent = nullptr;
     std::unordered_map<std::string, std::shared_ptr<Scope>> children;
-    std::unordered_map<std::string, LanVariable> symbols;
+    std::unordered_map<std::string, std::shared_ptr<LanVariable>> symbols;
 
     explicit Scope(std::string id, Scope* parent = nullptr)
         : id(std::move(id)), parent(parent) {
@@ -23,29 +23,38 @@ public:
 
     // -- Symbol management --
 
-    void define(const std::string& name, LanVariable value) {
+    void define(const std::string& name, std::shared_ptr<LanVariable> value) {
         // prevent overriding values
         if (symbols.contains(name)) { throw runtime_error("Cannot rewrite data: " + name); }
-        CommandLineInterface::DebugPrint(std::format("Define: {} {} => {}", value.Type.ToString(), name, value.ToString()), CommandLineInterface::DebugColor::Cyan);
-        symbols[name] = std::move(value);
+        symbols[name] = value;
+        CommandLineInterface::DebugPrint(std::format("Define: {} {} => {} @ {}", value->Type.ToString(), name, value->ToString(),
+            static_cast<void*>(symbols[name].get())), CommandLineInterface::DebugColor::Cyan);
+        
     }
 
+    //void define(const std::string& name, std::shared_ptr<LanVariable> value) {
+    //    // prevent overriding values
+    //    if (symbols.contains(name)) { throw runtime_error("Cannot rewrite data: " + name); }
+    //    CommandLineInterface::DebugPrint(std::format("Define: {} {} => {}", value->Type.ToString(), name, value->ToString()), CommandLineInterface::DebugColor::Cyan);
+    //    symbols[name] = std::move(value);
+    //}
+
     // Walks up the tree to reassign an existing binding
-    bool assign(const std::string& name, LanVariable value) {
+    bool assign(const std::string& name, std::shared_ptr<LanVariable> value) {
         auto it = symbols.find(name);
         if (it != symbols.end()) {
-            if (!it->second.IsCompatible(value.Type)) throw runtime_error("Cannot override value type.");
+            if (!it->second->IsCompatible(value->Type)) throw runtime_error("Cannot override value type.");
             it->second = std::move(value);
             return true;
         }
-        CommandLineInterface::DebugPrint(std::format("Assign: {} {} => {}", value.Type.ToString(), name, value.ToString()), CommandLineInterface::DebugColor::Yellow);
+        CommandLineInterface::DebugPrint(std::format("Assign: {} {} => {}", value->Type.ToString(), name, value->ToString()), CommandLineInterface::DebugColor::Yellow);
         return parent ? parent->assign(name, std::move(value)) : false;
     }
 
     // Walks up the tree to find a symbol
-    LanVariable* resolve(const std::string& name) {
+    std::shared_ptr<LanVariable> resolve(const std::string& name) {
         auto it = symbols.find(name);
-        if (it != symbols.end()) return &it->second;
+        if (it != symbols.end()) return it->second;
         return parent ? parent->resolve(name) : nullptr;
     }
 
@@ -107,13 +116,17 @@ public:
     // -------------------------------------------------------
 
     // Define a symbol in the current scope
-    void define(const std::string& name, LanVariable value) {
-        current->define(name, std::move(value));
+    void define(const std::string& name, std::shared_ptr<LanVariable> value) {
+        current->define(name, value);
     }
 
-    void define(LanVariable functionHolder)
+    //void define(const std::string& name, std::shared_ptr<LanVariable> value) {
+    //    current->define(name, std::move(value));
+    //}
+
+    void define(std::shared_ptr<LanVariable> functionHolder)
     {
-        string id = std::get<shared_ptr<LanFunction>>(functionHolder.Value)->GetId();
+        string id = std::get<shared_ptr<LanFunction>>(functionHolder->Value)->GetId();
         current->define(id, std::move(functionHolder));
     }
 
@@ -121,39 +134,39 @@ public:
     // e.g. defineIn("global.myFunc", "x", someValue)
     void defineIn(const std::string& scopeId,
         const std::string& name,
-        LanVariable value) {
+        std::shared_ptr<LanVariable> value) {
         resolveScope(scopeId)->define(name, std::move(value));
     }
 
     void defineIn(const std::string& scopeId,
-        LanVariable functionHolder)
+        std::shared_ptr<LanVariable> functionHolder)
     {
-		string id = std::get<shared_ptr<LanFunction>>(functionHolder.Value)->GetId();
+		string id = std::get<shared_ptr<LanFunction>>(functionHolder->Value)->GetId();
 		resolveScope(scopeId)->define(id, std::move(functionHolder));
     }
 
     bool resolve(const std::string& name, std::shared_ptr<LanVariable>& out) {
         auto var = current->resolve(name);
         if (var) {
-            out = std::make_shared<LanVariable>(*var);
+            out = var;
             return true;
         }
         return false;
     }
 
     // Resolve a symbol — walks up from the current scope
-    LanVariable* resolve(const std::string& name) {
+    std::shared_ptr<LanVariable> resolve(const std::string& name) {
         return current->resolve(name);
     }
 
     // Resolve a symbol starting from a specific scope
-    LanVariable* resolveIn(const std::string& scopeId,
+    std::shared_ptr<LanVariable> resolveIn(const std::string& scopeId,
         const std::string& name) {
         return resolveScope(scopeId)->resolve(name);
     }
 
     // Reassign an existing symbol (walks up from current)
-    bool assign(const std::string& name, LanVariable value) {
+    bool assign(const std::string& name, std::shared_ptr<LanVariable> value) {
         return current->assign(name, std::move(value));
     }
 
@@ -165,7 +178,7 @@ public:
         std::string indent(depth * 2, ' ');
         std::cout << indent << "[" << scope->id << "]\n";
         for (auto& [name, sym] : scope->symbols)
-            std::cout << indent << "  " << name << " : " << sym.Type.ToString()  << "\n";
+            std::cout << indent << "  " << name << " : " << sym->Type.ToString()  << "\n";
         for (auto& [_, child] : scope->children)
             dump(child.get(), depth + 1);
     }
@@ -186,11 +199,11 @@ public:
         return nullptr;
     }
 
-    LanVariable* FindInSiblingScope(const std::string& scopeName, const std::string& symbolName) {
+    std::shared_ptr<LanVariable> FindInSiblingScope(const std::string& scopeName, const std::string& symbolName) {
         Scope* sibling = FindSiblingScope(scopeName);
         if (!sibling) return nullptr;
         auto it = sibling->symbols.find(symbolName);
-        if (it != sibling->symbols.end()) return &it->second;
+        if (it != sibling->symbols.end()) return it->second;
         return nullptr;
     }
 

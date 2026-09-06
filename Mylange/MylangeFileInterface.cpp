@@ -26,7 +26,7 @@ std::string FileInterface::CleanFile(const string& filePath) {
 	return fileContent;
 }
 
-std::optional<LanVariable> FileInterface::InterpretFile(const string& filePath, bool ignoreMessage)
+std::optional<std::shared_ptr<LanVariable>> FileInterface::InterpretFile(const string& filePath, bool ignoreMessage)
 {
     if (!ignoreMessage) std::cout << "Running Mylange script: " << filePath << std::endl;
 

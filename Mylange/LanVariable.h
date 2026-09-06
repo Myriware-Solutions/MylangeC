@@ -20,8 +20,6 @@ class LanVariable; // forward declare for collections
 
 // -- Function types --
 // Builtin: implemented in C++
-using BuiltinFn = std::function<LanVariable(std::vector<LanVariable>)>;
-
 using LanArray = std::vector<std::shared_ptr<LanVariable>>;
 
 //
@@ -261,7 +259,7 @@ private:
     std::hash<std::string> hasher_;
 };
 
-class LanVariable {
+class LanVariable : public std::enable_shared_from_this<LanVariable> {
 public:
     using LanValue = std::variant<
         std::monostate,                         // null / uninitialized
@@ -327,7 +325,7 @@ public:
     bool HasIndex(const std::string& key) const;
     std::shared_ptr<LanVariable> Index(const std::string& key) const;
 
-    std::shared_ptr<LanVariable> DotMethod(const std::string& name, LanArray params) const;
+    std::shared_ptr<LanVariable> DotMethod(MylangeInterpreter& mi, const std::string& name, LanArray params) const;
 
     // -- Utilities --
     std::string ToString() const;
@@ -350,27 +348,27 @@ public:
     }
 
     static bool IsCompatible(const LanType& onType, const LanType& type);
-    static bool IsCompatible(const LanType& type, const LanVariable& var)
+    static bool IsCompatible(const LanType& type, const std::shared_ptr<const LanVariable> var)
     {
-        return LanVariable::IsCompatible(type, var.Type);
+        return LanVariable::IsCompatible(type, var->Type);
     };
     bool IsCompatible(const LanType& type) const {
-        return LanVariable::IsCompatible(type, *this);
-    };
+        return LanVariable::IsCompatible(type, this->Type);  // no shared_from_this needed
+    }
 
     // -- Operators --
-    LanVariable operator+(const LanVariable& other) const;
-    LanVariable operator-(const LanVariable& other) const;
-    LanVariable operator*(const LanVariable& other) const;
-    LanVariable operator/(const LanVariable& other) const;
-    LanVariable operator==(const LanVariable& other) const;
-    LanVariable operator!=(const LanVariable& other) const;
-    LanVariable operator<(const LanVariable& other) const;
-    LanVariable operator<=(const LanVariable& other) const;
-    LanVariable operator>(const LanVariable& other) const;
-    LanVariable operator>=(const LanVariable& other) const;
-    bool operator&&(const LanVariable& other) const;
-    bool operator||(const LanVariable& other) const;
+    std::shared_ptr<LanVariable> operator+(const std::shared_ptr<LanVariable> other) const;
+    std::shared_ptr<LanVariable> operator-(const std::shared_ptr<LanVariable> other) const;
+    std::shared_ptr<LanVariable> operator*(const std::shared_ptr<LanVariable> other) const;
+    std::shared_ptr<LanVariable> operator/(const std::shared_ptr<LanVariable> other) const;
+    std::shared_ptr<LanVariable> operator==(const std::shared_ptr<LanVariable> other) const;
+    std::shared_ptr<LanVariable> operator!=(const std::shared_ptr<LanVariable> other) const;
+    std::shared_ptr<LanVariable> operator<(const std::shared_ptr<LanVariable> other) const;
+    std::shared_ptr<LanVariable> operator<=(const std::shared_ptr<LanVariable> other) const;
+    std::shared_ptr<LanVariable> operator>(const std::shared_ptr<LanVariable> other) const;
+    std::shared_ptr<LanVariable> operator>=(const std::shared_ptr<LanVariable> other) const;
+    bool operator&&(const std::shared_ptr<LanVariable> other) const;
+    bool operator||(const std::shared_ptr<LanVariable> other) const;
 
     // Helper for std::visit
     template<class... Ts>
@@ -492,22 +490,30 @@ public:
     }
 
     static std::string GetId(const std::string& name,
-        const std::vector<LanVariable>& args) {
+        const LanArray& args) {
         std::string id = name + "(";
         bool first = true;
         for (auto& arg : args) {
             if (!first) id += ",";
-            id += arg.Type.ToString();
+            id += arg->Type.ToString();
             first = false;
         }
         return id + ")";
     }
 
+	static bool GetParamsTypes(LanArray args, std::vector<LanType>& outTypes) {
+		for (auto& arg : args) {
+			if (!arg) return false;
+			outTypes.push_back(arg->Type);
+		}
+		return true;
+	}
+
     // -------------------------------------------------------
     // Execution
     // -------------------------------------------------------
-    virtual std::optional<LanVariable> Execute(MylangeInterpreter& mi,
-        std::vector<LanVariable> args) = 0;
+    virtual std::optional<std::shared_ptr<LanVariable>> Execute(MylangeInterpreter& mi,
+        std::vector<std::shared_ptr<LanVariable>> args) = 0;
 
 };
 
@@ -525,14 +531,14 @@ public:
         : LanFunction(returnType, name, parameters, logic) {
     }
 
-    std::optional<LanVariable> Execute(MylangeInterpreter& mi,
-        std::vector<LanVariable> args) override;
+    std::optional<std::shared_ptr<LanVariable>> Execute(MylangeInterpreter& mi,
+        LanArray args) override;
 };
 
 // -------------------------------------------------------
 // BuiltinFunction — C++ implemented function
 // -------------------------------------------------------
-using BuiltinImpl = std::function<std::optional<LanVariable>(std::vector<LanVariable>)>;
+using BuiltinImpl = std::function<std::optional<std::shared_ptr<LanVariable>>(LanArray)>;
 
 class BuiltinFunction : public LanFunction {
     BuiltinImpl impl;
@@ -548,19 +554,19 @@ public:
         impl(std::move(impl)) {
     }
 
-    std::optional<LanVariable> Execute(MylangeInterpreter& mi,
-        std::vector<LanVariable> args) override {
+    std::optional<std::shared_ptr<LanVariable>> Execute(MylangeInterpreter& mi,
+        std::vector<std::shared_ptr<LanVariable>> args) override {
         (void)mi;
 		CommandLineInterface::DebugPrint("Executing builtin function: " + Name + " with " + std::to_string(args.size()) + " arguments.");
-        auto res = impl(std::move(args));
+        auto res = impl(args);
 		if (res.has_value())
-		    CommandLineInterface::DebugPrint("Builtin function " + Name + " executed." + res->ToString());
+		    CommandLineInterface::DebugPrint("Builtin function " + Name + " executed." + res.value()->ToString());
 		else
 			CommandLineInterface::DebugPrint("Builtin function " + Name + " executed with no return value.");
 
-		if (res.has_value() && !LanVariable::IsCompatible(this->ReturnType, res.value().Type)) {
-			throw std::runtime_error("Builtin function " + this->Name + " returned value of type "
-				+ res->Type.ToString() + ", but expected "
+		if (res.has_value() && !LanVariable::IsCompatible(this->ReturnType, res.value()->Type)) {
+			throw std::runtime_error("Builtin function '" + this->Name + "' returned value of type "
+				+ res.value()->Type.ToString() + ", but expected "
 				+ this->ReturnType.ToString() + ".");
 		}
 

@@ -42,16 +42,21 @@ std::shared_ptr<LanVariable> LanVariable::Index(const std::string& key) const {
 	else throw std::runtime_error("Cannot index non-set type: " + Type.ToString());
 }
 
-std::shared_ptr<LanVariable> LanVariable::DotMethod(const std::string& name, LanArray params) const
+std::shared_ptr<LanVariable> LanVariable::DotMethod(MylangeInterpreter& mi, const std::string& name, LanArray params) const
 {
 	// User class castring, not implemented
 	if (this->Type == LanTypeEnum::TypeCasting) throw runtime_error("User-castring dot method, not implemented yet");
 	else
 	{
 		// Mylange Primitive Type
-		CommandLineInterface::DebugPrint("Looking for dot method '' on type '" + this->Type.ToString() + "'");
+		CommandLineInterface::DebugPrint(std::format("Looking for dot method '{}' on type '{}'", name, this->Type.ToPackageString()));
+		std::vector<LanType> args;
+		LanFunction::GetParamsTypes(params, args);
+		auto f = mi.FindFunction(name, args, this->Type.ToPackageString());
+		auto res = f->Execute(mi, params);
+		if (res.has_value()) return res.value();
+		else return nullptr;
 	}
-	return std::shared_ptr<LanVariable>();
 }
 
 string LanVariable::ToString() const
@@ -130,6 +135,18 @@ bool LanVariable::IsCompatible(const LanType& onType, const LanType& type)
 	if (onType == type)
 		return true;
 
+	// Array types
+	if (onType.IsArrayType() && type.IsArrayType())
+	{
+		// Check is type is empty (fulfills any array), array<Empty>
+		if (((type.BaseType & ~LanTypeEnum::TypeArray) == LanTypeEnum::None) && !type.Archetype.has_value())
+			return true;
+		// Check if base var is an array<any>
+		if ((onType.BaseType & (LanTypeEnum::TypeArray | LanTypeEnum::TypeAny)) == (LanTypeEnum::TypeArray | LanTypeEnum::TypeAny))
+			return true;
+
+	}
+
 	// Any or any<...>
 	if ((onType.BaseType & LanTypeEnum::TypeAny) == LanTypeEnum::TypeAny)
 	{
@@ -139,18 +156,6 @@ bool LanVariable::IsCompatible(const LanType& onType, const LanType& type)
 		return onType.ContainsArchetype(type);
 	}
 
-	// Array types
-	if (onType.IsArrayType() && type.IsArrayType())
-	{
-		// Check is type is empty (fulfills any array), array<Empty>
-		if (((type.BaseType & ~LanTypeEnum::TypeArray) == LanTypeEnum::None) && !type.Archetype.has_value())
-			return true;
-		// Check if base var is an array<any>
-		if (onType.BaseType == (LanTypeEnum::TypeArray | LanTypeEnum::TypeAny))
-			return true;
-
-	}
-
 	CommandLineInterface::DebugPrint("Type compatibility check failed: " + onType.ToString() + " vs " + type.ToString(), CommandLineInterface::DebugColor::Yellow);
 
 	return false;
@@ -158,222 +163,222 @@ bool LanVariable::IsCompatible(const LanType& onType, const LanType& type)
 
 
 
-LanVariable LanVariable::operator+(const LanVariable& other) const
+std::shared_ptr<LanVariable> LanVariable::operator+(const std::shared_ptr<LanVariable> other) const
 {
 	if (this->Type.BaseType == LanTypeEnum::TypeInt &&
-		other.Type.BaseType == LanTypeEnum::TypeInt)
+		other->Type.BaseType == LanTypeEnum::TypeInt)
 	{
-		return LanVariable(
+		return std::make_shared<LanVariable>(
 			LanType(LanTypeEnum::TypeInt),
-			LanValue{ get<int>(this->Value) + get<int>(other.Value) }
+			LanValue{ std::get<int>(this->Value) + std::get<int>(other->Value) }
 		);
 	}
 	else if (this->Type.BaseType == LanTypeEnum::TypeString &&
-		other.Type.BaseType == LanTypeEnum::TypeString)
+		other->Type.BaseType == LanTypeEnum::TypeString)
 	{
-		return LanVariable(
+		return std::make_shared<LanVariable>(
 			LanType(LanTypeEnum::TypeString),
-			LanValue{ get<string>(this->Value) + get<string>(other.Value) }
+			LanValue{ std::get<string>(this->Value) + std::get<string>(other->Value) }
 		);
 	}
 	else
 	{
 		throw runtime_error("Unsupported types for addition: "
-			+ this->Type.ToString() + " + " + other.Type.ToString());
+			+ this->Type.ToString() + " + " + other->Type.ToString());
 	}
 }
 
-LanVariable LanVariable::operator-(const LanVariable& other) const
+std::shared_ptr<LanVariable> LanVariable::operator-(const std::shared_ptr<LanVariable> other) const
 {
 	if (this->Type.BaseType == LanTypeEnum::TypeInt &&
-		other.Type.BaseType == LanTypeEnum::TypeInt)
+		other->Type.BaseType == LanTypeEnum::TypeInt)
 	{
-		return LanVariable(
+		return std::make_shared<LanVariable>(
 			LanType(LanTypeEnum::TypeInt),
-			LanValue{ get<int>(this->Value) - get<int>(other.Value) }
+			LanValue{ get<int>(this->Value) - get<int>(other->Value) }
 		);
 	}
 	else
 	{
 		throw runtime_error("Unsupported types for subtraction: "
-			+ this->Type.ToString() + " - " + other.Type.ToString());
+			+ this->Type.ToString() + " - " + other->Type.ToString());
 	}
 }
 
-LanVariable LanVariable::operator*(const LanVariable& other) const
+std::shared_ptr<LanVariable> LanVariable::operator*(const std::shared_ptr<LanVariable> other) const
 {
 	if (this->Type.BaseType == LanTypeEnum::TypeInt &&
-		other.Type.BaseType == LanTypeEnum::TypeInt)
+		other->Type.BaseType == LanTypeEnum::TypeInt)
 	{
-		return LanVariable(
+		return std::make_shared<LanVariable>(
 			LanType(LanTypeEnum::TypeInt),
-			LanValue{ get<int>(this->Value) * get<int>(other.Value) }
+			LanValue{ get<int>(this->Value) * get<int>(other->Value) }
 		);
 	}
 	else
 	{
 		throw runtime_error("Unsupported types for multiplication: "
-			+ this->Type.ToString() + " * " + other.Type.ToString());
+			+ this->Type.ToString() + " * " + other->Type.ToString());
 	}
 }
 
-LanVariable LanVariable::operator/(const LanVariable& other) const
+std::shared_ptr<LanVariable> LanVariable::operator/(const std::shared_ptr<LanVariable> other) const
 {
 	if (this->Type.BaseType == LanTypeEnum::TypeInt &&
-		other.Type.BaseType == LanTypeEnum::TypeInt)
+		other->Type.BaseType == LanTypeEnum::TypeInt)
 	{
-		if (get<int>(other.Value) == 0)
+		if (get<int>(other->Value) == 0)
 		{
 			throw runtime_error("Division by zero.");
 		}
-		return LanVariable(
+		return std::make_shared<LanVariable>(
 			LanType(LanTypeEnum::TypeInt),
-			LanValue{ get<int>(this->Value) / get<int>(other.Value) }
+			LanValue{ get<int>(this->Value) / get<int>(other->Value) }
 		);
 	}
 	else
 	{
 		throw runtime_error("Unsupported types for division: "
-			+ this->Type.ToString() + " / " + other.Type.ToString());
+			+ this->Type.ToString() + " / " + other->Type.ToString());
 	}
 }
 
-LanVariable LanVariable::operator==(const LanVariable& other) const
+std::shared_ptr<LanVariable> LanVariable::operator==(const std::shared_ptr<LanVariable> other) const
 {
-	if (this->Type.BaseType != other.Type.BaseType)
+	if (this->Type.BaseType != other->Type.BaseType)
 	{
-		return LanVariable(
+		return std::make_shared<LanVariable>(
 			LanType(LanTypeEnum::TypeBool),
 			LanValue{ false }
 		);
 	}
 	switch (this->Type.BaseType) {
 	case LanTypeEnum::TypeBool:
-		return LanVariable(
+		return std::make_shared<LanVariable>(
 			LanType(LanTypeEnum::TypeBool),
-			LanValue{ get<bool>(this->Value) == get<bool>(other.Value) }
+			LanValue{ get<bool>(this->Value) == get<bool>(other->Value) }
 		);
 	case LanTypeEnum::TypeInt:
-		return LanVariable(
+		return std::make_shared<LanVariable>(
 			LanType(LanTypeEnum::TypeBool),
-			LanValue{ get<int>(this->Value) == get<int>(other.Value) }
+			LanValue{ get<int>(this->Value) == get<int>(other->Value) }
 		);
 	case LanTypeEnum::TypeChar:
-		return LanVariable(
+		return std::make_shared<LanVariable>(
 			LanType(LanTypeEnum::TypeBool),
-			LanValue{ get<char>(this->Value) == get<char>(other.Value) }
+			LanValue{ get<char>(this->Value) == get<char>(other->Value) }
 		);
 	case LanTypeEnum::TypeString:
-		return LanVariable(
+		return std::make_shared<LanVariable>(
 			LanType(LanTypeEnum::TypeBool),
-			LanValue{ get<string>(this->Value) == get<string>(other.Value) }
+			LanValue{ get<string>(this->Value) == get<string>(other->Value) }
 		);
 	default:
 		throw runtime_error("Unsupported types for equality check: "
-			+ this->Type.ToString() + " == " + other.Type.ToString());
+			+ this->Type.ToString() + " == " + other->Type.ToString());
 	}
 }
 
-LanVariable LanVariable::operator!=(const LanVariable& other) const
+std::shared_ptr<LanVariable> LanVariable::operator!=(const std::shared_ptr<LanVariable> other) const
 {
-	LanVariable eqResult = (*this) == other;
-	return LanVariable(
+	auto eqResult = (this->shared_from_this() == other);
+	return std::make_shared<LanVariable>(
 		LanType(LanTypeEnum::TypeBool),
-		LanValue{ !get<bool>(eqResult.Value) }
+		LanValue{ !eqResult }
 	);
 }
 
-LanVariable LanVariable::operator<(const LanVariable& other) const
+std::shared_ptr<LanVariable> LanVariable::operator<(const std::shared_ptr<LanVariable> other) const
 {
 	if (this->Type.BaseType == LanTypeEnum::TypeInt &&
-		other.Type.BaseType == LanTypeEnum::TypeInt)
+		other->Type.BaseType == LanTypeEnum::TypeInt)
 	{
-		return LanVariable(
+		return std::make_shared<LanVariable>(
 			LanType(LanTypeEnum::TypeBool),
-			LanValue{ get<int>(this->Value) < get<int>(other.Value) }
+			LanValue{ get<int>(this->Value) < get<int>(other->Value) }
 		);
 	}
 	else
 	{
 		throw runtime_error("Unsupported types for less-than comparison: "
-			+ this->Type.ToString() + " < " + other.Type.ToString());
+			+ this->Type.ToString() + " < " + other->Type.ToString());
 	}
 }
 
-LanVariable LanVariable::operator<=(const LanVariable& other) const
+std::shared_ptr<LanVariable> LanVariable::operator<=(const std::shared_ptr<LanVariable> other) const
 {
 	if (this->Type.BaseType == LanTypeEnum::TypeInt &&
-		other.Type.BaseType == LanTypeEnum::TypeInt)
+		other->Type.BaseType == LanTypeEnum::TypeInt)
 	{
-		return LanVariable(
+		return std::make_shared<LanVariable>(
 			LanType(LanTypeEnum::TypeBool),
-			LanValue{ get<int>(this->Value) <= get<int>(other.Value) }
+			LanValue{ get<int>(this->Value) <= get<int>(other->Value) }
 		);
 	}
 	else
 	{
 		throw runtime_error("Unsupported types for less-than-or-equal comparison: "
-			+ this->Type.ToString() + " <= " + other.Type.ToString());
+			+ this->Type.ToString() + " <= " + other->Type.ToString());
 	}
 }
 
-LanVariable LanVariable::operator>(const LanVariable& other) const
+std::shared_ptr<LanVariable> LanVariable::operator>(const std::shared_ptr<LanVariable> other) const
 {
 	if (this->Type.BaseType == LanTypeEnum::TypeInt &&
-		other.Type.BaseType == LanTypeEnum::TypeInt)
+		other->Type.BaseType == LanTypeEnum::TypeInt)
 	{
-		return LanVariable(
+		return std::make_shared<LanVariable>(
 			LanType(LanTypeEnum::TypeBool),
-			LanValue{ get<int>(this->Value) > get<int>(other.Value) }
+			LanValue{ get<int>(this->Value) > get<int>(other->Value) }
 		);
 	}
 	else
 	{
 		throw runtime_error("Unsupported types for greater-than comparison: "
-			+ this->Type.ToString() + " > " + other.Type.ToString());
+			+ this->Type.ToString() + " > " + other->Type.ToString());
 	}
 }
 
-LanVariable LanVariable::operator>=(const LanVariable& other) const
+std::shared_ptr<LanVariable> LanVariable::operator>=(const std::shared_ptr<LanVariable> other) const
 {
 	if (this->Type.BaseType == LanTypeEnum::TypeInt &&
-		other.Type.BaseType == LanTypeEnum::TypeInt)
+		other->Type.BaseType == LanTypeEnum::TypeInt)
 	{
-		return LanVariable(
+		return std::make_shared<LanVariable>(
 			LanType(LanTypeEnum::TypeBool),
-			LanValue{ get<int>(this->Value) >= get<int>(other.Value) }
+			LanValue{ get<int>(this->Value) >= get<int>(other->Value) }
 		);
 	}
 	else
 	{
 		throw runtime_error("Unsupported types for greater-than-or-equal comparison: "
-			+ this->Type.ToString() + " >= " + other.Type.ToString());
+			+ this->Type.ToString() + " >= " + other->Type.ToString());
 	}
 }
 
-bool LanVariable::operator&&(const LanVariable& other) const
+bool LanVariable::operator&&(const std::shared_ptr<LanVariable> other) const
 {
 	if ((this->Type.BaseType & LanTypeEnum::TypeBool) == LanTypeEnum::TypeBool &&
-		(other.Type.BaseType & LanTypeEnum::TypeBool) == LanTypeEnum::TypeBool) {
-		return (get<bool>(this->Value)) && (get<bool>(other.Value));
+		(other->Type.BaseType & LanTypeEnum::TypeBool) == LanTypeEnum::TypeBool) {
+		return (get<bool>(this->Value)) && (get<bool>(other->Value));
 	}
 	else
 	{
 		throw runtime_error("Unsupported types for and comparison: "
-			+ this->Type.ToString() + " && " + other.Type.ToString());
+			+ this->Type.ToString() + " && " + other->Type.ToString());
 	}
 }
 
-bool LanVariable::operator||(const LanVariable& other) const
+bool LanVariable::operator||(const std::shared_ptr<LanVariable> other) const
 {
 	if ((this->Type.BaseType & LanTypeEnum::TypeBool) == LanTypeEnum::TypeBool &&
-		(other.Type.BaseType & LanTypeEnum::TypeBool) == LanTypeEnum::TypeBool) {
-		return (get<bool>(this->Value)) || (get<bool>(other.Value));
+		(other->Type.BaseType & LanTypeEnum::TypeBool) == LanTypeEnum::TypeBool) {
+		return (get<bool>(this->Value)) || (get<bool>(other->Value));
 	}
 	else
 	{
 		throw runtime_error("Unsupported types for or comparison: "
-			+ this->Type.ToString() + " || " + other.Type.ToString());
+			+ this->Type.ToString() + " || " + other->Type.ToString());
 	}
 }
 

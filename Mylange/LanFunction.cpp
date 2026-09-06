@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-std::optional<LanVariable> ScriptFunction::Execute(MylangeInterpreter& mi, std::vector<LanVariable> args)
+std::optional<std::shared_ptr<LanVariable>> ScriptFunction::Execute(MylangeInterpreter& mi, LanArray args)
 {
 	CommandLineInterface::DebugPrint("Executing function: " + this->Name + " with " + std::to_string(args.size()) + " arguments.");
 	if (this->Parameters.size() != args.size())
@@ -33,10 +33,10 @@ std::optional<LanVariable> ScriptFunction::Execute(MylangeInterpreter& mi, std::
 	// Destroy function runtime
 	mi.Memory.popScope();
 
-	if (res.has_value() && !res->IsCompatible(this->ReturnType))
+	if (res.has_value() && !res.value()->IsCompatible(this->ReturnType))
 	{
 		throw runtime_error("Function " + this->Name + " returned value of type "
-			+ res->Type.ToString() + ", but expected "
+			+ res.value()->Type.ToString() + ", but expected "
 			+ this->ReturnType.ToString() + ".");
 	}
 

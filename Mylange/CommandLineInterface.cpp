@@ -27,8 +27,8 @@ void CommandLineInterface::RunCLI() {
 	MylangeInterpreter mi = MylangeInterpreter();
 	ModuleRegistry::RegisterHardwires(mi);
 	// Line starter in the command line
-	mi.Memory.define("CLI_LINE_START", LanVariable::String("/> "));
-	mi.Memory.define("CLI_SHOW_R_TYPES", LanVariable::Bool(false));
+	mi.Memory.define("CLI_LINE_START", std::make_shared<LanVariable>(LanVariable::String("/> ")));
+	mi.Memory.define("CLI_SHOW_R_TYPES", std::make_shared<LanVariable>(LanVariable::Bool(false)));
 
 	std::signal(SIGINT, handle_sigint);
 	auto cliv = [&mi](std::string name) {
@@ -62,7 +62,7 @@ void CommandLineInterface::RunCLI() {
 			// haystack.find(needle) != std::string::npos
 			for (auto& [name, var] : mi.Memory.resolveScope("global")->symbols) {
 				if (name.find("CLI_") != std::string::npos) {
-					CommandLineInterface::Print(std::format("{}/{}:{}", var.Type.ToString(), name, var.ToString()));
+					CommandLineInterface::Print(std::format("{}/{}:{}", var->Type.ToString(), name, var->ToString()));
 				}
 			}
 		}
@@ -73,9 +73,9 @@ void CommandLineInterface::RunCLI() {
 				if (res.has_value()) {
 					CommandLineInterface::PrintOut(">> ", CommandLineInterface::DebugColor::Magenta);
 					if (std::get<bool>(cliv("CLI_SHOW_R_TYPES")))
-						CommandLineInterface::Print(std::format("({}) {}", res.value().Type.ToString(), res.value().ToString()));
+						CommandLineInterface::Print(std::format("({}) {}", res.value()->Type.ToString(), res.value()->ToString()));
 					else
-						CommandLineInterface::Print(std::format("{}", res.value().ToString()));
+						CommandLineInterface::Print(std::format("{}", res.value()->ToString()));
 				}
 			}
 			catch (const std::exception& e) {

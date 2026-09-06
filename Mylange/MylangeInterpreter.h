@@ -82,17 +82,18 @@ class MylangeInterpreter
 {
 public:
 	MylangeInterpreter();
-	optional<LanVariable> Interpret(const string& code);
-	optional<LanVariable> InterpretBlock(const string& block, const bool SkipClearing = false);
+	std::optional<std::shared_ptr<LanVariable>> Interpret(const string& code);
+	std::optional<std::shared_ptr<LanVariable>> InterpretBlock(const string& block, const bool SkipClearing = false);
 	LanType ResolveType(const string& typeStr);
-	std::vector<TokenItem> TokenizeComplexValue(std::string& value);
+	std::vector<TokenItem> TokenizeComplexValue(const std::string& value);
 	bool ParseParameter(const string& rawParamStr, std::shared_ptr<LanVariable>& var, bool assignVar = true);
-	LanVariable ForcedParseParameter(const string& rawParamStr);
-	optional<LanVariable> ParseParameter(const string& rawParamStr);
-	std::pair<std::string, std::vector<LanVariable>> GetFunctionParts(const string& functionCallStr);
-	pair<shared_ptr<LanFunction>, vector<LanVariable>> FindFunction(const string& functionCallStr, std::string packagePath = "", vector<LanVariable> self = {});
+	std::shared_ptr<LanVariable> ForcedParseParameter(const string& rawParamStr);
+	std::shared_ptr<LanVariable> ResolveVariableExtentions(const string& varPattern);
+	std::optional<std::shared_ptr<LanVariable>> ParseParameter(const string& rawParamStr);
+	std::pair<std::string, LanArray> GetFunctionParts(const string& functionCallStr);
+	pair<shared_ptr<LanFunction>, LanArray> FindFunction(const string& functionCallStr, std::string packagePath = "", LanArray self = {});
 	shared_ptr<LanFunction> FindFunction(const string& name, std::vector<LanType> paramTypes, const std::string path = "", bool excludeAny = false);
-	void MakeParameters(string& paramString, vector<LanVariable>& paramsOut, vector<LanType>& paramTypesOut);
+	void MakeParameters(string& paramString, LanArray& paramsOut, vector<LanType>& paramTypesOut);
 	bool RandomTypeConversion(const string& value, std::shared_ptr<LanVariable>& var);
 	optional<LanVariable> RandomTypeConversion(const string& value);
 	struct FunctionParts {

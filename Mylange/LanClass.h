@@ -94,11 +94,11 @@ public:
 	}
 
     // Run a method — scope managed by interpreter, args by value
-    std::optional<LanVariable> RunMethod(MylangeInterpreter& mi,
+    std::optional<std::shared_ptr<LanVariable>> RunMethod(MylangeInterpreter& mi,
         const std::string& methodId,
-        std::vector<LanVariable> args) {
+        LanArray args) {
 
-        std::optional<LanVariable> res;
+        std::optional<std::shared_ptr<LanVariable>> res;
 
         auto it = ClassInfo->Methods.find(methodId);
 		for (auto& [name, _] : ClassInfo->Methods) {
@@ -110,13 +110,13 @@ public:
 
 		if (BuiltinClass* builtin = dynamic_cast<BuiltinClass*>(ClassInfo.get())) {
 			
-			auto combined_args = std::vector<LanVariable>{ LanVariable(LanType(LanTypeEnum::TypeCasting), shared_from_this()) };
+            auto combined_args = LanArray{ std::make_shared<LanVariable> (LanType(LanTypeEnum::TypeCasting), shared_from_this()) };
 			combined_args.insert(combined_args.end(), args.begin(), args.end());
 			auto y = method->Execute(mi, combined_args);
 
 			if (y.has_value()) {
-				CommandLineInterface::DebugPrint("Method returned: " + y->ToString());
-                return std::move(y);
+				CommandLineInterface::DebugPrint("Method returned: " + y.value()->ToString());
+                return y.value();
 			}
 			else {
 				CommandLineInterface::DebugPrint("Method returned no value.");
@@ -137,7 +137,7 @@ public:
             // Create Function Runtime Scope
             mi.Memory.pushScope(this->ClassInfo->Name + "::" + method->Name + "()");
             auto uiu = LanVariable::LanValue{ shared_from_this() };
-            auto l = LanVariable(LanType(LanTypeEnum::TypeCasting), uiu);
+            auto l = std::make_shared<LanVariable>(LanVariable(LanType(LanTypeEnum::TypeCasting), uiu));
             std::string this_label("this");
             mi.Memory.define(this_label, l);
             // Define parameters

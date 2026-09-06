@@ -28,11 +28,11 @@ static void RegisterFile(MylangeInterpreter& mi, const std::string& scopeId) {
 				{ "self", LanType(LanTypeEnum::TypeThis) },
 				{ "path", LanType(LanTypeEnum::TypeString) },
 				{ "mode", LanType(LanTypeEnum::TypeString) } },
-			[](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+			[](LanArray args) -> std::optional<std::shared_ptr<LanVariable>> {
 				if (args.size() < 2) throw std::runtime_error("File constructor requires 2 arguments: path and mode.");
-				auto& self = std::get<std::shared_ptr<LanCasting>>(args[0].Value);
-				auto& path = std::get<std::string>(args[1].Value);
-				auto& mode = std::get<std::string>(args[2].Value);
+				auto& self = std::get<std::shared_ptr<LanCasting>>(args[0]->Value);
+				auto& path = std::get<std::string>(args[1]->Value);
+				auto& mode = std::get<std::string>(args[2]->Value);
 				self->Properties["path"] = std::make_shared<LanVariable>(LanVariable(LanType(LanTypeEnum::TypeString), path));
 				self->Properties["mode"] = std::make_shared<LanVariable>(LanVariable(LanType(LanTypeEnum::TypeString), mode));
 				return nullopt;
@@ -45,17 +45,17 @@ static void RegisterFile(MylangeInterpreter& mi, const std::string& scopeId) {
 			"read",
 			LanFunction::ParamStruct{
 				{ "self", LanType(LanTypeEnum::TypeThis) } },
-			[](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+			[](LanArray args) -> std::optional<std::shared_ptr<LanVariable>> {
 				if (args.empty()) throw std::runtime_error("read requires 1 argument (self).");
 				auto& self = args[0];
-				auto pathVar = self.Index("path");
+				auto pathVar = self->Index("path");
 				if (!pathVar) throw std::runtime_error("File object has no 'path' property.");
 				auto& path = std::get<std::string>(pathVar->Value);
 				std::ifstream file(path);
 				if (!file.is_open()) throw std::runtime_error("Failed to open file: " + path);
 				std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 				file.close();
-				return LanVariable(LanType(LanTypeEnum::TypeString), content);
+				return std::make_shared<LanVariable>(LanType(LanTypeEnum::TypeString), content);
 			}
 		),
 		
@@ -65,10 +65,10 @@ static void RegisterFile(MylangeInterpreter& mi, const std::string& scopeId) {
 			"exe",
 			LanFunction::ParamStruct{
 				{ "self", LanType(LanTypeEnum::TypeThis) } },
-			[](std::vector<LanVariable> args) -> std::optional<LanVariable> {
+			[](LanArray args) -> std::optional<std::shared_ptr<LanVariable>> {
 				if (args.empty()) throw std::runtime_error("read requires 1 argument (self).");
 				auto& self = args[0];
-				auto pathVar = self.Index("path");
+				auto pathVar = self->Index("path");
 				if (!pathVar) throw std::runtime_error("File object has no 'path' property.");
 				auto& path = std::get<std::string>(pathVar->Value);
 
@@ -81,7 +81,7 @@ static void RegisterFile(MylangeInterpreter& mi, const std::string& scopeId) {
 
     auto FileClass = std::make_shared<BuiltinClass>("File", properties, defaultValues, methods_vector);
 
-	mi.Memory.defineIn(scopeId, "File", LanVariable(
+	mi.Memory.defineIn(scopeId, "File", std::make_shared<LanVariable>(
 		LanType(LanTypeEnum::TypeClass), FileClass
 	));
 

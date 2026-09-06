@@ -12,15 +12,15 @@
 
 
 LanIterableEngine::LanIterableEngine(std::vector<std::pair<std::string, LanType>> keys, 
-	LanVariable matrixVar)
+	std::shared_ptr<LanVariable> matrixVar)
 {
 	this->Keys = std::move(keys);
 	this->IsUnpackingIter = (this->Keys.size() > 1);
 
-	if (matrixVar.Type.IsArrayType())
+	if (matrixVar->Type.IsArrayType())
 	{
 
-		for (auto& elementRow : std::get<LanArray> (matrixVar.Value))
+		for (auto& elementRow : std::get<LanArray> (matrixVar->Value))
 		{
 			if (this->IsUnpackingIter) {
 				if (!elementRow->Type.IsArrayType())
@@ -41,11 +41,11 @@ LanIterableEngine::LanIterableEngine(std::vector<std::pair<std::string, LanType>
 				this->Values.push_back(std::move(row));
 			}
 			else {
-				this->Values.push_back(*elementRow);
+				this->Values.push_back(elementRow);
 			}
 		}
 	}
-	else if (matrixVar.Type.IsSetType()) {
+	else if (matrixVar->Type.IsSetType()) {
 		throw std::runtime_error("Not Implemented Yet. LanIterableEngine.cpp:49");
 		//for (auto& pair : std::get<LanSet>(matrixVar.Value)) {
 		//	LanArray p;
