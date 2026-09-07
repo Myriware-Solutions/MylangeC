@@ -7,7 +7,7 @@
 class CommandLineInterface
 {
 protected:
-	static inline const std::string Version = "Pre - Orange 0.9.3";
+	static inline const std::string Version = "Pre - Orange 0.9.6";
 public:
 	static inline bool DebugEnabled = false;
 	static inline std::vector<std::string> Args = {};
