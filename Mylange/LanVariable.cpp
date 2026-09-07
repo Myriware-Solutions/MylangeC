@@ -42,18 +42,29 @@ std::shared_ptr<LanVariable> LanVariable::Index(const std::string& key) const {
 	else throw std::runtime_error("Cannot index non-set type: " + Type.ToString());
 }
 
-std::shared_ptr<LanVariable> LanVariable::DotMethod(MylangeInterpreter& mi, const std::string& name, LanArray params) const
+std::shared_ptr<LanVariable> LanVariable::DotMethod(MylangeInterpreter& mi, const std::string& name, LanArray params)
 {
 	// User class castring, not implemented
-	if (this->Type == LanTypeEnum::TypeCasting) throw runtime_error("User-castring dot method, not implemented yet");
+	if (this->Type == LanTypeEnum::TypeCasting) {
+		auto& casting = std::get<shared_ptr<LanCasting>>(this->Value);
+		auto res = casting->RunMethod(mi, LanFunction::GetId(name, params), params);
+		if (res.has_value()) return res.value();
+		else return nullptr;
+		//throw runtime_error("User-castring dot method, not implemented yet");
+	}
 	else
 	{
 		// Mylange Primitive Type
 		CommandLineInterface::DebugPrint(std::format("Looking for dot method '{}' on type '{}'", name, this->Type.ToPackageString()));
+		// Create an parameter list with the needed this object (for package methods)
+		LanArray cparams = { this->shared_from_this() };
+		cparams.reserve(1 + params.size());
+		cparams.insert(cparams.end(), params.begin(), params.end());
 		std::vector<LanType> args;
-		LanFunction::GetParamsTypes(params, args);
+		LanFunction::GetParamsTypes(cparams, args);
+		// Execute
 		auto f = mi.FindFunction(name, args, this->Type.ToPackageString());
-		auto res = f->Execute(mi, params);
+		auto res = f->Execute(mi, cparams);
 		if (res.has_value()) return res.value();
 		else return nullptr;
 	}

@@ -1,0 +1,48 @@
+#include<io>;
+#include<std>;
+
+//debug(true);
+
+class Per has {
+	
+	@default constructor;
+
+	public def nil _Count() as {
+		return 1;
+	};
+
+	public def nil _Operator>>(int s) as {
+		io.print(s);
+	};
+
+	public def nil _Operator>>() as {
+		io.print("Hello world!!!!!");
+	};
+
+	public def nil _Operator<<(string s) as {
+		io.print(s);
+	};
+
+	public def nil _Operator<<() as {
+		io.print("Goodbye!!!!");
+	};
+
+	
+
+};
+
+
+auto pr => new Per();
+io.print(#pr);
+pr << << "Hello" .. " " .. "World" >> << "!" >> 2;
+
+array<int> a => [];
+a << 1;
+io.print(a);
+io.print(#a);
+
+int i => 0;
+
+i >> 9 >> 10 >> 11 << 33 >> >>;
+
+io.print(i);

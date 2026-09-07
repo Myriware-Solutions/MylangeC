@@ -75,6 +75,7 @@ std::shared_ptr<LanVariable> LanArithmetic::ApplyOperator(
     if (op == "-") return *lhs - rhs;
     if (op == "*") return *lhs * rhs;
     if (op == "/") return *lhs / rhs;
+	if (op == "^") return (*lhs).power(rhs);
     if (op == "==") return *lhs == rhs;
     if (op == "..") {
 		// Two strings: concatenate

@@ -162,6 +162,7 @@
     <None Include="example3.myl" />
     <None Include="lambdas.myl" />
     <None Include="license.md" />
+    <None Include="nclass.myl" />
     <None Include="todo.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

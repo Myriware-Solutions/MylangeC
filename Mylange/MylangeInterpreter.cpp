@@ -34,7 +34,7 @@ const regex functionCallStack(R"(^(?:\w+\.?)+(?:\w+\(.*\))+)", std::regex_consta
 const regex functionDotExtention(R"((\)\.))", std::regex_constants::ECMAScript);
 const regex ifElseThenPattern(R"(^if\s*\((.*?)\)\s*then\s*(.*))", std::regex_constants::ECMAScript);
 const regex paramStringPattern(R"((?:(const)\s+)?([\w<|>.]+)\s+(\w+))", std::regex_constants::ECMAScript);
-const regex functionMethodDeclaration(R"(^((?:@?\w+\s+)+)?def\s+(\w+)\s+(\w+)\s*\((.*)\)\s*as\s*(.*))", std::regex_constants::ECMAScript);
+const regex functionMethodDeclaration(R"(^((?:@?\w+\s+)+)?def\s+(\w+)\s+(\w+|_Operator[+\-\*\/\[\]<>:]+)\s*\((.*)\)\s*as\s*(.*))", std::regex_constants::ECMAScript);
 const regex classDeclarationPatter(R"(^class\s+(\w+)\s+(?:extends\s+(\w+))?\s*has\s*(.*))", std::regex_constants::ECMAScript);
 const regex wordCharsOnly(R"(^[a-zA-Z]\w*$)", std::regex_constants::ECMAScript);
 const regex cachedBit(R"((\d)x([a-fA-F0-9]+))", std::regex_constants::ECMAScript);
@@ -168,7 +168,6 @@ vector<Rule> rules = {
             string place_to_write = m[1].str();
             auto tokens = mi.TokenizeComplexValue(place_to_write);
 
-
             std::shared_ptr<LanVariable> working = nullptr;
             for (auto& token : tokens) {
                 CommandLineInterface::DebugPrint(std::format("Working on token: '{}': {}", token.value, token.type_string()), 1);
@@ -179,7 +178,6 @@ vector<Rule> rules = {
                     break;
                 case TokenItem::ColonExtention:
                     if (!working) throw runtime_error("Cannot use colon extension on non-variable.");
-
 
                     if (working->HasIndex(token.value)) {
                         working = working->Index(token.value);
@@ -240,26 +238,60 @@ vector<Rule> rules = {
             return nullopt;
         }
     },
-    // Increment/
+    // Increment
     {
-        regex(R"(^(.*)\s*(>>|<<)(?:\s*(.*))?$)"),
+        //^([^<>]*?)\s*(>>|<<)(?:\s*(.*))?$
+        //^(.*)\s*(>>|<<)(?:\s*(.*))?$
+        regex(R"(^([^<>]*?)\s*(>>|<<)(?:\s*(.*))?$)"),
         [](auto const& m, MylangeInterpreter& mi) -> std::optional<std::shared_ptr<LanVariable>> {
+            std::string operationsString = m[0].str();
 
-            auto address = m[1].str();
-            auto operation = m[2].str();
+            std::vector<TokenItem> tokens;
 
-            bool found = false;
-            std::shared_ptr<LanVariable> amount;
-            if (m[3].matched) {
-                auto a = mi.ParseParameter(m[3].str());
-                if (!a.has_value()) throw runtime_error("Failed to parse increment/decrement amount.");
-                amount = a.value();
-                found = true;
+            std::string s = "";
+            char currentDir = ' ';
+            for (int i = 0; i < operationsString.length(); i++) {
+				char c = operationsString[i];
+                if (c == '<' || c == '>') {
+                    if (c == operationsString[i + 1]) {
+                        if (tokens.empty()) tokens.push_back(TokenItem(TokenItem::TokenType::Value, s));
+                        else {
+							if (currentDir == '<') tokens.push_back(TokenItem(TokenItem::TokenType::BackwardOp, s));
+							else if (currentDir == '>') tokens.push_back(TokenItem(TokenItem::TokenType::ForwardOp, s));
+                        }
+                        s = "";
+                        currentDir = c;
+                        i++;
+                    } else s += c;
+                }
+                else {
+                    s += c;
+                }
             }
+            if (currentDir == '<') tokens.push_back(TokenItem(TokenItem::TokenType::BackwardOp, s));
+            else if (currentDir == '>') tokens.push_back(TokenItem(TokenItem::TokenType::ForwardOp, s));
 
-            auto var = mi.ResolveVariableExtentions(address);
-            CommandLineInterface::DebugPrint(std::format("ptr address (from array): {}", static_cast<void*>(var.get())));
-            var->DotMethod(mi, "_Operator" + operation, (found ? LanArray{var, amount} : LanArray{var}));
+            std::shared_ptr<LanVariable> var;
+
+            std::string forward("_Operator>>");
+			std::string backward("_Operator<<");
+
+			for (auto& token : tokens) {
+				token.value = Utils::TrimString(token.value);
+				CommandLineInterface::DebugPrint(std::format("Working on token: '{}': {}", token.value, token.type_string()), 1);
+				LanArray args = (!token.value.empty()) ? LanArray{ mi.ParseParameter(token.value).value() } : LanArray{};
+                switch (token.type) {
+				case TokenItem::Value:
+                    var = mi.ResolveVariableExtentions(token.value);
+					break;
+				case TokenItem::ForwardOp:
+                    var->DotMethod(mi, forward, args);
+					break;
+				case TokenItem::BackwardOp:
+                    var->DotMethod(mi, backward, args);
+                    break;
+                }
+			}
 
             return nullopt;
         }
@@ -860,7 +892,7 @@ std::vector<TokenItem> MylangeInterpreter::TokenizeComplexValue(const std::strin
     bool possible_package_method = false;
     auto place_back = [&]() {
         if (to_append.length() == 0) return;
-        if (parts.size() > 0) throw runtime_error("Should not be unhandled");
+        if ((parts.size() > 0) && (parts[0].type != TokenItem::TokenType::Caliber)) throw runtime_error("Should not be unhandled");
         if (ModuleRegistry::Has(to_append) || this->LoadedModules.contains(to_append)) {
             possible_package_method = true;
             parts.push_back(TokenItem(TokenItem::TokenItem::PackageName, to_append));
@@ -876,7 +908,7 @@ std::vector<TokenItem> MylangeInterpreter::TokenizeComplexValue(const std::strin
         if (depth.Get() == 0) {
             // Ensure no top-level operators exist, which would automatically fail
             // this check as it is an arithmetic, not stack call
-            if (Utils::Find(LanArithmetic::OperatorCharacters(), c)) {
+            if (Utils::Find(LanArithmetic::OperatorCharacters(), c) && !to_append.empty()) {
                 string op = "";
                 for (int j = 0; j < value.length() - i; j++) {
                     char k = value[i + j];
@@ -891,10 +923,16 @@ std::vector<TokenItem> MylangeInterpreter::TokenizeComplexValue(const std::strin
             if (c == ' ' && to_append == "new") {
                 return {};
             }
+            // Check to see if it is a Caliber symbol, and add it to that class.
+            // Can only exist at the front of the token
+            if (Utils::Find(TokenItem::CaliberChars, c)
+                && parts.size() == 0 && to_append.empty()) {
+                parts.push_back(TokenItem(TokenItem::TokenItem::Caliber, c));
+            }
             // Check to see if it could be a bracket index
             // The only way to disqualify this is if it contains commas,
             // which indicates an array.
-            if (c == '[') {
+            else if (c == '[') {
                 place_back();
                 DepthEngine d = DepthEngine();
                 bool valid_extention = true;
@@ -908,14 +946,16 @@ std::vector<TokenItem> MylangeInterpreter::TokenizeComplexValue(const std::strin
                     s += k;
                 }
                 i += j; // Adjust the global runner to skip over the already-analyzed part
+                if (s.empty()) valid_extention = false;
                 if (valid_extention && parts.size() > 0) {
                     // It looks like a valid extention, and it is not the first array-like thing.
-                    parts.push_back(TokenItem(TokenItem::TokenItem::BracketExtention, s));
+                    parts.push_back(TokenItem(TokenItem::TokenType::BracketExtention, s));
                 }
-                else if (parts.size() == 0) {
+                else if ((parts.size() == 0) ||
+                    ((parts.size() == 1) && ((parts[0].type & TokenItem::TokenType::Caliber) == TokenItem::TokenType::Caliber))) {
                     // Not a valid extention (is array), but being first, it can be allowed
                     std::string full_array = "[" + s + "]";
-                    parts.push_back(TokenItem(TokenItem::TokenItem::Value, full_array));
+                    parts.push_back(TokenItem(TokenItem::TokenType::Value, full_array));
                 }
                 //else if (valid_extention && parts.size() == 0 && s.empty()) {
                 //    // Empty array
@@ -966,8 +1006,8 @@ std::vector<TokenItem> MylangeInterpreter::TokenizeComplexValue(const std::strin
             to_append += c;
         }
     }
-
-    if (parts.size() == 0 && !to_append.empty()) place_back();
+    //parts.size() == 0 && 
+    if (!to_append.empty()) place_back();
 
     for (auto& p : parts) {
         CommandLineInterface::DebugPrint("Part '" + p.value + "', type " + p.type_string(), 1);
@@ -1058,13 +1098,6 @@ std::optional<std::shared_ptr<LanVariable>> MylangeInterpreter::ParseParameter(c
 {
     string paramStr = Utils::TrimString(rawParamStr);
     CommandLineInterface::DebugPrint("Parsing parameter: " + paramStr);
-
-    bool gettingCount = false;
-
-    if (paramStr[0] == '#') {
-        gettingCount = true;
-        paramStr = paramStr.substr(1);
-    }
 
     std::optional<std::shared_ptr<LanVariable>> RESULT = nullopt;
 
@@ -1187,10 +1220,23 @@ std::optional<std::shared_ptr<LanVariable>> MylangeInterpreter::ParseParameter(c
 
     // Post processing, if the parameter was a count request, get the count of the value
     if (RESULT.has_value()) {
-        if (!gettingCount) return RESULT;
-        else return std::make_shared<LanVariable>(
-            LanVariable(LanType(LanTypeEnum::TypeInt),
-                RESULT.value()->DotMethod(*this, countString, { RESULT.value() })->Value));
+		if (tokens.size() < 1) return RESULT;
+        if (tokens[0].type == TokenItem::TokenType::Caliber)
+            switch (tokens[0].value[0]) {
+            case '#':
+                return std::make_shared<LanVariable>(
+                    LanVariable(LanType(LanTypeEnum::TypeInt),
+                        RESULT.value()->DotMethod(*this, countString, {})->Value));
+            case '*':
+                return std::make_shared<LanVariable>(*RESULT.value());
+            }
+        else {
+            return RESULT;
+        }
+        //if (!gettingCount) return RESULT;
+        //else return std::make_shared<LanVariable>(
+        //    LanVariable(LanType(LanTypeEnum::TypeInt),
+        //        RESULT.value()->DotMethod(*this, countString, { RESULT.value() })->Value));
     }
     else return nullopt;
 }
@@ -1486,6 +1532,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
 
         LanType target_type = this->ResolveType(target_type_str);
         shared_ptr<LanCasting> casting = std::make_shared<LanCasting>(target_type.CustomClass);
+        
 
         string func_id = LanFunction::GetId(target_type.CustomClass->Name, params);
         CommandLineInterface::DebugPrint(std::format("Params for '{}': {}", func_id, params.size()));
@@ -1493,7 +1540,7 @@ optional<LanVariable> MylangeInterpreter::RandomTypeConversion(const string& val
         casting->RunMethod(*this, func_id, params); // Call the constructor
 
         return LanVariable(
-            target_type,
+            LanType(LanTypeEnum::TypeCasting, target_type.CustomClass),
             LanVariable::LanValue{ casting }
         );
     }

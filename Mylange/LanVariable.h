@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include <cmath>
 
 class LanIterableEngine;
 class LanCasting;
@@ -325,7 +326,7 @@ public:
     bool HasIndex(const std::string& key) const;
     std::shared_ptr<LanVariable> Index(const std::string& key) const;
 
-    std::shared_ptr<LanVariable> DotMethod(MylangeInterpreter& mi, const std::string& name, LanArray params) const;
+    std::shared_ptr<LanVariable> DotMethod(MylangeInterpreter& mi, const std::string& name, LanArray params);
 
     // -- Utilities --
     std::string ToString() const;
@@ -369,6 +370,25 @@ public:
     std::shared_ptr<LanVariable> operator>=(const std::shared_ptr<LanVariable> other) const;
     bool operator&&(const std::shared_ptr<LanVariable> other) const;
     bool operator||(const std::shared_ptr<LanVariable> other) const;
+
+    std::shared_ptr<LanVariable> power(const std::shared_ptr<LanVariable> other) const {
+		if (this->Type.BaseType == LanTypeEnum::TypeInt && other->Type.BaseType == LanTypeEnum::TypeInt) {
+			return std::make_shared<LanVariable>(
+				LanType(LanTypeEnum::TypeInt),
+				LanValue{ static_cast<int>(std::pow(std::get<int>(this->Value), std::get<int>(other->Value))) }
+			);
+		}
+		else if (this->Type.BaseType == LanTypeEnum::TypeFloat && other->Type.BaseType == LanTypeEnum::TypeFloat) {
+			return std::make_shared<LanVariable>(
+				LanType(LanTypeEnum::TypeFloat),
+				LanValue{ std::pow(std::get<float>(this->Value), std::get<float>(other->Value)) }
+			);
+		}
+		else {
+			throw std::runtime_error("Unsupported types for power operation: "
+				+ this->Type.ToString() + " ^ " + other->Type.ToString());
+        };
+    };
 
     // Helper for std::visit
     template<class... Ts>

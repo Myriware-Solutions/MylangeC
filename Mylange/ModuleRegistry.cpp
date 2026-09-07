@@ -562,6 +562,29 @@ void ModuleRegistry::RegisterHardwires(MylangeInterpreter& mi)
         )
     ));
 
+    // nil <array>._Operator<<()
+    mi.Memory.define(std::make_shared<LanVariable>(
+        LanType(LanTypeEnum::TypeFunction),
+        std::make_shared<BuiltinFunction>(
+            LanType(LanTypeEnum::TypeNil),
+            "_Operator<<",
+            LanFunction::ParamStruct{
+                { "self", LanType(LanTypeEnum::TypeArray | LanTypeEnum::TypeAny) },
+                { "item", LanType(LanTypeEnum::TypeAny) } },
+            [&](LanArray args) -> std::optional<std::shared_ptr<LanVariable>> {
+
+                auto& array = std::get<LanArray>(args[0]->Value);
+
+                if (!LanVariable::IsAppendable(args[0]->Type, args[1]->Type))
+                    throw runtime_error("Cannot append item of type " + args[1]->Type.ToString() + " to array of type " + args[0]->Type.ToString());
+
+                array.push_back(args[1]);
+
+                return nullopt;
+            }
+        )
+    ));
+
     // int _Count()
     mi.Memory.define(std::make_shared<LanVariable>(
         LanType(LanTypeEnum::TypeFunction),

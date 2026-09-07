@@ -117,5 +117,8 @@
     <None Include="lambdas.myl">
       <Filter>zExamples</Filter>
     </None>
+    <None Include="nclass.myl">
+      <Filter>zExamples</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -12,8 +12,13 @@ class MemoryManager;
 
 struct TokenItem
 {
-	enum TokenType { Value, ColonExtention, BracketExtention, Method, PackageName, PackageMethod };
+	inline static const std::vector<char> CaliberChars = {'#', '!', '*'};
+	enum TokenType { Value, ColonExtention, BracketExtention, Method, PackageName, PackageMethod, Caliber, ForwardOp, BackwardOp };
 	TokenItem(TokenType t, string& v) {
+		type = t;
+		value = v;
+	}
+	TokenItem(TokenType t, char v) {
 		type = t;
 		value = v;
 	}
@@ -33,6 +38,12 @@ struct TokenItem
 				return "PackageName";
 			case TokenType::PackageMethod:
 				return "PackageMethod";
+			case TokenType::Caliber:
+				return "Caliber";
+			case TokenType::ForwardOp:
+				return "ForwardOp";
+			case TokenType::BackwardOp:
+				return "BackwardOp";
 		}
 	}
 };
